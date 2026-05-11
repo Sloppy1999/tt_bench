@@ -75,6 +75,70 @@ LAYERS = [
 ]
 
 # ── Real ch01 example data ────────────────────────────────────────────────────
+# Canonical format matches Board.to_llm_dict() — the exact structure the LLM receives.
+
+BLUE_VARIANT_LLM = {
+    "dimensions": {"width": 11, "height": 11},
+    "hopper_entry_mode": "inward",
+    "ball_hoppers": {
+        "blue":  {"x": 2, "entry_x": 3, "balls_remaining": 8, "balls_initial": 8},
+        "red":   {"x": 8, "entry_x": 7, "balls_remaining": 8, "balls_initial": 8},
+    },
+    "trigger_levers": {"left": {"x": 2}, "right": {"x": 8}},
+    "components": [
+        # fixed (top half of the board)
+        {"type": "ramp_right", "x": 2, "y": 0,  "direction": "right"},
+        {"type": "ramp_left",  "x": 3, "y": 1,  "direction": "left"},
+        {"type": "ramp_right", "x": 2, "y": 2,  "direction": "right"},
+        {"type": "ramp_left",  "x": 3, "y": 3,  "direction": "left"},
+        {"type": "ramp_right", "x": 2, "y": 4,  "direction": "right"},
+        {"type": "ramp_left",  "x": 3, "y": 5,  "direction": "left"},
+        # solution (bottom half — makes blue balls reach right-side catcher)
+        {"type": "ramp_right", "x": 2, "y": 6,  "direction": "right"},
+        {"type": "ramp_left",  "x": 3, "y": 7,  "direction": "left"},
+        {"type": "ramp_right", "x": 2, "y": 8,  "direction": "right"},
+        {"type": "ramp_left",  "x": 3, "y": 9,  "direction": "left"},
+    ],
+    "bit_states": {},
+    "gear_groups": [],
+}
+
+# Red variant — ch01-pA (fixed components on opposite side, red marbles must reach right-side catcher)
+RED_VARIANT_LLM = {
+    "dimensions": {"width": 11, "height": 11},
+    "hopper_entry_mode": "inward",
+    "ball_hoppers": {
+        "blue":  {"x": 2, "entry_x": 3, "balls_remaining": 8, "balls_initial": 8},
+        "red":   {"x": 8, "entry_x": 7, "balls_remaining": 8, "balls_initial": 8},
+    },
+    "trigger_levers": {"left": {"x": 2}, "right": {"x": 8}},
+    "components": [
+        # fixed
+        {"type": "ramp_left",  "x": 8, "y": 1,  "direction": "left"},
+        {"type": "ramp_right", "x": 7, "y": 6,  "direction": "right"},
+        # solution (8 ramps completing the path for red marbles)
+        {"type": "ramp_right", "x": 7, "y": 2,  "direction": "right"},
+        {"type": "ramp_left",  "x": 8, "y": 3,  "direction": "left"},
+        {"type": "ramp_right", "x": 7, "y": 4,  "direction": "right"},
+        {"type": "ramp_left",  "x": 8, "y": 5,  "direction": "left"},
+        {"type": "ramp_left",  "x": 8, "y": 7,  "direction": "left"},
+        {"type": "ramp_right", "x": 7, "y": 8,  "direction": "right"},
+        {"type": "ramp_left",  "x": 8, "y": 9,  "direction": "left"},
+        {"type": "ramp_right", "x": 7, "y": 10, "direction": "right"},
+    ],
+    "bit_states": {},
+    "gear_groups": [],
+}
+
+# Fixed-only (no solution) — used for agentic synthesis prompts
+def drop_solution(board_dict: dict) -> dict:
+    """Return a copy with solution components removed (for agentic prompts)."""
+    import copy
+    d = copy.deepcopy(board_dict)
+    # Solution ramps are those in y-range 6-10 (below the fixed region)
+    d["components"] = [c for c in d["components"] if c.get("y", 0) < 6]
+    return d
+
 
 SYSTEM_UNDERSTANDING = """You are an expert Turing Tumble analyst.
 Given a board configuration, analyze its behavior and answer questions about it.
@@ -99,29 +163,8 @@ REQUIRED WORKFLOW (you MUST follow this exactly):
 You MUST call run_simulation after EVERY component placement to verify!
 Do not just think about the solution - you must USE the tools to build and test it."""
 
-BOARD_JSON_CH01 = {
-    "width": 11,
-    "height": 11,
-    "dimensions": "11x11",
-    "components": [
-        {"type": "ramp_right", "x": 2, "y": 0},
-        {"type": "ramp_left",  "x": 3, "y": 1},
-        {"type": "ramp_right", "x": 2, "y": 2},
-        {"type": "ramp_left",  "x": 3, "y": 3},
-        {"type": "ramp_right", "x": 2, "y": 4},
-        {"type": "ramp_left",  "x": 3, "y": 5},
-        # solution ramps (understanding task includes solution)
-        {"type": "ramp_right", "x": 2, "y": 6, "role": "solution"},
-        {"type": "ramp_left",  "x": 3, "y": 7, "role": "solution"},
-        {"type": "ramp_right", "x": 2, "y": 8, "role": "solution"},
-        {"type": "ramp_left",  "x": 3, "y": 9, "role": "solution"},
-    ],
-    "ball_hoppers": {"blue": {"x": 2, "count": 8}, "red": {"x": 8, "count": 8}},
-    "trigger_levers": {"left": {"x": 2}, "right": {"x": 8}},
-    "entry_mode": "inward",
-}
-
-OBJECTIVE_CH01 = "Make all of the blue balls (and only the blue balls) reach the end."
+OBJECTIVE_BLUE = "Make all of the blue balls (and only the blue balls) reach the end."
+OBJECTIVE_RED  = "Make all of the red balls (and only the red balls) reach the end."
 
 RULES_EXCERPT = """Turing Tumble Component Rules:
 - CRITICAL: Marbles may NOT fall through empty in-board cells. Every cell a marble
@@ -141,10 +184,12 @@ RULES_EXCERPT = """Turing Tumble Component Rules:
 - Trigger levers (catchers): a marble that falls off the bottom is caught only if its column equals
   `trigger_levers.left.x` (left_catcher) or `trigger_levers.right.x` (right_catcher). Any other bottom column is a miss."""
 
-QUESTION_CH01 = "After the 1st blue marble, where does it end up?"
-ANSWER_FORMAT_CH01 = '{"final_destination": "left_catcher" or "right_catcher", "reasoning": "step by step..."}'
+QUESTION_EXEC_TRACE = "After the 1st blue marble, where does it end up?"
+QUESTION_EXEC_TRACE_RED = "After the 1st red marble, where does it end up?"
+ANSWER_FORMAT = '{"final_destination": "left_catcher" or "right_catcher", "reasoning": "step by step..."}'
 
-AVAILABLE_PARTS_CH01 = "ramp_right: 2, ramp_left: 2, crossover: 0, bit: 0, gear_bit: 0, gear: 0, interceptor: 0, trigger: 0"
+AVAILABLE_PARTS_BLUE = "ramp_right: 2, ramp_left: 2, crossover: 0, bit: 0, gear_bit: 0, gear: 0, interceptor: 0, trigger: 0"
+AVAILABLE_PARTS_RED  = "ramp_right: 4, ramp_left: 4, crossover: 0, bit: 0, gear_bit: 0, gear: 0, interceptor: 0, trigger: 0"
 
 
 # ── Helper: syntax-highlight a code block ─────────────────────────────────────
@@ -310,7 +355,7 @@ def build_task_comparison(output_dir: Path):
     plt.close(fig)
 
 
-# ── Figure C: ch01 understanding prompt ──────────────────────────────────────
+# ── Figure C: ch01 understanding prompt (blue variant) ──────────────────────
 def build_understanding_fig(output_dir: Path):
     fig, ax = plt.subplots(figsize=(16, 14))
     ax.axis('off')
@@ -318,9 +363,9 @@ def build_understanding_fig(output_dir: Path):
 
     sections = [
         ("SYSTEM PROMPT", SYSTEM_UNDERSTANDING, LAYER_COLORS[0]),
-        ("BOARD JSON (with solution)", json.dumps(BOARD_JSON_CH01, indent=2), LAYER_COLORS[1]),
+        ("BOARD JSON (with solution)", json.dumps(BLUE_VARIANT_LLM, indent=2), LAYER_COLORS[1]),
         ("COMPONENT RULES", RULES_EXCERPT[:900], LAYER_COLORS[3]),
-        ("QUESTION", f"## Question Type: execution_trace\n\n## Question: {QUESTION_CH01}\n\n## Expected Format:\n{ANSWER_FORMAT_CH01}", LAYER_COLORS[2]),
+        ("QUESTION", f"## Question Type: execution_trace\n\n## Question: {QUESTION_EXEC_TRACE}\n\n## Expected Format:\n{ANSWER_FORMAT}", LAYER_COLORS[2]),
     ]
 
     y = 11.5
@@ -341,7 +386,7 @@ def build_understanding_fig(output_dir: Path):
         y -= box_h + 0.25
 
     ax.text(8, 0.3,
-            "Procedural Understanding -- Complete Prompt Example (tt-official-ch01)",
+            "Procedural Understanding -- Complete Prompt Example (tt-official-ch01, blue variant)",
             ha='center', va='bottom', fontsize=11, fontweight='bold', color=BLUE_DEEP)
 
     plt.tight_layout(pad=0.5)
@@ -351,21 +396,18 @@ def build_understanding_fig(output_dir: Path):
     plt.close(fig)
 
 
-# ── Figure D: ch01 agentic prompt ─────────────────────────────────────────────
+# ── Figure D: ch01 agentic prompt (blue variant, fixed-only board) ──────────
 def build_agentic_fig(output_dir: Path):
     fig, ax = plt.subplots(figsize=(16, 12))
     ax.axis('off')
     fig.patch.set_facecolor(BG)
 
-    board_no_sol = {k: v for k, v in BOARD_JSON_CH01.items()
-                    if k != "components"}
-    board_no_sol["components"] = [c for c in BOARD_JSON_CH01["components"]
-                                   if c.get("role") != "solution"]
+    board_fixed = drop_solution(BLUE_VARIANT_LLM)
 
     sections_d = [
         ("SYSTEM PROMPT", SYSTEM_AGENTIC[:600], LAYER_COLORS[0]),
-        ("BOARD JSON (fixed only)", json.dumps(board_no_sol, indent=2), LAYER_COLORS[1]),
-        ("AVAILABLE PARTS", AVAILABLE_PARTS_CH01, LAYER_COLORS[2]),
+        ("BOARD JSON (fixed only)", json.dumps(board_fixed, indent=2), LAYER_COLORS[1]),
+        ("AVAILABLE PARTS", AVAILABLE_PARTS_BLUE, LAYER_COLORS[2]),
         ("COMPONENT RULES", RULES_EXCERPT[:700], LAYER_COLORS[3]),
         ("OUTPUT FORMAT", '{"final_solution": [...], "success": true, "verification": {...}}', LAYER_COLORS[4]),
     ]
@@ -388,7 +430,7 @@ def build_agentic_fig(output_dir: Path):
         y -= box_h + 0.25
 
     ax.text(8, 0.3,
-            "Agentic Synthesis -- Complete Prompt Example (tt-official-ch01)",
+            "Agentic Synthesis -- Complete Prompt Example (tt-official-ch01, blue variant)",
             ha='center', va='bottom', fontsize=11, fontweight='bold', color=BLUE_DEEP)
 
     plt.tight_layout(pad=0.5)
@@ -400,10 +442,10 @@ def build_agentic_fig(output_dir: Path):
 
 # ── HTML output ────────────────────────────────────────────────────────────────
 def build_html(output_path: Path):
-    board_json_str = json.dumps(BOARD_JSON_CH01, indent=2)
-    board_no_sol = {k: v for k, v in BOARD_JSON_CH01.items() if k != "components"}
-    board_no_sol["components"] = [c for c in BOARD_JSON_CH01["components"]
-                                   if c.get("role") != "solution"]
+    board_json_str_blue = json.dumps(BLUE_VARIANT_LLM, indent=2)
+    board_json_str_red  = json.dumps(RED_VARIANT_LLM,  indent=2)
+    board_fixed_blue   = json.dumps(drop_solution(BLUE_VARIANT_LLM), indent=2)
+    board_fixed_red    = json.dumps(drop_solution(RED_VARIANT_LLM),  indent=2)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -442,12 +484,16 @@ def build_html(output_path: Path):
   .prompt-header {{ background: var(--blue-accent); color: white; padding: 0.6rem 1rem; font-weight: bold; font-size: 0.9rem; }}
   .prompt-body {{ background: white; padding: 1rem; }}
   .two-col {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }}
+  .variant-label {{ display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; color: white; margin-bottom: 0.5rem; }}
+  .variant-blue {{ background: #2c5aa0; }}
+  .variant-red  {{ background: #a03a3a; }}
   @media (max-width: 900px) {{ .two-col {{ grid-template-columns: 1fr; }} }}
   .json-key {{ color: #2c5aa0; font-weight: bold; }}
   .json-str {{ color: #a31515; }}
   .json-num {{ color: #098658; }}
   .json-bool {{ color: #0000ff; }}
   .tag {{ display: inline-block; background: var(--blue-accent); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-right: 4px; }}
+  .tag-red {{ background: #a03a3a; }}
   .caption {{ text-align: center; font-size: 0.8rem; color: var(--gray-mid); margin-top: 0.3rem; font-style: italic; }}
   .img-wrap {{ text-align: center; margin: 1.5rem 0; }}
   .img-wrap img {{ max-width: 100%; height: auto; border: 1px solid var(--gray-mid); border-radius: 6px; }}
@@ -458,7 +504,8 @@ def build_html(output_path: Path):
 <h1>Turing Tumble Benchmark -- Prompt Anatomy</h1>
 <p>This visualization shows the anatomical structure of benchmark prompts for the
 <strong>Turing Tumble puzzle-solving benchmark</strong>. Two task variants are supported:
-<strong>Procedural Understanding</strong> and <strong>Agentic Synthesis</strong>.</p>
+<strong>Procedural Understanding</strong> and <strong>Agentic Synthesis</strong>,
+across multiple challenge variants (blue-targeting and red-targeting).</p>
 
 <h2>1. Prompt Layer Architecture</h2>
 <p>Every benchmark prompt -- regardless of task type -- is composed of five nested layers.
@@ -506,22 +553,53 @@ Two variants exist:</p>
 </div>
 </div>
 
-<h3>Layer 2 -- Board JSON</h3>
-<p>The board configuration (board geometry + fixed components). For procedural understanding
-tasks the reference solution components are included; for agentic synthesis they are omitted.</p>
+<h3>Layer 2 -- Board JSON (Canonical Format)</h3>
+<p>The board configuration uses the canonical format produced by <code>Board.to_llm_dict()</code> --
+the exact structure the LLM receives. Key fields:</p>
+<ul style="margin: 0.5rem 0 0.5rem 1.5rem; font-size: 0.9rem;">
+  <li><code>dimensions</code>: board width/height</li>
+  <li><code>hopper_entry_mode</code>: "inward" (marble from blue hopper enters at <code>x+1</code>; from red at <code>x-1</code>)</li>
+  <li><code>ball_hoppers</code>: hopper position, pre-computed <code>entry_x</code>, and ball counts</li>
+  <li><code>trigger_levers</code>: left/right catcher column positions</li>
+  <li><code>components</code>: list of placed components with <code>type</code>, <code>x</code>, <code>y</code>, <code>direction</code></li>
+  <li><code>bit_states</code> / <code>gear_groups</code>: state bookkeeping for Bits and GearBits</li>
+</ul>
+<div class="two-col">
+<div>
 <div class="prompt-block">
-<div class="prompt-header">Challenge tt-official-ch01 "Gravity" -- Board JSON (with solution)</div>
+<div class="prompt-header">tt-official-ch01 -- Blue variant (with solution)</div>
 <div class="prompt-body">
-<pre>{highlight_json(board_json_str)}</pre>
+<pre>{highlight_json(board_json_str_blue)}</pre>
+</div>
+</div>
+</div>
+<div>
+<div class="prompt-block">
+<div class="prompt-header">tt-official-ch01-pA -- Red variant (with solution)</div>
+<div class="prompt-body">
+<pre>{highlight_json(board_json_str_red)}</pre>
+</div>
 </div>
 </div>
 
 <h3>Layer 3 -- Task Objective</h3>
-<p>The puzzle goal, drawn directly from the challenge JSON <code>objective</code> field.</p>
+<p>The puzzle goal, drawn directly from the challenge JSON <code>objective</code> field.
+Two opposing objectives exist:</p>
+<div class="two-col">
+<div>
 <div class="prompt-block">
-<div class="prompt-header">tt-official-ch01 -- Objective</div>
+<div class="prompt-header">Blue variant (ch01)</div>
 <div class="prompt-body">
-<pre>{OBJECTIVE_CH01}</pre>
+<pre>{OBJECTIVE_BLUE}</pre>
+</div>
+</div>
+</div>
+<div>
+<div class="prompt-block">
+<div class="prompt-header">Red variant (ch01-pA)</div>
+<div class="prompt-body">
+<pre>{OBJECTIVE_RED}</pre>
+</div>
 </div>
 </div>
 
@@ -542,7 +620,7 @@ tasks the reference solution components are included; for agentic synthesis they
 <div class="prompt-block">
 <div class="prompt-header">Understanding -- Expected Format</div>
 <div class="prompt-body">
-<pre>{ANSWER_FORMAT_CH01}</pre>
+<pre>{ANSWER_FORMAT}</pre>
 </div>
 </div>
 </div>
@@ -562,10 +640,12 @@ tasks the reference solution components are included; for agentic synthesis they
 </div>
 </div>
 
-<h2>3. Complete Example Prompts (tt-official-ch01)</h2>
+<h2>3. Complete Example Prompts -- Blue Variant (tt-official-ch01)</h2>
+<p><span class="variant-label variant-blue">BLUE VARIANT</span>
+ <em>Objective: make all blue balls reach the end. Fixed ramps at x=2,3 (columns 2-3); solution ramps complete path below.</em></p>
 
 <h3>3a. Procedural Understanding -- Execution Trace Question</h3>
-<div class="tag">execution_trace</div><div class="tag">understanding</div><div class="tag">ch01</div>
+<div class="tag">execution_trace</div><div class="tag">understanding</div><div class="tag">ch01</div><div class="tag tag-red">blue-variant</div>
 <div class="prompt-block">
 <div class="prompt-header">SYSTEM PROMPT</div>
 <div class="prompt-body">
@@ -578,24 +658,24 @@ tasks the reference solution components are included; for agentic synthesis they
 <pre>Analyze this Turing Tumble board configuration.
 
 ## Board (JSON)
-{board_json_str}
+{board_json_str_blue}
 
 ## Component Rules
 {RULES_EXCERPT}
 
 ## Question Type: execution_trace
 
-## Question: {QUESTION_CH01}
+## Question: {QUESTION_EXEC_TRACE}
 
 ## Expected Answer Format
-{ANSWER_FORMAT_CH01}
+{ANSWER_FORMAT}
 
 Respond with JSON containing your answer and reasoning.</pre>
 </div>
 </div>
 
-<h3>3b. Agentic Synthesis</h3>
-<div class="tag">agentic_synthesis</div><div class="tag">tool_calling</div><div class="tag">ch01</div>
+<h3>3b. Agentic Synthesis -- Blue Variant</h3>
+<div class="tag">agentic_synthesis</div><div class="tag">tool_calling</div><div class="tag">ch01</div><div class="tag tag-red">blue-variant</div>
 <div class="prompt-block">
 <div class="prompt-header">SYSTEM PROMPT</div>
 <div class="prompt-body">
@@ -608,13 +688,13 @@ Respond with JSON containing your answer and reasoning.</pre>
 <pre>Solve this Turing Tumble puzzle using the available tools.
 
 ## Board (JSON)
-{json.dumps(board_no_sol, indent=2)}
+{board_fixed_blue}
 
 ## Available Parts
-{AVAILABLE_PARTS_CH01}
+{AVAILABLE_PARTS_BLUE}
 
 ## Target Behavior
-{OBJECTIVE_CH01}
+{OBJECTIVE_BLUE}
 
 ## Component Rules
 {RULES_EXCERPT}
@@ -638,7 +718,85 @@ Use the tools now. Start by checking the current board state.</pre>
 </div>
 </div>
 
-<h2>4. Key Differences: Understanding vs. Synthesis</h2>
+<h2>4. Complete Example Prompts -- Red Variant (tt-official-ch01-pA)</h2>
+<p><span class="variant-label" style="background: #a03a3a;">RED VARIANT</span>
+ <em>Objective: make all red balls reach the right-side catcher. Fixed ramps at x=7,8; solution ramps extend path from (7,2) to (7,10).</em></p>
+
+<h3>4a. Procedural Understanding -- Execution Trace Question (Red)</h3>
+<div class="tag">execution_trace</div><div class="tag">understanding</div><div class="tag">ch01-pA</div><div class="tag" style="background: #a03a3a;">red-variant</div>
+<div class="prompt-block">
+<div class="prompt-header">SYSTEM PROMPT</div>
+<div class="prompt-body">
+<pre>{SYSTEM_UNDERSTANDING}</pre>
+</div>
+</div>
+<div class="prompt-block">
+<div class="prompt-header">USER PROMPT</div>
+<div class="prompt-body">
+<pre>Analyze this Turing Tumble board configuration.
+
+## Board (JSON)
+{board_json_str_red}
+
+## Component Rules
+{RULES_EXCERPT}
+
+## Question Type: execution_trace
+
+## Question: {QUESTION_EXEC_TRACE_RED}
+
+## Expected Answer Format
+{ANSWER_FORMAT}
+
+Respond with JSON containing your answer and reasoning.</pre>
+</div>
+</div>
+
+<h3>4b. Agentic Synthesis -- Red Variant</h3>
+<div class="tag">agentic_synthesis</div><div class="tag">tool_calling</div><div class="tag">ch01-pA</div><div class="tag" style="background: #a03a3a;">red-variant</div>
+<div class="prompt-block">
+<div class="prompt-header">SYSTEM PROMPT</div>
+<div class="prompt-body">
+<pre>{SYSTEM_AGENTIC}</pre>
+</div>
+</div>
+<div class="prompt-block">
+<div class="prompt-header">USER PROMPT</div>
+<div class="prompt-body">
+<pre>Solve this Turing Tumble puzzle using the available tools.
+
+## Board (JSON)
+{board_fixed_red}
+
+## Available Parts
+{AVAILABLE_PARTS_RED}
+
+## Target Behavior
+{OBJECTIVE_RED}
+
+## Component Rules
+{RULES_EXCERPT}
+
+## Your Task
+Use the tools to build and verify a solution. Placements must target empty cells.
+`get_board_state` returns this same canonical JSON shape after each edit;
+`run_simulation` returns catcher counts, execution traces, and final bit states.
+
+When you have a correct solution, output:
+{{
+  "final_solution": [
+    {{"component_type": "ramp_right", "x": 7, "y": 2}},
+    {{"component_type": "ramp_left",  "x": 8, "y": 3}}
+  ],
+  "success": true,
+  "verification": {{"left_catcher": 0, "right_catcher": 8}}
+}}
+
+Use the tools now. Start by checking the current board state.</pre>
+</div>
+</div>
+
+<h2>5. Key Differences: Understanding vs. Synthesis</h2>
 <div class="prompt-block">
 <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
 <tr style="background: var(--blue-accent); color: white;">
@@ -659,7 +817,7 @@ Use the tools now. Start by checking the current board state.</pre>
 <tr style="background: white;">
   <td style="padding: 0.5rem; border-bottom: 1px solid #eee;"><strong>Available parts</strong></td>
   <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">Not shown (analysis only)</td>
-  <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">Shown (what the agent can place)</td>
+  <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">Shown (defines agent's inventory)</td>
 </tr>
 <tr style="background: #f5f5f5;">
   <td style="padding: 0.5rem; border-bottom: 1px solid #eee;"><strong>LLM interaction</strong></td>
@@ -687,10 +845,10 @@ Generated {datetime.now().strftime("%Y-%m-%d %H:%M")} | Turing Tumble Benchmark 
 
 # ── Markdown output ───────────────────────────────────────────────────────────
 def build_markdown(output_path: Path):
-    board_json_str = json.dumps(BOARD_JSON_CH01, indent=2)
-    board_no_sol = {k: v for k, v in BOARD_JSON_CH01.items() if k != "components"}
-    board_no_sol["components"] = [c for c in BOARD_JSON_CH01["components"]
-                                   if c.get("role") != "solution"]
+    board_json_str_blue = json.dumps(BLUE_VARIANT_LLM, indent=2)
+    board_json_str_red  = json.dumps(RED_VARIANT_LLM,  indent=2)
+    board_fixed_blue    = json.dumps(drop_solution(BLUE_VARIANT_LLM), indent=2)
+    board_fixed_red     = json.dumps(drop_solution(RED_VARIANT_LLM),  indent=2)
 
     md = f"""# Turing Tumble Benchmark -- Prompt Anatomy
 
@@ -728,15 +886,40 @@ Every benchmark prompt -- regardless of task type -- is composed of **five neste
 
 ---
 
-## 2. System Prompts
+## 2. Board JSON Canonical Format
 
-### 2a. Procedural Understanding
+The LLM receives the exact structure produced by `Board.to_llm_dict()`. Key fields:
+
+- `dimensions`: board width/height
+- `hopper_entry_mode`: "inward" (blue marble enters at `x+1`, red at `x-1`)
+- `ball_hoppers.<side>`: hopper position, pre-computed `entry_x`, ball counts
+- `trigger_levers`: left/right catcher column positions
+- `components`: placed components with `type`, `x`, `y`, `direction`
+- `bit_states` / `gear_groups`: state bookkeeping for Bits and GearBits
+
+### Blue Variant (tt-official-ch01)
+
+```json
+{board_json_str_blue}
+```
+
+### Red Variant (tt-official-ch01-pA)
+
+```json
+{board_json_str_red}
+```
+
+---
+
+## 3. System Prompts
+
+### 3a. Procedural Understanding
 
 ```
 {SYSTEM_UNDERSTANDING}
 ```
 
-### 2b. Agentic Synthesis
+### 3b. Agentic Synthesis
 
 ```
 {SYSTEM_AGENTIC.strip()}
@@ -744,11 +927,11 @@ Every benchmark prompt -- regardless of task type -- is composed of **five neste
 
 ---
 
-## 3. Complete Example Prompts -- tt-official-ch01 "Gravity"
+## 4. Complete Example Prompts -- Blue Variant (tt-official-ch01)
 
-Challenge: *Make all of the blue balls (and only the blue balls) reach the end.*
+**Objective:** {OBJECTIVE_BLUE}
 
-### 3a. Procedural Understanding -- Execution Trace Question
+### 4a. Procedural Understanding -- Execution Trace
 
 #### SYSTEM PROMPT
 ```
@@ -760,24 +943,24 @@ Challenge: *Make all of the blue balls (and only the blue balls) reach the end.*
 Analyze this Turing Tumble board configuration.
 
 ## Board (JSON)
-{board_json_str}
+{board_json_str_blue}
 
 ## Component Rules
 {RULES_EXCERPT}
 
 ## Question Type: execution_trace
 
-## Question: {QUESTION_CH01}
+## Question: {QUESTION_EXEC_TRACE}
 
 ## Expected Answer Format
-{ANSWER_FORMAT_CH01}
+{ANSWER_FORMAT}
 
 Respond with JSON containing your answer and reasoning.
 ```
 
 ---
 
-### 3b. Agentic Synthesis
+### 4b. Agentic Synthesis -- Blue Variant
 
 #### SYSTEM PROMPT
 ```
@@ -789,13 +972,13 @@ Respond with JSON containing your answer and reasoning.
 Solve this Turing Tumble puzzle using the available tools.
 
 ## Board (JSON)
-{json.dumps(board_no_sol, indent=2)}
+{board_fixed_blue}
 
 ## Available Parts
-{AVAILABLE_PARTS_CH01}
+{AVAILABLE_PARTS_BLUE}
 
 ## Target Behavior
-{OBJECTIVE_CH01}
+{OBJECTIVE_BLUE}
 
 ## Component Rules
 {RULES_EXCERPT}
@@ -820,7 +1003,83 @@ Use the tools now. Start by checking the current board state.
 
 ---
 
-## 4. Understanding vs. Synthesis -- Key Differences
+## 5. Complete Example Prompts -- Red Variant (tt-official-ch01-pA)
+
+**Objective:** {OBJECTIVE_RED}
+
+### 5a. Procedural Understanding -- Execution Trace (Red)
+
+#### SYSTEM PROMPT
+```
+{SYSTEM_UNDERSTANDING}
+```
+
+#### USER PROMPT
+```
+Analyze this Turing Tumble board configuration.
+
+## Board (JSON)
+{board_json_str_red}
+
+## Component Rules
+{RULES_EXCERPT}
+
+## Question Type: execution_trace
+
+## Question: {QUESTION_EXEC_TRACE_RED}
+
+## Expected Answer Format
+{ANSWER_FORMAT}
+
+Respond with JSON containing your answer and reasoning.
+```
+
+---
+
+### 5b. Agentic Synthesis -- Red Variant
+
+#### SYSTEM PROMPT
+```
+{SYSTEM_AGENTIC.strip()}
+```
+
+#### USER PROMPT
+```
+Solve this Turing Tumble puzzle using the available tools.
+
+## Board (JSON)
+{board_fixed_red}
+
+## Available Parts
+{AVAILABLE_PARTS_RED}
+
+## Target Behavior
+{OBJECTIVE_RED}
+
+## Component Rules
+{RULES_EXCERPT}
+
+## Your Task
+Use the tools to build and verify a solution. Placements must target empty cells.
+`get_board_state` returns this same canonical JSON shape after each edit;
+`run_simulation` returns catcher counts, execution traces, and final bit states.
+
+When you have a correct solution, output:
+{{
+  "final_solution": [
+    {{"component_type": "ramp_right", "x": 7, "y": 2}},
+    {{"component_type": "ramp_left",  "x": 8, "y": 3}}
+  ],
+  "success": true,
+  "verification": {{"left_catcher": 0, "right_catcher": 8}}
+}}
+
+Use the tools now. Start by checking the current board state.
+```
+
+---
+
+## 6. Understanding vs. Synthesis -- Key Differences
 
 | Aspect | Procedural Understanding | Agentic Synthesis |
 |--------|-------------------------|-------------------|
@@ -834,7 +1093,7 @@ Use the tools now. Start by checking the current board state.
 
 ---
 
-## 5. Output Files
+## 7. Output Files
 
 | File | Format | Purpose |
 |------|--------|---------|
