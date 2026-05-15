@@ -16,8 +16,19 @@ wheels/
 pdf_images/
 
 # Generated visualizations
-scorer/benchmark_results/*
+scorer/scorer/benchmark_results/
 *.mp4
+*.html
+*.png
+*.svg
 
 # Claude files
 CLAUDE.md
+
+# Cache directories
+.pytest_cache/
+.ruff_cache/
+
+# Scripts
+generate_table_fig.py
+regenerate_table.py
