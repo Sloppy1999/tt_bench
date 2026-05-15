@@ -1,0 +1,17 @@
+{
+  "questions": [
+    {
+      "question_id": "ch15-pA-q1",
+      "question": "How many blue balls reach the end in the solution?",
+      "answer": "1",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch15-pA-q2",
+      "question": "Where does the 2nd ball go?",
+      "answer": "interceptor",
+      "type": "select",
+      "options": ["bottom (output)", "interceptor"]
+    }
+  ]
+}

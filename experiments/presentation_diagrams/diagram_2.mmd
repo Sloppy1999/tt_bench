@@ -1,0 +1,45 @@
+%%{init: {'theme': 'neutral'}}%%
+flowchart LR
+    subgraph Board["11×11 Turing Tumble Board (ch01)"]
+        direction TB
+        BH["Blue Hopper<br/>x=2, 8 balls"]
+        RH["Red Hopper<br/>x=8, 8 balls"]
+        
+        subgraph Fixed["Fixed Components (6)"]
+            F0["▶ (2,0)"]
+            F1["◀ (3,1)"]
+            F2["▶ (2,2)"]
+            F3["◀ (3,3)"]
+            F4["▶ (2,4)"]
+            F5["◀ (3,5)"]
+        end
+        
+        subgraph ToPlace["LLM Must Place (4)"]
+            P0["▶ (2,6)"]
+            P1["◀ (3,7)"]
+            P2["▶ (2,8)"]
+            P3["◀ (3,9)"]
+        end
+        
+        LC["L Left Catcher<br/>x=2"]
+        RC["R Right Catcher<br/>x=8"]
+    end
+    
+    Marble["Blue Marble<br/>drops from hopper"] --> F0
+    F0 -->|"↘"| F1
+    F1 -->|"↙"| F2
+    F2 -->|"↘"| F3
+    F3 -->|"↙"| F4
+    F4 -->|"↘"| F5
+    F5 -->|"↙"| P0
+    P0 -->|"↘"| P1
+    P1 -->|"↙"| P2
+    P2 -->|"↘"| P3
+    P3 -->|"↙"| LC
+    
+    Target["Target: 8 blue → L, 0 blue → R<br/>All blue, no red"] --> Board
+    
+    style Fixed fill:#e8e8e8,stroke:#999
+    style ToPlace fill:#fff3cd,stroke:#ffc107,stroke-dasharray: 5 5
+    style LC fill:#d4edda,stroke:#28a745
+    style RC fill:#f8d7da,stroke:#dc3545

@@ -1,0 +1,34 @@
+{
+  "task_id": "tt-official-ch22_questions",
+  "challenge_number": 22,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Register A starts at 15. After 1 blue ball, what value does register A show?",
+      "type": "calculation",
+      "expected_answer": "14",
+      "hints": ["Each blue ball decrements the register by 1", "15 - 1 = 14"]
+    },
+    {
+      "id": "q2",
+      "question": "After 4 blue balls, what is the value of register A?",
+      "type": "calculation",
+      "expected_answer": "11",
+      "hints": ["15 - 4 = 11"]
+    },
+    {
+      "id": "q3",
+      "question": "After 10 blue balls, what is the value of register A?",
+      "type": "calculation",
+      "expected_answer": "5",
+      "hints": ["15 - 10 = 5"]
+    },
+    {
+      "id": "q4",
+      "question": "Trace the state of each bit after each ball in a state trace table",
+      "type": "state_trace",
+      "expected_answer": "Start: 1=right,2=right,4=right,8=right; Ball 1: 1=left,2=right,4=right,8=right; Ball 2: 1=right,2=left,4=right,8=right; Ball 3: 1=left,2=left,4=right,8=right",
+      "hints": ["Top bit flips with every ball going right-to-left", "2nd bit flips when top bit flips to right", "Ramps are placed on left side to make it count down"]
+    }
+  ]
+}

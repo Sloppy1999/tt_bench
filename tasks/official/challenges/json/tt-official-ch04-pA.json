@@ -1,0 +1,122 @@
+{
+  "task_id": "tt-official-ch04-pA",
+  "challenge_number": 4,
+  "title": "Fusion",
+  "objective": "Release one blue ball and then all of the red balls.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 3
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 6,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 8
+      }
+    ],
+    "explanation": "The paths of the blue and red balls come together near the bottom of the board and then lead to the red side. Since all paths lead to the red side, only red balls are released after the first blue ball.",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

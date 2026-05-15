@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch15",
+  "questions": [
+    {
+      "qid": "tt-official-ch15-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with bit A pointing to the LEFT with the solved board configuration, describe the path of the blue ball.",
+      "answer": "The blue ball drops from (2,-1), rolls through the ramps and crossovers, which swap the paths to intercept a blue ball when bit A points left (reversing the expected behavior from Challenge 14).",
+      "difficulty": "hard"
+    },
+    {
+      "qid": "tt-official-ch15-q2",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with bit A pointing to the RIGHT with the solved board configuration, describe the path of the balls.",
+      "answer": "The blue ball drops and triggers the right lever, releasing a red ball. The crossovers swap the paths so that a red ball is intercepted when bit A points right.",
+      "difficulty": "hard"
+    },
+    {
+      "qid": "tt-official-ch15-q3",
+      "type": "output_sequence",
+      "question": "How does this puzzle differ from Challenge 14, and what component makes the difference?",
+      "answer": "Challenge 14 intercepts blue when A is left, red when A is right. Challenge 15 is inverted (hence the title 'Inversion'). The crossover component is used to reverse the ball paths.",
+      "difficulty": "medium"
+    }
+  ]
+}

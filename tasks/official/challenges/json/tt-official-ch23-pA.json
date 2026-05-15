@@ -1,0 +1,127 @@
+{
+  "task_id": "tt-official-ch23-pA",
+  "challenge_number": 23,
+  "title": "Tetrad",
+  "objective": "Let no blue balls reach the end. Intercept the 1st ball.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "interceptor",
+        "x": 2,
+        "y": 9
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 1,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 3,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 5,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 8
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 0,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [],
+    "explanation": "Think of the bits as a register. The register is set up to count down. To capture the 1st ball that falls, you must set the register to a value of 0 before starting the computer. NOTE - Solution is initial bit configuration only (register=0). No parts to place. Component positions are estimates pending simulator verification.",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "task_id": "tt-official-ch21",
+  "challenge_number": 21,
+  "title": "Quantum Number",
+  "objective": "Use register A to count the number of blue balls. (Use 15 or less balls.)",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 1,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 3,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 5,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 7,
+        "state": 0
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 15
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 0
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 5,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 5
+      }
+    ],
+    "explanation": "This seems a lot more complicated than it really is! The top bit flips with every ball. The 2nd bit flips every 2nd ball (whenever the top bit flips to the left). The 3rd bit flips every 4th ball (whenever the 2nd bit flips to the left). The 4th bit flips every 8th ball (whenever the 3rd bit flips to the left). That's it! Remember how this works - it'll be in a lot of the puzzles to come. NOTE - fixed_components positions are estimates pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

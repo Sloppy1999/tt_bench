@@ -1,0 +1,148 @@
+{
+  "task_id": "tt-official-ch09-pA",
+  "challenge_number": 9,
+  "title": "Dimers",
+  "objective": "Make the pattern blue, blue, red, blue, blue, red...",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 5,
+        "y": 2,
+        "state": 0
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 10
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 10
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 13,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 10,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 10,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 10
+      }
+    ],
+    "explanation": "The bit only lets every other blue ball reach the right lever, but every red ball ends at the left lever. NOTE - component positions are estimates pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "red",
+      "blue",
+      "blue",
+      "red",
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

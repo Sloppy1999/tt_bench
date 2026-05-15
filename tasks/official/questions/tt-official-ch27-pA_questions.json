@@ -1,0 +1,24 @@
+{
+  "questions": [
+    {
+      "question_id": "ch27-pA-q1",
+      "question": "How many blue balls are released?",
+      "answer": "2",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch27-pA-q2",
+      "question": "What is the final state of bit A?",
+      "answer": "right",
+      "type": "select",
+      "options": ["left", "right"]
+    },
+    {
+      "question_id": "ch27-pA-q3",
+      "question": "What is the final state of bit B?",
+      "answer": "right",
+      "type": "select",
+      "options": ["left", "right"]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "tt-official-ch24_questions",
+  "challenge_number": 24,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What starting value must the 4-bit countdown register be set to in order to let exactly 9 balls through?",
+      "type": "calculation",
+      "expected_answer": "9",
+      "hints": ["Each ball decrements the register by 1", "Set to 9 to let 9 balls through before intercepting the 10th"]
+    },
+    {
+      "id": "q2",
+      "question": "How would you configure the 4 bits to represent the value 9 in binary?",
+      "type": "configuration",
+      "expected_answer": "bit 1: right (1), bit 2: left (0), bit 4: left (0), bit 8: right (1)",
+      "hints": ["9 in binary is 1001", "8+1=9, so bits 8 and 1 should be right"]
+    },
+    {
+      "id": "q3",
+      "question": "What is the binary representation of 9 and which direction should each bit point?",
+      "type": "calculation",
+      "expected_answer": "1001: 1=right, 2=left, 4=left, 8=right",
+      "hints": ["9 = 8 + 1", "The bits for 8 and 1 are right, bits for 2 and 4 are left"]
+    },
+    {
+      "id": "q4",
+      "question": "Trace the state of each bit after the 9th ball passes through",
+      "type": "state_trace",
+      "expected_answer": "Start (value 9): 1=right,2=left,4=left,8=right; After 9 balls, value should be 0",
+      "hints": ["Count down from 9 with each ball", "When value reaches 0, the next ball goes to interceptor"]
+    }
+  ]
+}

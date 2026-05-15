@@ -1,0 +1,17 @@
+{
+  "questions": [
+    {
+      "question_id": "ch16-pC-q1",
+      "question": "How many blue balls reach the bottom?",
+      "answer": "2",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch16-pC-q2",
+      "question": "Which ball is caught in the interceptor?",
+      "answer": "3rd",
+      "type": "select",
+      "options": ["1st", "2nd", "3rd", "4th"]
+    }
+  ]
+}

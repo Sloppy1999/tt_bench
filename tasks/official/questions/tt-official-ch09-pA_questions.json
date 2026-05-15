@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch09-pA",
+  "questions": [
+    {
+      "qid": "tt-official-ch09-pA-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls onto ramp_right at (4,4), ramp_right at (5,3), ramp_right at (6,4), landing on the bit at (5,5) which points right, directing the ball to the right lever.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch09-pA-q2",
+      "type": "output_sequence",
+      "question": "What is the output pattern?",
+      "answer": "The pattern is blue, blue, red, blue, blue, red...",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch09-pA-q3",
+      "type": "alternating_mechanism",
+      "question": "Explain how the bit creates the blue-blue-red pattern.",
+      "answer": "The bit starts pointing right, sending the first blue ball to the right lever (releasing red). The bit flips to left. Second blue ball goes left (completing the path), triggering the left lever. Bit flips back to right. Third blue ball goes right again, and so on.",
+      "difficulty": "medium"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "questions": [
+    {
+      "question_id": "ch22-pA-q1",
+      "question": "What is 7 - 4 in binary?",
+      "answer": "3",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch22-pA-q2",
+      "question": "What is 6 - 2?",
+      "answer": "4",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch22-pA-q3",
+      "question": "What is 10 - 5?",
+      "answer": "5",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch22-pA-q4",
+      "question": "What is 12 - 4?",
+      "answer": "8",
+      "type": "numeric"
+    }
+  ]
+}

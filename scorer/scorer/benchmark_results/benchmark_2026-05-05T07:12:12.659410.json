@@ -1,0 +1,208 @@
+{
+  "timestamp": "2026-05-05T07:12:12.659410",
+  "model": "gpt-4",
+  "provider": "mock",
+  "total_tasks": 5,
+  "successful": 2,
+  "failed": 3,
+  "success_rate": 0.4,
+  "results": [
+    {
+      "task_id": "tt-official-ch01-pA_execution_trace",
+      "task_type": "understanding",
+      "success": true,
+      "llm_response": "",
+      "predicted": {
+        "result": "mock_response",
+        "call_number": 1
+      },
+      "expected": {
+        "caught_by": "left_catcher",
+        "path": [
+          [
+            2,
+            -1
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            2,
+            6
+          ],
+          [
+            2,
+            7
+          ],
+          [
+            2,
+            8
+          ],
+          [
+            2,
+            9
+          ],
+          [
+            2,
+            10
+          ],
+          [
+            2,
+            11
+          ]
+        ],
+        "final_states": {}
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 0
+    },
+    {
+      "task_id": "tt-official-ch01-pA_execution_trace",
+      "task_type": "understanding",
+      "success": true,
+      "llm_response": "",
+      "predicted": {
+        "result": "mock_response",
+        "call_number": 2
+      },
+      "expected": {
+        "caught_by": "left_catcher",
+        "path": [
+          [
+            2,
+            -1
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            2,
+            6
+          ],
+          [
+            2,
+            7
+          ],
+          [
+            2,
+            8
+          ],
+          [
+            2,
+            9
+          ],
+          [
+            2,
+            10
+          ],
+          [
+            2,
+            11
+          ]
+        ],
+        "final_states": {}
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 0
+    },
+    {
+      "task_id": "tt-official-ch01-pA_component_role",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "result": "mock_response",
+        "call_number": 3
+      },
+      "expected": {
+        "type": "explanation"
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 0
+    },
+    {
+      "task_id": "tt-official-ch01-pA_abstraction",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "result": "mock_response",
+        "call_number": 4
+      },
+      "expected": {
+        "type": "computation description"
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 0
+    },
+    {
+      "task_id": "tt-official-ch01-pA",
+      "task_type": "agentic_synthesis",
+      "success": false,
+      "llm_response": "",
+      "predicted": {},
+      "expected": {},
+      "metrics": {},
+      "error": "Subclasses must implement generate_with_tools",
+      "latency_ms": 0
+    }
+  ]
+}

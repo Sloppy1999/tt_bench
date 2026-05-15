@@ -1,0 +1,28 @@
+{
+  "questions": [
+    {
+      "question_id": "ch21-pA-q1",
+      "question": "How many numbers can be represented by a 3-bit register?",
+      "answer": "8",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch21-pA-q2",
+      "question": "How many numbers can be represented by a 4-bit register?",
+      "answer": "16",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch21-pA-q3",
+      "question": "What is the smallest number that can be represented on a 4-bit register?",
+      "answer": "0",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch21-pA-q4",
+      "question": "What is the largest number that can be represented on a 4-bit register?",
+      "answer": "15",
+      "type": "numeric"
+    }
+  ]
+}

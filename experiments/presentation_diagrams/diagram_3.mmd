@@ -1,0 +1,34 @@
+%%{init: {'theme': 'neutral', 'themeVariables': {'fontSize': '13px'}, 'flowchart': {'arrowSpacing': 25, 'curve': 'ortho', 'padding': 25, 'rankSpacing': 50, 'nodeSpacing': 30}}}%%
+flowchart TD
+
+    B{"Select Task Type"} --> E["Understanding<br/>LLM answers questions<br/>about board behavior"]
+    B --> F["Agentic Synthesis<br/>LLM uses tools iteratively<br/>to build & test solution"]
+
+    E    & F --> G["Construct Prompt"]
+
+    G --> G3["Board JSON + question + format"]
+    G --> G4["Board JSON + tools + rules"]
+
+    G3 --> H3["LLM (direct)"]
+    G4 --> H4["LLM (agentic loop)"]
+
+    H4 --> TOOLS["Tool Calls<br/>place/remove/simulate/get_state"]
+
+    TOOLS --> H4
+
+    H4 --> V4["Validate<br/>simulator run on placed components"]
+    H3 --> V3["Validate<br/>heuristic + sim checks"]
+
+    V3 --> M["Collect Metrics"]
+    V4 --> M
+
+    M --> R["Analyze & Visualize<br/>success rate, latency, failure modes<br/>per-board LLM work panels"]
+    R --> O["Save Report<br/>benchmark_TIMESTAMP.json"]
+
+    classDef understandingBranch fill:#f39c12,stroke:#2c3e50,stroke-width:2px,color:#fff
+    classDef agenticBranch fill:#9b59b6,stroke:#2c3e50,stroke-width:2px,color:#fff
+    classDef commonFlow fill:#34495e,stroke:#2c3e50,stroke-width:2px,color:#fff
+    
+    class E,G3,H3,V3 understandingBranch
+    class F,G4,H4,V4,TOOLS agenticBranch
+    class B,G,M,R,O commonFlow

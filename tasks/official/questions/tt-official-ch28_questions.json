@@ -1,0 +1,34 @@
+{
+  "task_id": "tt-official-ch28_questions",
+  "challenge_number": 28,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What makes the latch permanent once flipped?",
+      "type": "concept",
+      "expected_answer": "Two connected gear bits form a latch that cannot flip back once activated",
+      "hints": ["Gear bits connected together cannot be flipped back to original position", "This creates a one-way switch"]
+    },
+    {
+      "id": "q2",
+      "question": "What happens to the first blue ball that hits the latch?",
+      "type": "calculation",
+      "expected_answer": "It flips the latch and triggers the right lever",
+      "hints": ["The first blue ball activates the latch mechanism"]
+    },
+    {
+      "id": "q3",
+      "question": "After the latch is flipped, where are all subsequent balls routed?",
+      "type": "configuration",
+      "expected_answer": "To the left side ramps",
+      "hints": ["The flipped latch routes all balls to the left lever", "Left lever releases blue balls"]
+    },
+    {
+      "id": "q4",
+      "question": "Trace the state of the gear bits as balls pass through",
+      "type": "state_trace",
+      "expected_answer": "Start: GB1=right, GB2=right; Ball 1: GB1 flips to left (latch activates); Subsequent balls: latch stays in flipped position",
+      "hints": ["First ball flips the latch", "Once flipped, the latch remains in that position permanently"]
+    }
+  ]
+}

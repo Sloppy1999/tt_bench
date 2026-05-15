@@ -1,0 +1,32 @@
+{
+  "questions": [
+    {
+      "question_id": "ch18-pA-q1",
+      "question": "If A and B both start pointed right, where does the ball go?",
+      "answer": "T",
+      "type": "select",
+      "options": ["T", "F"]
+    },
+    {
+      "question_id": "ch18-pA-q2",
+      "question": "If A starts pointed left and B starts pointed right, where does the ball go?",
+      "answer": "F",
+      "type": "select",
+      "options": ["T", "F"]
+    },
+    {
+      "question_id": "ch18-pA-q3",
+      "question": "If A starts pointed right and B starts pointed left, where does the ball go?",
+      "answer": "F",
+      "type": "select",
+      "options": ["T", "F"]
+    },
+    {
+      "question_id": "ch18-pA-q4",
+      "question": "If A and B both start pointed left, where does the ball go?",
+      "answer": "F",
+      "type": "select",
+      "options": ["T", "F"]
+    }
+  ]
+}

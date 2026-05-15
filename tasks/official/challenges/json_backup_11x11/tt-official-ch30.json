@@ -1,0 +1,150 @@
+{
+  "task_id": "tt-official-ch30",
+  "challenge_number": 30,
+  "title": "Overflow",
+  "objective": "Count the blue balls in register A. If there are more than 7, gear bit OV must flip right (and stay right) to indicate the overflow.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "gear",
+        "x": 8,
+        "y": 6
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 1,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 3,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 5,
+        "state": 0
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 15
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 0
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 14,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 1,
+    "gear": 1,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 9
+      }
+    ],
+    "explanation": "The latch flips when the count up register increments past 7. Once flipped, it remains flipped no matter how many balls run through the register. NOTE - fixed_components positions are estimates; placed_components is incomplete (10/14+1gb+1g) pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 0,
+    "right_catcher": 15
+  }
+}

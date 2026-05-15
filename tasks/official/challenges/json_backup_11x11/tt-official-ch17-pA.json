@@ -1,0 +1,127 @@
+{
+  "task_id": "tt-official-ch17-pA",
+  "challenge_number": 17,
+  "title": "Fixed Ratio",
+  "objective": "Let only 3 red balls reach the bottom and catch the 4th ball in the interceptor.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "interceptor",
+        "x": 8,
+        "y": 9
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 10,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 11
+      }
+    ],
+    "explanation": "This puzzle demonstrates how you can flip the solution to the previous puzzle around and get the same thing.",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "red",
+      "red",
+      "red",
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

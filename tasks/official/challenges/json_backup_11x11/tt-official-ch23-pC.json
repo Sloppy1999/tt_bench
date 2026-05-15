@@ -1,0 +1,129 @@
+{
+  "task_id": "tt-official-ch23-pC",
+  "challenge_number": 23,
+  "title": "Tetrad",
+  "objective": "Let exactly two blue balls reach the end. Intercept the 3rd ball.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "interceptor",
+        "x": 2,
+        "y": 10
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 1,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 3,
+        "state": 1
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 5,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 8
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 0,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [],
+    "explanation": "Set the countdown register to a value of 2 before starting the computer. It will let two balls through and the third ball will be captured in the interceptor. NOTE - Solution is initial bit configuration only (register=2). No parts to place. Component positions are estimates pending simulator verification.",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ]
+}

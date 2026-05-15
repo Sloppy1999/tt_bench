@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch08-pA",
+  "questions": [
+    {
+      "qid": "tt-official-ch08-pA-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls onto ramp_left at (4,3), then ramp_left at (3,2), landing on the bit at (5,4) which points right, directing the ball to the left side, then ramps lead down to exit.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch08-pA-q2",
+      "type": "output_sequence",
+      "question": "How many blue balls reach the end and how many are intercepted?",
+      "answer": "All 8 blue balls reach the end. No balls are intercepted.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch08-pA-q3",
+      "type": "alternating_mechanism",
+      "question": "How does the bit create an alternating pattern for the balls?",
+      "answer": "The bit at (5,4) starts pointing right. When a ball lands on it, the ball goes left and flips the bit to point left. The next ball lands on the bit pointing left and goes right, flipping it back to point right. This creates an alternating path pattern.",
+      "difficulty": "medium"
+    }
+  ]
+}

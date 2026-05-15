@@ -1,0 +1,37 @@
+%%{init: {'theme': 'neutral'}}%%
+sequenceDiagram
+    participant Runner as Benchmark Runner
+    participant LLM
+    participant Executor as Tool Executor
+    participant Sim as Simulator
+
+    Runner->>LLM: Prompt + Board JSON + Tools
+    LLM->>Executor: get_board_state()
+    Executor->>Sim: board.to_llm_dict()
+    Sim-->>Executor: {components, hoppers, levers...}
+    Executor-->>LLM: board state JSON
+
+    loop up to 15 turns
+        LLM->>Executor: place_component(type, x, y)
+        Executor->>Sim: board.place(component)
+        Sim-->>Executor: ok
+        Executor-->>LLM: {success, component}
+
+        LLM->>Executor: run_simulation(sequence)
+        Executor->>Sim: board.run(sequence)
+        Sim-->>Executor: {left, right, traces}
+        Executor-->>LLM: simulation results
+
+        alt solution correct
+            LLM-->>Runner: {final_solution, success: true}
+        else adjust
+            LLM->>Executor: remove_component(x, y)
+            Executor->>Sim: board.remove(x, y)
+            Sim-->>Executor: ok
+        end
+    end
+
+    Runner->>Executor: get_placed_components()
+    Executor-->>Runner: final placements
+    Runner->>Sim: validate placements
+    Sim-->>Runner: pass / fail

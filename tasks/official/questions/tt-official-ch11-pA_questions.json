@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch11-pA",
+  "questions": [
+    {
+      "qid": "tt-official-ch11-pA-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls onto ramp_left at (4,1), ramp_left at (3,2), landing on bit A at (5,2) which points left (state 0), directing the ball to flip it to the right.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch11-pA-q2",
+      "type": "final_state",
+      "question": "After both blue balls are dropped, what is the state of bits A and B?",
+      "answer": "Both bits A and B are flipped to the right (state 1).",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch11-pA-q3",
+      "type": "ball_path",
+      "question": "Describe the path of the second blue ball.",
+      "answer": "The second blue ball follows the same path, now that bit A points right, directing it to the right side where it lands on bit B, flipping it to the right.",
+      "difficulty": "medium"
+    }
+  ]
+}

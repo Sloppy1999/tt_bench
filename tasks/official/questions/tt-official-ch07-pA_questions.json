@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch07-pA",
+  "questions": [
+    {
+      "qid": "tt-official-ch07-pA-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the complete path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls onto ramp_right at (3,1), then solution: ramp_right at (4,2), ramp_right at (5,3), ramp_right at (6,4), crossover at (7,5), crossover at (7,6), ramp_right at (7,7), reaching the exit.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch07-pA-q2",
+      "type": "output_sequence",
+      "question": "How many blue balls reach the exit?",
+      "answer": "All 8 blue balls reach the exit.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch07-pA-q3",
+      "type": "parts_count",
+      "question": "How many ramps and crossovers were used in the solution?",
+      "answer": "The solution uses 6 ramps and 2 crossovers.",
+      "difficulty": "easy"
+    }
+  ]
+}

@@ -1,0 +1,578 @@
+{
+  "version": "1.0",
+  "source": "Turing Tumble Practice Guide v1.0",
+  "total_puzzles": 57,
+  "total_questions": 160,
+  "tasks": [
+    {
+      "task_id": "tt-official-ch01",
+      "challenge_number": 1,
+      "variant": null,
+      "title": "Gravity",
+      "tier": 1,
+      "page_number": 1,
+      "tags": ["routing"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch02-pA",
+      "challenge_number": 2,
+      "variant": "practice_A",
+      "title": "Re-entry",
+      "tier": 1,
+      "page_number": 3,
+      "tags": ["routing"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch02",
+      "challenge_number": 2,
+      "variant": null,
+      "title": "Re-entry",
+      "tier": 1,
+      "page_number": 5,
+      "tags": ["routing"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch03-pA",
+      "challenge_number": 3,
+      "variant": "practice_A",
+      "title": "Ignition",
+      "tier": 1,
+      "page_number": 7,
+      "tags": ["routing", "triggering"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch03",
+      "challenge_number": 3,
+      "variant": null,
+      "title": "Ignition",
+      "tier": 1,
+      "page_number": 9,
+      "tags": ["routing", "triggering"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch04-pA",
+      "challenge_number": 4,
+      "variant": "practice_A",
+      "title": "Fusion",
+      "tier": 1,
+      "page_number": 11,
+      "tags": ["routing", "triggering"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch04-pB",
+      "challenge_number": 4,
+      "variant": "practice_B",
+      "title": "Fusion",
+      "tier": 1,
+      "page_number": 13,
+      "tags": ["routing", "triggering"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch04",
+      "challenge_number": 4,
+      "variant": null,
+      "title": "Fusion",
+      "tier": 1,
+      "page_number": 15,
+      "tags": ["routing", "triggering"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch05-pA",
+      "challenge_number": 5,
+      "variant": "practice_A",
+      "title": "Entropy",
+      "tier": 1,
+      "page_number": 17,
+      "tags": ["routing", "alternating_pattern", "crossover"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch05",
+      "challenge_number": 5,
+      "variant": null,
+      "title": "Entropy",
+      "tier": 1,
+      "page_number": 19,
+      "tags": ["routing", "alternating_pattern", "crossover"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch06-pA",
+      "challenge_number": 6,
+      "variant": "practice_A",
+      "title": "Total Internal Reflection",
+      "tier": 2,
+      "page_number": 21,
+      "tags": ["routing", "alternating_pattern", "crossover"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch06",
+      "challenge_number": 6,
+      "variant": null,
+      "title": "Total Internal Reflection",
+      "tier": 2,
+      "page_number": 23,
+      "tags": ["routing", "alternating_pattern", "crossover"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch07-pA",
+      "challenge_number": 7,
+      "variant": "practice_A",
+      "title": "Path of Least Resistance",
+      "tier": 2,
+      "page_number": 25,
+      "tags": ["routing", "parts_optimization"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch07",
+      "challenge_number": 7,
+      "variant": null,
+      "title": "Path of Least Resistance",
+      "tier": 2,
+      "page_number": 27,
+      "tags": ["routing", "parts_optimization"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch08-pA",
+      "challenge_number": 8,
+      "variant": "practice_A",
+      "title": "Depolarization",
+      "tier": 2,
+      "page_number": 29,
+      "tags": ["routing", "state_bit", "alternating_pattern"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch08",
+      "challenge_number": 8,
+      "variant": null,
+      "title": "Depolarization",
+      "tier": 2,
+      "page_number": 31,
+      "tags": ["routing", "state_bit", "alternating_pattern"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch09-pA",
+      "challenge_number": 9,
+      "variant": "practice_A",
+      "title": "Dimers",
+      "tier": 2,
+      "page_number": 33,
+      "tags": ["routing", "state_bit", "alternating_pattern"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch09",
+      "challenge_number": 9,
+      "variant": null,
+      "title": "Dimers",
+      "tier": 2,
+      "page_number": 35,
+      "tags": ["routing", "state_bit", "alternating_pattern"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch10",
+      "challenge_number": 10,
+      "variant": null,
+      "title": "Double Bond",
+      "tier": 2,
+      "page_number": 37,
+      "tags": ["routing", "state_bit", "alternating_pattern"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch11-pA",
+      "challenge_number": 11,
+      "variant": "practice_A",
+      "title": "Selectivity",
+      "tier": 2,
+      "page_number": 39,
+      "tags": ["state_bit", "write_op"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch11",
+      "challenge_number": 11,
+      "variant": null,
+      "title": "Selectivity",
+      "tier": 2,
+      "page_number": 41,
+      "tags": ["state_bit", "write_op"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch12",
+      "challenge_number": 12,
+      "variant": null,
+      "title": "Duality - Part 1",
+      "tier": 2,
+      "page_number": 43,
+      "tags": ["routing", "interceptor"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch13",
+      "challenge_number": 13,
+      "variant": null,
+      "title": "Duality - Part 2",
+      "tier": 2,
+      "page_number": 45,
+      "tags": ["routing", "interceptor", "triggering"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch14",
+      "challenge_number": 14,
+      "variant": null,
+      "title": "Duality - Part 3",
+      "tier": 2,
+      "page_number": 47,
+      "tags": ["routing", "interceptor", "state_bit"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch15-pA",
+      "challenge_number": 15,
+      "variant": "practice_A",
+      "title": "Inversion",
+      "tier": 2,
+      "page_number": 49,
+      "tags": ["routing", "interceptor", "state_bit"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch15-pB",
+      "challenge_number": 15,
+      "variant": "practice_B",
+      "title": "Inversion",
+      "tier": 2,
+      "page_number": 51,
+      "tags": ["routing", "interceptor", "state_bit", "crossover"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch15",
+      "challenge_number": 15,
+      "variant": null,
+      "title": "Inversion",
+      "tier": 2,
+      "page_number": 53,
+      "tags": ["routing", "interceptor", "state_bit", "crossover"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch16-pA",
+      "challenge_number": 16,
+      "variant": "practice_A",
+      "title": "Termination",
+      "tier": 2,
+      "page_number": 55,
+      "tags": ["routing", "state_bit", "interceptor"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch16-pB",
+      "challenge_number": 16,
+      "variant": "practice_B",
+      "title": "Termination",
+      "tier": 2,
+      "page_number": 57,
+      "tags": ["routing", "state_bit", "interceptor"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch16-pC",
+      "challenge_number": 16,
+      "variant": "practice_C",
+      "title": "Termination",
+      "tier": 2,
+      "page_number": 59,
+      "tags": ["routing", "state_bit", "interceptor"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch16",
+      "challenge_number": 16,
+      "variant": null,
+      "title": "Termination",
+      "tier": 2,
+      "page_number": 61,
+      "tags": ["state_bit", "binary_counting", "interceptor"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch17-pA",
+      "challenge_number": 17,
+      "variant": "practice_A",
+      "title": "Fixed Ratio",
+      "tier": 3,
+      "page_number": 63,
+      "tags": ["routing", "state_bit", "interceptor"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch17-pB",
+      "challenge_number": 17,
+      "variant": "practice_B",
+      "title": "Fixed Ratio",
+      "tier": 3,
+      "page_number": 65,
+      "tags": ["routing", "state_bit", "interceptor"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch17",
+      "challenge_number": 17,
+      "variant": null,
+      "title": "Fixed Ratio",
+      "tier": 2,
+      "page_number": 67,
+      "tags": ["state_bit", "binary_counting", "triggering"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch18-pA",
+      "challenge_number": 18,
+      "variant": "practice_A",
+      "title": "Entanglement",
+      "tier": 3,
+      "page_number": 69,
+      "tags": ["routing", "state_bit", "interceptor", "and_gate"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch18",
+      "challenge_number": 18,
+      "variant": null,
+      "title": "Entanglement",
+      "tier": 3,
+      "page_number": 71,
+      "tags": ["state_bit", "interceptor", "non_destructive_read"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch19",
+      "challenge_number": 19,
+      "variant": null,
+      "title": "Entanglement",
+      "tier": 3,
+      "page_number": 73,
+      "tags": ["state_bit", "interceptor", "triggering"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch20",
+      "challenge_number": 20,
+      "variant": null,
+      "title": "Symbiosis",
+      "tier": 3,
+      "page_number": 75,
+      "tags": ["state_bit", "interceptor", "non_destructive_read"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch21-pA",
+      "challenge_number": 21,
+      "variant": "practice_A",
+      "title": "Quantum Number",
+      "tier": 3,
+      "page_number": 77,
+      "tags": ["binary", "register", "conceptual"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch21",
+      "challenge_number": 21,
+      "variant": null,
+      "title": "Quantum Number",
+      "tier": 3,
+      "page_number": 79,
+      "tags": ["state_bit", "binary_counting"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch22-pA",
+      "challenge_number": 22,
+      "variant": "practice_A",
+      "title": "Depletion",
+      "tier": 3,
+      "page_number": 81,
+      "tags": ["binary", "subtraction", "conceptual"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch22",
+      "challenge_number": 22,
+      "variant": null,
+      "title": "Depletion",
+      "tier": 3,
+      "page_number": 83,
+      "tags": ["state_bit", "binary_counting"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch23-pA",
+      "challenge_number": 23,
+      "variant": "practice_A",
+      "title": "Tetrad",
+      "tier": 4,
+      "page_number": 85,
+      "tags": ["state_bit", "countdown", "interceptor"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch23-pB",
+      "challenge_number": 23,
+      "variant": "practice_B",
+      "title": "Tetrad",
+      "tier": 4,
+      "page_number": 87,
+      "tags": ["state_bit", "countdown", "interceptor"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch23-pC",
+      "challenge_number": 23,
+      "variant": "practice_C",
+      "title": "Tetrad",
+      "tier": 4,
+      "page_number": 89,
+      "tags": ["state_bit", "countdown", "interceptor"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch23",
+      "challenge_number": 23,
+      "variant": null,
+      "title": "Tetrad",
+      "tier": 4,
+      "page_number": 91,
+      "tags": ["state_bit", "binary_counting", "interceptor"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch24",
+      "challenge_number": 24,
+      "variant": null,
+      "title": "Ennead",
+      "tier": 4,
+      "page_number": 93,
+      "tags": ["state_bit", "binary_counting", "interceptor"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch25",
+      "challenge_number": 25,
+      "variant": null,
+      "title": "Regular Expression",
+      "tier": 4,
+      "page_number": 95,
+      "tags": ["state_bit", "binary_counting", "looping"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch26",
+      "challenge_number": 26,
+      "variant": null,
+      "title": "Nucleus",
+      "tier": 4,
+      "page_number": 97,
+      "tags": ["state_bit", "binary_counting", "looping"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch27-pA",
+      "challenge_number": 27,
+      "variant": "practice_A",
+      "title": "Reflection",
+      "tier": 4,
+      "page_number": 99,
+      "tags": ["state_bit", "gear", "routing"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch27-pB",
+      "challenge_number": 27,
+      "variant": "practice_B",
+      "title": "Reflection",
+      "tier": 4,
+      "page_number": 101,
+      "tags": ["state_bit", "gear", "routing"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch27",
+      "challenge_number": 27,
+      "variant": null,
+      "title": "Reflection",
+      "tier": 4,
+      "page_number": 103,
+      "tags": ["state_bit", "write_op", "looping"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch28-pA",
+      "challenge_number": 28,
+      "variant": "practice_A",
+      "title": "Latch",
+      "tier": 4,
+      "page_number": 105,
+      "tags": ["gear_bit", "latch", "routing"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch28",
+      "challenge_number": 28,
+      "variant": null,
+      "title": "Latch",
+      "tier": 4,
+      "page_number": 107,
+      "tags": ["gear_bit", "gear", "looping", "latching"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch29",
+      "challenge_number": 29,
+      "variant": null,
+      "title": "One-Shot Switch",
+      "tier": 4,
+      "page_number": 109,
+      "tags": ["gear_bit", "gear", "latching"],
+      "question_count": 4
+    },
+    {
+      "task_id": "tt-official-ch29-bA",
+      "challenge_number": 29,
+      "variant": "bonus_A",
+      "title": "One-Shot Switch",
+      "tier": 4,
+      "page_number": 111,
+      "tags": ["gear_bit", "latch", "routing"],
+      "question_count": 2
+    },
+    {
+      "task_id": "tt-official-ch30",
+      "challenge_number": 30,
+      "variant": null,
+      "title": "Overflow",
+      "tier": 4,
+      "page_number": 113,
+      "tags": ["state_bit", "gear_bit", "binary_counting", "overflow"],
+      "question_count": 4
+    }
+  ]
+}

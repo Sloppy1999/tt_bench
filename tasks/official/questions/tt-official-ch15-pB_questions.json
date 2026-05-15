@@ -1,0 +1,18 @@
+{
+  "questions": [
+    {
+      "question_id": "ch15-pB-q1",
+      "question": "If bit A starts pointing left, what color ball goes in the interceptor?",
+      "answer": "red",
+      "type": "select",
+      "options": ["blue", "red"]
+    },
+    {
+      "question_id": "ch15-pB-q2",
+      "question": "If bit A starts pointing right, what color ball goes in the interceptor?",
+      "answer": "blue",
+      "type": "select",
+      "options": ["blue", "red"]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "tt-official-ch27_questions",
+  "challenge_number": 27,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "How many columns of bits need to be flipped in this puzzle?",
+      "type": "calculation",
+      "expected_answer": "3",
+      "hints": ["There are 3 columns: B (bottom), M (middle), T (top)"]
+    },
+    {
+      "id": "q2",
+      "question": "How is the path split so that blue balls can flip the first two columns?",
+      "type": "configuration",
+      "expected_answer": "Use one bit at the bottom to split the path",
+      "hints": ["A bit at the bottom sends balls to different columns on alternating balls"]
+    },
+    {
+      "id": "q3",
+      "question": "How is the third column (T) flipped?",
+      "type": "configuration",
+      "expected_answer": "With a red ball triggered by the second blue ball",
+      "hints": ["After the second blue ball triggers the right lever, the red ball flips T column"]
+    },
+    {
+      "id": "q4",
+      "question": "Describe the sequence of balls flipping each column",
+      "type": "state_trace",
+      "expected_answer": "Blue ball 1: flips B column; Blue ball 2: flips M column and triggers red; Red ball: flips T column",
+      "hints": ["First blue flips bottom column", "Second blue flips middle column and triggers red lever", "Red ball then flips top column"]
+    }
+  ]
+}

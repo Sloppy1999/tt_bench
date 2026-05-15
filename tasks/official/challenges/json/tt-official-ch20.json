@@ -1,0 +1,115 @@
+{
+  "task_id": "tt-official-ch20",
+  "challenge_number": 20,
+  "title": "Symbiosis",
+  "objective": "If the top bit OR the bottom bit start pointed to the right, intercept a blue ball. Otherwise, intercept a red ball.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "interceptor",
+        "x": 8,
+        "y": 9
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 999,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 2,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 7
+      }
+    ],
+    "explanation": "It's easiest to consider the first condition - when both bits are pointed left. Make that path go directly to the red lever and make a path for the red ball to go directly to the interceptor. Then make every other possible path for that first blue ball lead to the interceptor.",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 0,
+    "right_catcher": 8
+  }
+}

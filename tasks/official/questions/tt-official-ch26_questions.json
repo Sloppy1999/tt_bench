@@ -1,0 +1,34 @@
+{
+  "task_id": "tt-official-ch26_questions",
+  "challenge_number": 26,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "How many blue balls are released in the first cycle before the first red ball is triggered?",
+      "type": "calculation",
+      "expected_answer": "4",
+      "hints": ["A 2-bit countdown register with starting value 3 releases 3 balls, the 4th triggers red release"]
+    },
+    {
+      "id": "q2",
+      "question": "How many blue balls are released in the second cycle before the second red ball is triggered?",
+      "type": "calculation",
+      "expected_answer": "4",
+      "hints": ["The second cycle also releases 4 blue balls before triggering a red ball"]
+    },
+    {
+      "id": "q3",
+      "question": "What is the total pattern of balls released?",
+      "type": "configuration",
+      "expected_answer": "4 blue, 1 red, 4 blue, 1 red (second red intercepted)",
+      "hints": ["The 2-bit register cycles twice", "Each cycle releases 4 blue balls then triggers a red ball"]
+    },
+    {
+      "id": "q4",
+      "question": "Trace the state of the register bits after each ball",
+      "type": "state_trace",
+      "expected_answer": "Start (3): 1=left,2=right; Ball 1: 1=right,2=right (2); Ball 2: 1=left,2=left (1); Ball 3: 1=right,2=left (0, triggers red); Ball 4-7: repeat pattern",
+      "hints": ["Starting value 3: bit1=left(0), bit2=right(1)", "Count down until 0, then red is triggered"]
+    }
+  ]
+}

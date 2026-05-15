@@ -1,0 +1,126 @@
+{
+  "task_id": "tt-official-ch26",
+  "challenge_number": 26,
+  "title": "Nucleus",
+  "objective": "Generate the required pattern.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "interceptor",
+        "x": 8,
+        "y": 9
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 10
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 10
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 999,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 2,
+    "gear": 0,
+    "interceptor": 2,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 9
+      }
+    ],
+    "explanation": "The 2-bit countdown register on the left releases four blue balls, the last of which triggers the right lever, releasing a red ball. That red ball goes back over to the left side, triggering the release of four more blue balls, the last of which triggers the release of a second red ball. That second red ball is caught by the interceptor. NOTE - placed_components is incomplete pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

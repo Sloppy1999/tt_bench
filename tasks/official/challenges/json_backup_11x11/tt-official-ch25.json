@@ -1,0 +1,114 @@
+{
+  "task_id": "tt-official-ch25",
+  "challenge_number": 25,
+  "title": "Regular Expression",
+  "objective": "Generate the required pattern.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "interceptor",
+        "x": 2,
+        "y": 10
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 999,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 5,
+    "gear": 0,
+    "interceptor": 1,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 5
+      }
+    ],
+    "explanation": "Make two countdown registers - one on the left side and one on the right. To let out 6 blue balls, start the left register with a value of 5 (the 6th ball will be used to trigger the right lever). To let out 3 red balls, start the right register with a value of 3. It will allow three red balls to reach the bottom and intercept the 4th ball. NOTE - fixed_components position is an estimate; placed_components is incomplete pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch16",
+  "questions": [
+    {
+      "qid": "tt-official-ch16-q1",
+      "type": "state_tracking",
+      "question": "Describe the state of bits A and B after each ball is released (1st, 2nd, 3rd, 4th ball) in the solved configuration.",
+      "answer": "1st ball: A=left, B=left (initial state). 2nd ball: A=right, B=left (A flipped). 3rd ball: A=left, B=right (A flipped back, B flipped). 4th ball: A=right, B=right (both flipped).",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch16-q2",
+      "type": "ball_path",
+      "question": "Where does the 4th ball go in the solved configuration, and why?",
+      "answer": "The 4th ball goes to the interceptor because both bits are pointing right, which routes the ball to the interceptor instead of the bottom output.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch16-q3",
+      "type": "conceptual",
+      "question": "This puzzle uses a 2-bit binary counter. What binary number is represented when both bits point right?",
+      "answer": "When both bits point right, the binary counter represents the number 3 (in binary: 11). This is the 4th state since counting starts from 0.",
+      "difficulty": "hard"
+    }
+  ]
+}

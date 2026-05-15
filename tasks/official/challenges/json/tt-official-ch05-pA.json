@@ -1,0 +1,100 @@
+{
+  "task_id": "tt-official-ch05-pA",
+  "challenge_number": 5,
+  "title": "Entropy",
+  "objective": "Make the pattern blue, red, blue, red, blue, red...",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 1
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 4
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 0,
+    "ramp_left": 0,
+    "crossover": 1,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 5
+      }
+    ],
+    "explanation": "To get the alternating pattern, blue balls have to get to the right side to release red balls, and red balls have to get to the left side to release blue balls. The paths have to cross over each other! Where they cross, use the crossover part. NOTE - component positions are estimates pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

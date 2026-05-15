@@ -1,0 +1,114 @@
+{
+  "task_id": "tt-official-ch13",
+  "challenge_number": 13,
+  "title": "Duality Part 2",
+  "objective": "Intercept a red ball.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "interceptor",
+        "x": 8,
+        "y": 9
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 12,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 10
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 10
+      }
+    ],
+    "explanation": "Even though you start by releasing a blue ball, you've got to get a red ball in the interceptor. How do you do that? Here's how: Lead the first blue ball to the right lever, releasing a red ball. Then lead the red ball to the interceptor with ramps. NOTE - solution placed_components is incomplete (8/12) pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

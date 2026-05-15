@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch17",
+  "questions": [
+    {
+      "qid": "tt-official-ch17-q1",
+      "type": "output_sequence",
+      "question": "What is the output sequence of balls (color and destination) for this puzzle?",
+      "answer": "Three blue balls reach the bottom, then two red balls reach the bottom, and the fourth red ball goes into the interceptor.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch17-q2",
+      "type": "conceptual",
+      "question": "How does this puzzle use two 2-bit counters differently from Challenge 16?",
+      "answer": "Challenge 16 uses one 2-bit counter to count balls and stop after 4. Challenge 17 uses two 2-bit counters - one for blue balls on the left side and one for red balls on the right side - creating independent counting mechanisms.",
+      "difficulty": "hard"
+    },
+    {
+      "qid": "tt-official-ch17-q3",
+      "type": "ball_path",
+      "question": "Why does the 4th red ball go to the interceptor instead of the bottom?",
+      "answer": "The right-side 2-bit counter tracks how many red balls have been released. After 3 red balls reach the bottom (binary 11), the 4th ball flips the counter to trigger the interceptor path.",
+      "difficulty": "hard"
+    }
+  ]
+}

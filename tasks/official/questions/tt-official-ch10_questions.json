@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch10",
+  "questions": [
+    {
+      "qid": "tt-official-ch10-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls onto ramp_right at (3,3), ramp_right at (4,2), ramp_right at (5,3), landing on the first bit at (4,4) which points right, directing the ball to the second bit at (6,4) which also points right, continuing to the right side.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch10-q2",
+      "type": "output_sequence",
+      "question": "What is the output pattern?",
+      "answer": "The pattern is blue, blue, red, red, blue, blue, red, red...",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch10-q3",
+      "type": "state_trace",
+      "question": "Trace the state of both bits after each of the first 4 balls.",
+      "answer": "Ball 1: bits start (1,1), ball goes right-right, flips both to (0,0). Ball 2: bits at (0,0), ball goes left-left, flips both to (1,1). Ball 3: bits at (1,1), ball goes right-right, flips both to (0,0). Ball 4: bits at (0,0), ball goes left-left, flips both to (1,1).",
+      "difficulty": "hard"
+    }
+  ]
+}

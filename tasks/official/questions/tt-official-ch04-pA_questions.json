@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch04-pA",
+  "questions": [
+    {
+      "qid": "tt-official-ch04-pA-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the complete path of the first blue ball.",
+      "answer": "The blue ball drops from (2,-1), rolls onto ramp_right at (3,1), ramp_right at (4,2), ramp_left at (5,3), then solution: ramp_left at (4,3), ramp_left at (5,4), ramp_left at (6,5), ramp_right at (7,6), ramp_right at (8,7), ramp_right at (9,8), ramp_left at (8,9), ramp_left at (7,10), reaching the right lever.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch04-pA-q2",
+      "type": "trigger_sequence",
+      "question": "Which lever does the first blue ball trigger and what color ball is released next?",
+      "answer": "The first blue ball triggers the right lever, releasing a red ball.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch04-pA-q3",
+      "type": "output_sequence",
+      "question": "How many balls total are released and in what order?",
+      "answer": "One blue ball is released first, followed by 8 red balls.",
+      "difficulty": "easy"
+    }
+  ]
+}

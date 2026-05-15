@@ -1,0 +1,16 @@
+{
+  "questions": [
+    {
+      "question_id": "ch29-bA-q1",
+      "question": "How many blue balls are released before red balls start?",
+      "answer": "3",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch29-bA-q2",
+      "question": "How many latches are used in this puzzle?",
+      "answer": "2",
+      "type": "numeric"
+    }
+  ]
+}

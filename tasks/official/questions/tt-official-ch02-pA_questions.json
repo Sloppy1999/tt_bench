@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch02-pA",
+  "questions": [
+    {
+      "qid": "tt-official-ch02-pA-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the complete path of the first blue ball.",
+      "answer": "The first blue ball drops from the blue hopper, rolls onto the fixed ramp_right at (3,1), continues to ramp_right at (4,2), ramp_right at (5,3), crossover at (6,4), then the solution ramps: ramp_left at (7,5), ramp_left at (6,6), ramp_right at (5,7), reaching the exit on the left side.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch02-pA-q2",
+      "type": "output_sequence",
+      "question": "In what order do balls exit the machine?",
+      "answer": "All 8 blue balls exit at the blue (left) exit. No balls are intercepted.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch02-pA-q3",
+      "type": "component_count",
+      "question": "How many total components are on the board (fixed + placed)?",
+      "answer": "There are 7 components total: 4 fixed components and 3 placed ramps.",
+      "difficulty": "easy"
+    }
+  ]
+}

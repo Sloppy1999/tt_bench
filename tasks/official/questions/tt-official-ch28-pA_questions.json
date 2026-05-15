@@ -1,0 +1,17 @@
+{
+  "questions": [
+    {
+      "question_id": "ch28-pA-q1",
+      "question": "How many blue balls are released before red balls start?",
+      "answer": "2",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch28-pA-q2",
+      "question": "What happens to the latch after the first blue ball flips it?",
+      "answer": "It stays flipped",
+      "type": "select",
+      "options": ["It stays flipped", "It flips back", "It is removed"]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "questions": [
+    {
+      "question_id": "ch17-pB-q1",
+      "question": "What is the output pattern?",
+      "answer": "blue, red, red, red",
+      "type": "pattern"
+    },
+    {
+      "question_id": "ch17-pB-q2",
+      "question": "How many balls reach the bottom before the interceptor catches one?",
+      "answer": "4",
+      "type": "numeric"
+    }
+  ]
+}

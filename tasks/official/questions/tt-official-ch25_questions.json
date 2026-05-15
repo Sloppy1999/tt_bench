@@ -1,0 +1,34 @@
+{
+  "task_id": "tt-official-ch25_questions",
+  "challenge_number": 25,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "How many blue balls should reach the end before any red balls are released?",
+      "type": "calculation",
+      "expected_answer": "6",
+      "hints": ["The first register releases blue balls", "It counts down and triggers red release on the 6th ball"]
+    },
+    {
+      "id": "q2",
+      "question": "What starting value should the left register (blue ball counter) be set to in order to release 6 blue balls?",
+      "type": "calculation",
+      "expected_answer": "5",
+      "hints": ["If starting value is 5, 5 balls pass through and the 6th triggers red release", "This is because value counts down from 5"]
+    },
+    {
+      "id": "q3",
+      "question": "What starting value should the right register (red ball counter) be set to in order to let 3 red balls through before intercepting?",
+      "type": "calculation",
+      "expected_answer": "3",
+      "hints": ["With starting value 3, 3 red balls pass through and the 4th is intercepted"]
+    },
+    {
+      "id": "q4",
+      "question": "Describe the complete pattern of balls released (ball colors in order)",
+      "type": "state_trace",
+      "expected_answer": "6 blue balls, then 3 red balls, then intercept",
+      "hints": ["Blue balls from left register", "Red balls from right register", "Final red ball goes to interceptor"]
+    }
+  ]
+}

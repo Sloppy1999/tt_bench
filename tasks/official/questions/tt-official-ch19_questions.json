@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch19",
+  "questions": [
+    {
+      "qid": "tt-official-ch19-q1",
+      "type": "logic_analysis",
+      "question": "This puzzle uses the same bits as Challenge 18 but with different output. What is the key difference in behavior?",
+      "answer": "Challenge 18 uses two interceptors to show T or F based on AND logic. Challenge 19 uses one interceptor and changes the ball COLOR based on the same AND logic - blue for true (both bits right), red otherwise.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch19-q2",
+      "type": "ball_path",
+      "question": "When bits A and B are NOT both pointing right, how is a red ball intercepted instead of blue?",
+      "answer": "The ball is routed to the right lever, which releases a red ball from the red hopper. That red ball is then routed to the interceptor.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch19-q3",
+      "type": "state_tracking",
+      "question": "If bit A starts left and bit B starts right, what color ball gets intercepted?",
+      "answer": "A red ball gets intercepted because this is not the 'both bits right' condition. The ball goes to the right lever, releases a red ball, which goes to the interceptor.",
+      "difficulty": "easy"
+    }
+  ]
+}

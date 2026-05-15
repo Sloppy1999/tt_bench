@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch12",
+  "questions": [
+    {
+      "qid": "tt-official-ch12-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the path of the blue ball.",
+      "answer": "The blue ball drops from (2,-1), rolls onto ramp_right at (1,8), then ramp_right at (2,7), then ramp_right at (3,8), landing in the interceptor at (8,9).",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch12-q2",
+      "type": "output_sequence",
+      "question": "What color ball is intercepted?",
+      "answer": "A blue ball is intercepted.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch12-q3",
+      "type": "final_state",
+      "question": "What is the final state of the board after the ball is intercepted?",
+      "answer": "The interceptor now contains a blue ball.",
+      "difficulty": "easy"
+    }
+  ]
+}

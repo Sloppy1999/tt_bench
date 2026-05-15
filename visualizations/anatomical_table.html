@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomical Prompt Layers</title>
+<link href="https://fonts.googleapis.com/css2?family=Linux+Biolinum+OsF:times+new+roman&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent:       #2e7d32;
+    --accent-mid:   #4caf50;
+    --accent-light: #a5d6a7;
+    --accent-bg:    #e8f5e9;
+    --border:       #c8e6c9;
+    --text:         #1b5e20;
+    --th-bg:        #2e7d32;
+    --tr-odd:       #ffffff;
+    --tr-even:      #f1f8f1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    width: fit-content;
+    background: transparent;
+  }
+
+  body {
+    font-family: 'Linux Biolinum OsF', 'Times New Roman', Times, serif;
+    background: transparent;
+    color: #1a1a1a;
+    padding: 24pt 28pt 30pt;
+    width: fit-content;
+    display: inline-block;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+  }
+
+  .page-header {
+    background: var(--accent);
+    color: #fff;
+    padding: 14pt 20pt;
+    margin-bottom: 18pt;
+    border-radius: 8px;
+  }
+  .page-header h1 {
+    font-size: 18pt;
+    font-weight: normal;
+    letter-spacing: 0.5px;
+    margin-bottom: 3pt;
+  }
+  .page-header p {
+    font-size: 10pt;
+    opacity: 0.85;
+  }
+
+  table {
+    width: auto;
+    display: inline-table;
+    border-collapse: collapse;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  thead tr {
+    background: var(--th-bg);
+    color: #fff;
+  }
+  th {
+    padding: 10pt 14pt;
+    font-family: 'Linux Biolinum OsF', 'Times New Roman', serif;
+    font-size: 10.5pt;
+    font-weight: normal;
+    text-align: left;
+    letter-spacing: 0.25px;
+    border-right: 1px solid rgba(255,255,255,0.15);
+  }
+  th:last-child { border-right: none; }
+
+  tbody tr:nth-child(odd)  { background: var(--tr-odd); }
+  tbody tr:nth-child(even) { background: var(--tr-even); }
+  tbody tr:hover { background: var(--accent-bg); }
+
+  td {
+    padding: 9pt 14pt;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.75pt;
+    line-height: 1.65;
+    vertical-align: top;
+    border-right: 1px solid var(--border);
+    color: #222;
+  }
+  td:last-child { border-right: none; }
+
+  .num {
+    font-family: 'Linux Biolinum OsF', serif;
+    font-size: 13.5pt;
+    color: var(--accent);
+    text-align: center;
+    width: 28px;
+  }
+  .num span {
+    display: block;
+    font-size: 7.75pt;
+    color: #888;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: normal;
+  }
+
+  .layer-name {
+    font-family: 'Linux Biolinum OsF', serif;
+    font-size: 10.5pt;
+    font-weight: bold;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.25pt;
+    background: var(--accent-bg);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 2pt 6pt;
+    border-radius: 4px;
+    margin-top: 3pt;
+    white-space: nowrap;
+  }
+
+  .content-col {
+    color: #333;
+    font-size: 8.75pt;
+  }
+
+  .tag   { color: #2e7d32; font-weight: 500; }
+  .key   { color: #1565c0; }
+  .str   { color: #2e7d32; }
+  .num-v { color: #e65100; }
+
+  .caption {
+    font-size: 9pt;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    margin-top: 12pt;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Prompt Layers</h1>
+  <p>Example ch01 &ldquo;Gravity&rdquo;</p>
+
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:36px"></th>
+      <th style="width:130px">Layer</th>
+      <th style="width:180px">Role</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <tr>
+      <td class="num">1</td>
+      <td class="layer-name">System Prompt</td>
+      <td>
+        <span class="badge">Role + Constraints</span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="num">2</td>
+      <td class="layer-name">Board JSON</td>
+      <td>
+        <span class="badge">Physical Layout</span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="num">3</td>
+      <td class="layer-name">Task Objective</td>
+      <td>
+        <span class="badge">Target Behavior</span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="num">4</td>
+      <td class="layer-name">Available Parts</td>
+      <td>
+        <span class="badge">Inventory</span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="num">5</td>
+      <td class="layer-name">Component Rules</td>
+      <td>
+        <span class="badge">Physics Reference</span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="num">6</td>
+      <td class="layer-name">Output Format</td>
+      <td>
+        <span class="badge">JSON Schema</span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="num">7</td>
+      <td class="layer-name">Tool Definitions</td>
+      <td>
+        <span class="badge">MCP Interface</span>
+      </td>
+    </tr>
+
+  </tbody>
+</table>
+
+</body>
+</html>

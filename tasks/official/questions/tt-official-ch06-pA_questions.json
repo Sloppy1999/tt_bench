@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch06-pA",
+  "questions": [
+    {
+      "qid": "tt-official-ch06-pA-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the complete path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls onto crossover at (5,1), then continues through crossovers at (5,2) and (5,3), then ramps: ramp_right at (4,4), ramp_right at (5,5), ramp_right at (6,6), ramp_right at (7,7), ramp_right at (8,8), reaching the right lever.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch06-pA-q2",
+      "type": "output_sequence",
+      "question": "What is the output pattern after running the machine?",
+      "answer": "The pattern is blue, red, blue, red, blue, red... alternating.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch06-pA-q3",
+      "type": "alternating_mechanism",
+      "question": "How many times do the blue and red ball paths cross each other?",
+      "answer": "The paths cross each other three times.",
+      "difficulty": "easy"
+    }
+  ]
+}

@@ -1,0 +1,144 @@
+{
+  "task_id": "tt-official-ch10",
+  "challenge_number": 10,
+  "title": "Double Bond",
+  "objective": "Make the pattern blue, blue, red, red, blue, blue, red, red\u2026",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 1,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 7,
+        "y": 1,
+        "state": 0
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 22,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 7
+      }
+    ],
+    "explanation": "This time, there are bits in the path of both the red and blue balls. The bits cause only every other ball to cross to the other side of the board. NOTE - solution placed_components is incomplete (11/22); fixed_components positions are estimates pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "red",
+      "red",
+      "blue",
+      "blue",
+      "red",
+      "red",
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

@@ -1,0 +1,47 @@
+%%{init: {'theme': 'neutral', 'themeVariables': {'fontSize': '13px'}, 'flowchart': {'curve': 'ortho', 'padding': 25, 'rankSpacing': 40, 'nodeSpacing': 30}}}%%
+flowchart TD
+
+    START(["Task JSON"]) --> LOAD["load_task()<br/>parse board, available_parts,<br/>solution, objective"]
+
+    LOAD --> PRINT["_print_board()<br/>ASCII render (optional)"]
+
+    PRINT --> EXEC["create_executor_from_task()<br/>TuringTumbleToolExecutor<br/>with fixed components"]
+
+    PRINT --> PROMPT["build_agentic_prompt()<br/>Board JSON + parts + rules + target"]
+
+    EXEC --> LOOP_START{"generate_with_tools()<br/>max_turns=15"}
+
+    PROMPT --> LOOP_START
+
+    LOOP_START --> API["POST /v1/chat/completions<br/>messages + tools definitions"]
+
+    API --> PARSE{"response<br/>type?"}
+
+    PARSE -->|"tool_calls"| EXECUTE["execute()<br/>place_component / remove_component<br/>run_simulation / get_board_state"]
+
+    EXECUTE --> APPEND["append tool result<br/>to messages history"]
+
+    APPEND --> LP["--loop--"]
+
+    LP -.->|"turn += 1"| LOOP_START
+
+    PARSE -->|"content (no tools)"| FINAL["parse final JSON<br/>{ final_solution, verification }"]
+
+    FINAL --> VALIDATE["validate_synthesis()<br/>normalize placements → _validate_available_parts()<br/>→ _build_board() → _validate_against_expected()<br/>→ board.run() → _validate_simulation_results()"]
+
+    VALIDATE --> RESULT["TaskResult<br/>success, metrics, transcript"]
+
+    RESULT --> REPORT["BenchmarkReport → Save JSON"]
+
+    classDef input fill:#2ecc71,stroke:#2c3e50,stroke-width:2px,color:#fff
+    classDef llm fill:#3498db,stroke:#2c3e50,stroke-width:2px,color:#fff
+    classDef tool fill:#9b59b6,stroke:#2c3e50,stroke-width:2px,color:#fff
+    classDef validate fill:#f39c12,stroke:#2c3e50,stroke-width:2px,color:#fff
+    classDef output fill:#34495e,stroke:#2c3e50,stroke-width:2px,color:#fff
+
+    class START,LOAD,PRINT input
+    class PROMPT,API,PARSE,FINAL llm
+    class EXECUTE,APPEND,LP tool
+    class EXEC,LOOP_START tool
+    class VALIDATE validate
+    class RESULT,REPORT output

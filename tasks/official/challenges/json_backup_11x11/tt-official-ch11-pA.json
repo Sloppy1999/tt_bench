@@ -1,0 +1,90 @@
+{
+  "task_id": "tt-official-ch11-pA",
+  "challenge_number": 11,
+  "title": "Selectivity",
+  "objective": "Flip bits A and B to the right.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 6,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 5,
+        "y": 6,
+        "state": 0
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 2
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 0
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 15,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 2
+      }
+    ],
+    "explanation": "The top bit is used to distribute the blue balls between two paths - one leads to the left bit and the other leads to the right bit. NOTE - fixed_components positions are estimates; placed_components is incomplete (2/15) pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

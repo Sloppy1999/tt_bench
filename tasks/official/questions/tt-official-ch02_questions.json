@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch02",
+  "questions": [
+    {
+      "qid": "tt-official-ch02-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the complete path of the first blue ball.",
+      "answer": "The first blue ball drops from the blue hopper, rolls onto ramp_right at (3,1), continues to ramp_right at (4,2), ramp_right at (5,3), crossover at (6,4), then solution ramps: ramp_left at (7,5), ramp_left at (6,6), ramp_right at (5,7), ramp_left at (4,8), ramp_left at (3,9), exiting at the left side.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch02-q2",
+      "type": "output_sequence",
+      "question": "In what order do balls exit the machine?",
+      "answer": "All 8 blue balls exit at the blue (left) exit. No balls are intercepted.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch02-q3",
+      "type": "component_count",
+      "question": "How many ramps were placed by the solution?",
+      "answer": "The solution places 5 ramps: 2 ramp_left, 2 ramp_right, and 1 ramp_left/ramp_right combo at positions (7,5), (6,6), (5,7), (4,8), (3,9).",
+      "difficulty": "medium"
+    }
+  ]
+}

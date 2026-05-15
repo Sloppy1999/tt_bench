@@ -1,0 +1,140 @@
+{
+  "task_id": "tt-official-ch05",
+  "challenge_number": 5,
+  "title": "Entropy",
+  "objective": "Make the pattern blue, red, blue, red, blue, red...",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 1
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 4
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 9,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 9
+      }
+    ],
+    "explanation": "This time, you have to create your own path for the red balls to get over to the left lever! You must use the crossover where your path crosses the path of the blue balls.",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

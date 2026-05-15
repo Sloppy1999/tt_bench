@@ -1,0 +1,148 @@
+{
+  "task_id": "tt-official-ch29",
+  "challenge_number": 29,
+  "title": "One-Shot Switch",
+  "objective": "Release a blue ball, a red ball, and then the rest of the blue balls.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "gear",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "type": "gear_bit",
+        "x": 3,
+        "y": 5,
+        "state": 0
+      },
+      {
+        "type": "gear",
+        "x": 3,
+        "y": 6
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 999,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 1,
+    "gear": 1,
+    "interceptor": 1,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 9
+      }
+    ],
+    "explanation": "Use the first blue ball to flip the latch and trigger a red ball. The red ball triggers another blue ball that, from then on, is forced to trigger more blue balls by the (now flipped) latch. NOTE - placed_components is incomplete pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "red",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

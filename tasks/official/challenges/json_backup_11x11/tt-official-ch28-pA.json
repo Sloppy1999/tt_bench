@@ -1,0 +1,158 @@
+{
+  "task_id": "tt-official-ch28-pA",
+  "challenge_number": 28,
+  "title": "Latch",
+  "objective": "Release two blue balls and then all of the red balls.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "gear",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "gear",
+        "x": 6,
+        "y": 4
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 13,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 1,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 11
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 11
+      },
+      {
+        "type": "interceptor",
+        "x": 5,
+        "y": 9
+      }
+    ],
+    "explanation": "Two gear bits connected together make a permanent latch. After being flipped once, they can't be flipped back again. The first blue ball flips the latch. The second blue ball and all the rest of the red balls are sent to the red lever by the flipped latch. Ball 1, Ball 2, Ball 3, Ball 4, Ball 5. Actually, there is a way to flip the latch back to the original position. Can you figure out how? Send a ball onto the lower bit only. NOTE - interceptor position is an estimate pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

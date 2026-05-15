@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch11",
+  "questions": [
+    {
+      "qid": "tt-official-ch11-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls onto the first ramp at (1,4), then the second ramp at (2,2), landing on the central bit (bit 3) which directs it to bit 2 at (2,3), flipping bit 2 to the right.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch11-q2",
+      "type": "output_sequence",
+      "question": "What happens to bits 2 and 5 after all 5 blue balls have been released?",
+      "answer": "Both bits 2 and 5 end up pointing to the right.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch11-q3",
+      "type": "final_state",
+      "question": "How does the central bit (bit 3) distribute the blue balls to reach different targets?",
+      "answer": "The central bit acts as a splitter - balls hitting the left side of the bit roll left toward bit 2, while balls hitting the right side roll right toward bit 5.",
+      "difficulty": "medium"
+    }
+  ]
+}

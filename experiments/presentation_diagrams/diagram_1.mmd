@@ -1,0 +1,66 @@
+%%{init: {'theme': 'neutral', 'themeVariables': {'fontSize': '14px'}}}%%
+flowchart TB
+    subgraph Input["Task Store"]
+        TASKS["57 Challenge JSONs<br/>(tt-official-chNN.json)"]
+    end
+
+    subgraph Config["Configuration"]
+        CLI["CLI Args<br/>--provider --model --max-tasks<br/>--task-type --save-report"]
+    end
+
+    subgraph Runner["Benchmark Runner"]
+        DISPATCH["Task Dispatcher<br/>per-task × per-task-type"]
+        SYNTH["Synthesis<br/>(direct JSON)"]
+        EXEC["Execution<br/>(LLM-as-simulator)"]
+        UNDER["Understanding<br/>(4 sub-questions)"]
+        AGENT["Agentic Synthesis<br/>(tool-calling loop)"]
+        VALIDATE["Validation<br/>inventory check + sim run"]
+        DISPATCH --> SYNTH
+        DISPATCH --> EXEC
+        DISPATCH --> UNDER
+        DISPATCH --> AGENT
+        SYNTH --> VALIDATE
+        EXEC --> VALIDATE
+        UNDER --> VALIDATE
+        AGENT --> VALIDATE
+    end
+
+    subgraph LLM["LLM Providers"]
+        direction LR
+        OPENAI["OpenAI<br/>Chat Completions<br/>+ function calling"]
+        ANTHRO["Anthropic<br/>Messages API"]
+        OLLAMA["Ollama<br/>local Chat API"]
+        MOCK["Mock<br/>hardcoded JSON"]
+    end
+
+    subgraph Tools["Tool Executor<br/>(agentic only)"]
+        PLACE["place_component<br/>type, x, y, state"]
+        REMOVE["remove_component<br/>x, y"]
+        RUN["run_simulation<br/>input_sequence"]
+        STATE["get_board_state<br/>→ canonical JSON"]
+    end
+
+    subgraph Sim["Simulator (tt_sim.py)"]
+        BOARD["Board<br/>11×11 grid"]
+        PHYSICS["Marble Physics<br/>8 component types"]
+        TRACE["Execution Trace<br/>paths, catches, bit states"]
+    end
+
+    subgraph Output["Results"]
+        REPORT["BenchmarkReport JSON<br/>latency, tokens, success"]
+        CHARTS["Summary Charts<br/>success rate, failure modes"]
+    end
+
+    Config --> Runner
+    TASKS --> DISPATCH
+    SYNTH --> LLM
+    EXEC --> LLM
+    UNDER --> LLM
+    AGENT --> LLM
+    LLM --> AGENT
+    AGENT -.->|tool calls| Tools
+    Tools --> BOARD
+    PHYSICS --> TRACE
+    TRACE --> VALIDATE
+    VALIDATE --> REPORT
+    REPORT --> CHARTS

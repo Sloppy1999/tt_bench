@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=800">
+<title>Anatomical Prompt Layers</title>
+<link href="https://fonts.googleapis.com/css2?family=Linux+Biolinum+OsF:times+new+roman&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent:       #2e7d32;
+    --accent-light: #a5d6a7;
+    --accent-bg:    #e8f5e9;
+    --border:       #c8e6c9;
+    --text:         #1b5e20;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Linux Biolinum OsF', 'Times New Roman', Times, serif;
+    background: #fff;
+    color: #1a1a1a;
+    padding: 0 0 40px;
+    width: 800px;
+    margin: 0 auto;
+  }
+
+  .page-header {
+    background: var(--accent);
+    color: #fff;
+    padding: 14pt 20pt;
+    margin-bottom: 18pt;
+  }
+  .page-header h1 {
+    font-size: 15pt;
+    font-weight: normal;
+    letter-spacing: 0.5px;
+    margin-bottom: 3pt;
+  }
+  .page-header p {
+    font-size: 9pt;
+    opacity: 0.85;
+  }
+
+  .card {
+    margin: 0 12pt 14pt;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    background: var(--accent);
+    color: #fff;
+    padding: 8pt 14pt;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5pt;
+    font-weight: bold;
+    background: rgba(255,255,255,0.22);
+    padding: 2pt 7pt;
+    border-radius: 20px;
+  }
+  .card-title {
+    font-size: 11.5pt;
+    font-weight: normal;
+    letter-spacing: 0.3px;
+  }
+  .card-badge {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7pt;
+    background: rgba(255,255,255,0.18);
+    padding: 2pt 8pt;
+    border-radius: 3px;
+  }
+
+  .content {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt;
+    line-height: 1.65;
+    padding: 10pt 14pt;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #1e1e1e;
+    background: #fff;
+  }
+
+  .tag   { color: #2e7d32; font-weight: 500; }
+  .key   { color: #1565c0; }
+  .str   { color: #2e7d32; }
+  .num   { color: #e65100; }
+  .cmt   { color: #888; font-style: italic; }
+
+  .section-label {
+    background: var(--accent-bg);
+    color: var(--text);
+    font-weight: 500;
+    font-size: 8.5pt;
+    padding: 3pt 7pt;
+    border: 1px solid var(--border);
+    display: block;
+    margin: 8pt 0 4pt;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Anatomical Prompt Layers</h1>
+  <p>Turing Tumble Benchmark &mdash; Layer-by-layer breakdown of the agentic synthesis input prompt</p>
+</div>
+
+<!-- Layer 1 · System Prompt -->
+<div class="card" id="card-1">
+  <div class="card-header">
+    <span class="card-num">Layer 1</span>
+    <span class="card-title">System Prompt</span>
+    <span class="card-badge">role · constraints · tool contract</span>
+  </div>
+  <div class="content"><span class="tag">You are a Turing Tumble solver agent.</span> You MUST use the provided tools to solve this puzzle. You cannot solve it by just thinking, you MUST call the tools.
+
+<span class="tag">CRITICAL CONSTRAINT:</span> Marbles may NOT fall through empty cells. Every cell a marble visits between entering the board and reaching a catcher/interceptor MUST contain a component. Solutions with any empty-cell traversal will be rejected even if the catcher counts are correct.
+
+<span class="tag">REQUIRED WORKFLOW</span> <span class="cmt">(follow exactly)</span>
+1. <span class="key">get_board_state</span>  &rarr; inspect current board
+2. <span class="key">place_component</span> &rarr; add a piece (type, x, y)
+3. <span class="key">run_simulation</span>  &rarr; execute &amp; return catcher counts
+4. Repeat steps 2&ndash;3 until correct
+5. Only then output <span class="key">final_solution</span> JSON
+
+You MUST call <span class="key">run_simulation</span> after EVERY placement to verify!
+Do not assume defaults &mdash; all geometry is in the board JSON.</div>
+</div>
+
+<!-- Layer 2 · Board JSON -->
+<div class="card" id="card-2">
+  <div class="card-header">
+    <span class="card-num">Layer 2</span>
+    <span class="card-title">Board JSON</span>
+    <span class="card-badge">physical layout</span>
+  </div>
+  <div class="content"><span class="section-label">BOARD JSON</span>{
+  <span class="key">"width"</span>: <span class="num">11</span>,
+  <span class="key">"height"</span>: <span class="num">11</span>,
+  <span class="key">"fixed_components"</span>: [
+    {<span class="key">"type"</span>: <span class="str">"ramp_right"</span>, <span class="key">"x"</span>: <span class="num">2</span>, <span class="key">"y"</span>: <span class="num">0</span>},
+    {<span class="key">"type"</span>: <span class="str">"ramp_left"</span>,  <span class="key">"x"</span>: <span class="num">3</span>, <span class="key">"y"</span>: <span class="num">1</span>},
+    ...
+    {<span class="key">"type"</span>: <span class="str">"ramp_left"</span>,  <span class="key">"x"</span>: <span class="num">3</span>, <span class="key">"y"</span>: <span class="num">5</span>}
+  ],
+  <span class="key">"ball_hoppers"</span>: {
+    <span class="key">"blue"</span>: {<span class="key">"x"</span>: <span class="num">2</span>, <span class="key">"y"</span>: <span class="num">-1</span>, <span class="key">"count"</span>: <span class="num">8</span>},
+    <span class="key">"red"</span>:  {<span class="key">"x"</span>: <span class="num">8</span>, <span class="key">"y"</span>: <span class="num">-1</span>, <span class="key">"count"</span>: <span class="num">8</span>}
+  },
+  <span class="key">"trigger_levers"</span>: {
+    <span class="key">"left"</span>:  {<span class="key">"x"</span>: <span class="num">2</span>, <span class="key">"y"</span>: <span class="num">11</span>},
+    <span class="key">"right"</span>: {<span class="key">"x"</span>: <span class="num">8</span>, <span class="key">"y"</span>: <span class="num">11</span>}
+  }
+}</div>
+</div>
+
+<!-- Layer 3 · Task Objective -->
+<div class="card" id="card-3">
+  <div class="card-header">
+    <span class="card-num">Layer 3</span>
+    <span class="card-title">Task Objective</span>
+    <span class="card-badge">target behavior</span>
+  </div>
+  <div class="content"><span class="tag">Solve this Turing Tumble puzzle using the available tools.</span>
+
+<span class="section-label">TARGET BEHAVIOR</span>
+<span class="str">"Make all of the blue balls (and only the blue balls) reach the end."</span>
+</div>
+</div>
+
+<!-- Layer 4 · Available Parts -->
+<div class="card" id="card-4">
+  <div class="card-header">
+    <span class="card-num">Layer 4</span>
+    <span class="card-title">Available Parts</span>
+    <span class="card-badge">inventory</span>
+  </div>
+  <div class="content"><span class="section-label">AVAILABLE PARTS  (ch01 &mdash; "Gravity")</span>
+<span class="key">ramp_right</span>:   <span class="num">2</span>
+<span class="key">ramp_left</span>:    <span class="num">2</span>
+<span class="key">crossover</span>:    <span class="num">0</span>
+<span class="key">bit</span>:          <span class="num">0</span>
+<span class="key">gear_bit</span>:     <span class="num">0</span>
+<span class="key">gear</span>:         <span class="num">0</span>
+<span class="key">interceptor</span>:   <span class="num">0</span>
+<span class="key">trigger</span>:       <span class="num">0</span>
+</div>
+</div>
+
+<!-- Layer 5 · Component Rules -->
+<div class="card" id="card-5">
+  <div class="card-header">
+    <span class="card-num">Layer 5</span>
+    <span class="card-title">Component Rules</span>
+    <span class="card-badge">physics reference</span>
+  </div>
+  <div class="content"><span class="tag">Turing Tumble Component Rules</span>
+<span class="tag">- CRITICAL:</span> Marbles may NOT fall through empty in-board cells. Every cell a marble
+  visits after entering the board must contain a component until reaching a catcher or
+  interceptor. Solutions with free-fall gaps are INVALID.
+<span class="tag">- Coordinates:</span> (x, y) &mdash; x = column (0..width&minus;1), y = row (0..height&minus;1). y grows downward.
+<span class="tag">- RAMP_RIGHT:</span> Marble entering from above always exits to the lower-right.
+<span class="tag">- RAMP_LEFT:</span>  Marble entering from above always exits to the lower-left.
+<span class="tag">- CROSSOVER:</span> upper-left &rarr; lower-right;  upper-right &rarr; lower-left.
+<span class="tag">- BIT (state 0, pointing right):</span> exits lower-right AND flips to state 1.
+<span class="tag">- BIT (state 1, pointing left):</span>  exits lower-left  AND flips to state 0.
+<span class="tag">- GEAR_BIT:</span> Behaves like BIT on impact. When one flips, every gear_bit in the same
+  gear_groups entry flips with it (instantly, before the marble exits).
+<span class="tag">- GEAR:</span> Couples neighbouring gear_bits; does not redirect marbles on its own.
+<span class="tag">- INTERCEPTOR:</span> Marble is caught; the current run ends.
+<span class="tag">- TRIGGER:</span> Marble passes through AND queues the release of one ball from the
+  OPPOSITE-coloured hopper (blue trigger &rarr; red ball, red trigger &rarr; blue ball).
+  Queued releases fire after the current marble terminates.
+<span class="tag">- Ball hoppers:</span> Marble from hopper `side` enters at column
+  `ball_hoppers.&lt;side&gt;.entry_x`, starting at y=0.
+<span class="tag">- Trigger levers (catchers):</span> Marble caught only if its column equals
+  `trigger_levers.left.x` (left_catcher) or `trigger_levers.right.x` (right_catcher).
+  Any other bottom column is a miss.
+<span class="tag">- All geometry</span> is given exactly in the board JSON; do not assume defaults.</div>
+</div>
+
+<!-- Layer 6 · Output Format -->
+<div class="card" id="card-6">
+  <div class="card-header">
+    <span class="card-num">Layer 6</span>
+    <span class="card-title">Output Format</span>
+    <span class="card-badge">expected JSON schema</span>
+  </div>
+  <div class="content"><span class="section-label">EXPECTED OUTPUT SCHEMA</span>{
+  <span class="key">"final_solution"</span>: [
+    {
+      <span class="key">"type"</span>: <span class="str">"ramp_left"</span>  | <span class="str">"ramp_right"</span> | <span class="str">"crossover"</span> | ...,
+      <span class="key">"x"</span>: <span class="num">0</span>..<span class="num">width-1</span>,
+      <span class="key">"y"</span>: <span class="num">0</span>..<span class="num">height-1</span>,
+      <span class="key">"state"</span>: <span class="num">0</span> | <span class="num">1</span>  <span class="cmt">(only for BIT and GEAR_BIT)</span>
+    }
+  ],
+  <span class="key">"success"</span>: <span class="key">true</span>,
+  <span class="key">"verification"</span>: {
+    <span class="key">"left_catcher"</span>:  <span class="num">0</span>..<span class="num">count</span>,
+    <span class="key">"right_catcher"</span>: <span class="num">0</span>..<span class="num">count</span>
+  }
+}</div>
+</div>
+
+<!-- Layer 7 · Tool Definitions -->
+<div class="card" id="card-7">
+  <div class="card-header">
+    <span class="card-num">Layer 7</span>
+    <span class="card-title">Tool Definitions</span>
+    <span class="card-badge">MCP interface</span>
+  </div>
+  <div class="content"><span class="section-label">AVAILABLE TOOLS</span>
+<span class="key">get_board_state</span>()
+  Returns the current board JSON including all placed components,
+  ball hopper counts, and trigger lever positions.
+
+<span class="key">place_component</span>(type, x, y)
+  Adds a component of the given type at grid position (x, y).
+  Returns updated board state.
+
+<span class="key">remove_component</span>(x, y)
+  Removes the component at grid position (x, y).
+  Returns updated board state.
+
+<span class="key">run_simulation</span>()
+  Executes the marble input sequence and returns:
+  { left_catcher, right_catcher, final_bit_states, execution_traces }
+</div>
+</div>
+
+</body>
+</html>

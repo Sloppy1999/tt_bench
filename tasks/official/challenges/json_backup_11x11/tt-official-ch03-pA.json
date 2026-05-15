@@ -1,0 +1,118 @@
+{
+  "task_id": "tt-official-ch03-pA",
+  "challenge_number": 3,
+  "title": "Ignition",
+  "objective": "Start the machine by releasing the blue ball. The blue ball should then release the red ball.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 3
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 1
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 1
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 8,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 10
+      }
+    ],
+    "explanation": "The 8 ramps make a path down to the right lever. When the blue ball is released, it lands on the right lever, releasing the red ball.",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

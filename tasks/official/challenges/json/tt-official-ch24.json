@@ -1,0 +1,156 @@
+{
+  "task_id": "tt-official-ch24",
+  "challenge_number": 24,
+  "title": "Ennead",
+  "objective": "Let exactly 9 blue balls reach the end. (Intercept the 10th.)",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 1,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 3,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 5,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 7,
+        "state": 0
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 12
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 12
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 14,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 1,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 9
+      }
+    ],
+    "explanation": "Think of the four bits as a register. The ramps are set up to make it count down. Set the starting value of the register to 9. When you start the computer, it will allow 9 balls to pass through and intercept the 10th. NOTE - fixed_components positions are estimates; placed_components is incomplete (10/14) pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

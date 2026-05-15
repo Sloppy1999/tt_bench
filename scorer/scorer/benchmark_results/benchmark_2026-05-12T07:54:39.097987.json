@@ -1,0 +1,192 @@
+{
+  "timestamp": "2026-05-12T07:54:39.097987",
+  "model": "gpt-4o-mini",
+  "provider": "openai",
+  "total_tasks": 9,
+  "successful": 0,
+  "failed": 9,
+  "success_rate": 0.0,
+  "results": [
+    {
+      "task_id": "tt-official-ch01_tt-official-ch01-q1",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "final_destination": "right_catcher",
+        "reasoning": "The blue ball enters the board at (3, 0) from the blue hopper. It encounters the ramp_right at (2, 0), exits to (3, 1) and then interacts with the ramp_left at (3, 1), where it exits to (2, 2). Next, it interacts with the ramp_right at (2, 2), exiting to (3, 3). It then hits another ramp_left at (3, 3), exiting to (2, 4). Continuing, it interacts with the ramp_right at (2, 4), exiting to (3, 5). It then interacts with the ramp_left at (3, 5), exiting to (2, 6). The ball continues to the ramp_right at (2, 6), exiting to (3, 7). Next, it hits the ramp_left at (3, 7), exiting to (2, 8). It then interacts with the ramp_right at (2, 8), exiting to (3, 9). Finally, it interacts with the ramp_left at (3, 9), exiting to (2, 10), where it misses the left_catcher and falls off the board, landing in the right_catcher."
+      },
+      "expected": {
+        "answer": "The first blue ball drops from the blue hopper at (2, -1), rolls onto the first ramp_right at (3, 1), then ramp_left at (4, 2), ramp_left at (5, 3), ramp_right at (6, 4), ramp_right at (4, 5), ramp_right at (5, 6), ramp_left at (6, 7), ramp_left at (7, 8), and exits at the left side of the board."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 4425,
+      "tokens_used": 1378
+    },
+    {
+      "task_id": "tt-official-ch01_tt-official-ch01-q2",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "final_destination": "left_catcher",
+        "reasoning": "1. A blue ball is released from the blue hopper at (3, 0). 2. The ball travels down to (2, 1) on the ramp_right at (2, 0) and exits to (3, 1). 3. The ball then hits the ramp_left at (3, 1) and exits to (2, 2). 4. The ball continues down to (2, 3) via ramp_right at (2, 2) and exits to (3, 3). 5. The ball then hits the ramp_left at (3, 3) and exits to (2, 4). 6. The ball continues down to (2, 5) via ramp_right at (2, 4) and exits to (3, 5). 7. The ball hits the ramp_left at (3, 5) and exits to (2, 6). 8. The ball goes down to (2, 7) via ramp_right at (2, 6) and exits to (3, 7). 9. The ball hits the ramp_left at (3, 7) and exits to (2, 8). 10. The ball goes down to (2, 9) via ramp_right at (2, 8) and exits to (3, 9). 11. The ball hits the ramp_left at (3, 9) and exits to (2, 10). 12. Since (2, 10) is below the board height, the ball falls off at (3, 10), which is not a valid exit. 13. The blue ball successfully exits through the left_catcher at (2, 10), completing the run."
+      },
+      "expected": {
+        "answer": "All 8 blue balls exit at the blue (left) exit. No balls are intercepted."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 10243,
+      "tokens_used": 1474
+    },
+    {
+      "task_id": "tt-official-ch01_tt-official-ch01-q3",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "10 components",
+      "predicted": {
+        "answer": "10 components",
+        "reasoning": "There are 5 ramps pointing right and 5 ramps pointing left, totaling 10 ramps on the board."
+      },
+      "expected": {
+        "answer": "There are 8 ramps total: 4 fixed ramps in the starting setup and 4 ramps placed by the solution."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 11323,
+      "tokens_used": 1117
+    },
+    {
+      "task_id": "tt-official-ch02_tt-official-ch02-q1",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "final_destination": "right_catcher",
+        "reasoning": "The blue ball is released from the blue hopper at (3,0). It moves down to (3,1) where it encounters a ramp_right which directs it to (4,2). At (4,2), it hits a ramp_left which sends it to (3,3). From (3,3), it goes down to (3,4) where it hits another ramp_left and exits at (2,5). It then falls to (3,6) where it hits a ramp_right sending it to (4,7). Continuing, it goes to (5,8) encountering another ramp_left which redirects it to (4,9). Finally, it falls to (8,10) and lands in the right catcher at (8,11)."
+      },
+      "expected": {
+        "answer": "The first blue ball drops from the blue hopper, rolls onto ramp_right at (3,1), continues to ramp_right at (4,2), ramp_right at (5,3), crossover at (6,4), then solution ramps: ramp_left at (7,5), ramp_left at (6,6), ramp_right at (5,7), ramp_left at (4,8), ramp_left at (3,9), exiting at the left side."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 2457,
+      "tokens_used": 1265
+    },
+    {
+      "task_id": "tt-official-ch02_tt-official-ch02-q2",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "final_destination": "left_catcher",
+        "reasoning": "1. A blue ball is released from the blue hopper at (2, 0). It falls into (2, 0) and exits right to (3, 1) through ramp_right. 2. The ball continues down to (3, 1) and exits right to (4, 2) through ramp_right. 3. The ball then moves down to (4, 2) and exits left to (3, 3) through ramp_left. 4. The ball continues down to (3, 3) and exits left to (2, 4) through ramp_left. 5. It then falls down to (2, 4) and exits left to (1, 5) through ramp_left. 6. The ball moves down to (1, 5) and exits right to (2, 6) through ramp_right. 7. The ball continues down to (2, 6) and exits right to (3, 7) through ramp_right. 8. The ball moves down to (3, 7) and exits right to (4, 8) through ramp_right. 9. It then falls down to (4, 8) and exits left to (3, 9) through ramp_left. 10. Finally, the ball continues down to (3, 9) and exits left to (2, 10) through ramp_left, landing in the left catcher."
+      },
+      "expected": {
+        "answer": "All 8 blue balls exit at the blue (left) exit. No balls are intercepted."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 7439,
+      "tokens_used": 1398
+    },
+    {
+      "task_id": "tt-official-ch02_tt-official-ch02-q3",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "10 components",
+      "predicted": {
+        "answer": "10 components",
+        "reasoning": "The board contains 10 ramps: 6 ramps to the right and 4 ramps to the left."
+      },
+      "expected": {
+        "answer": "The solution places 5 ramps: 2 ramp_left, 2 ramp_right, and 1 ramp_left/ramp_right combo at positions (7,5), (6,6), (5,7), (4,8), (3,9)."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 8368,
+      "tokens_used": 1107
+    },
+    {
+      "task_id": "tt-official-ch03_tt-official-ch03-q1",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "final_destination": "left_catcher",
+        "reasoning": "The blue ball starts at the blue hopper entry at (3, 0). It goes down to (3, 1) and hits the ramp_right at (3, 1), exiting to (4, 2). At (4, 2), it hits another ramp_right, exiting to (5, 3). From (5, 3), it hits another ramp_right, exiting to (6, 4). At (6, 4), it hits a ramp_left, exiting to (5, 5). From (5, 5), it hits a ramp_right, exiting to (6, 6). At (6, 6), it hits a ramp_right again, exiting to (7, 7). At (7, 7), it hits a ramp_right, exiting to (8, 8). At (8, 8), it hits a ramp_left, exiting to (7, 9). Finally, at (7, 9), it falls off the board and is caught by the left catcher since its column matches the left trigger lever at (2)."
+      },
+      "expected": {
+        "answer": "The blue ball drops from the blue hopper at (2,-1), rolls onto ramp_right at (3,1), continues to ramp_right at (4,2), ramp_left at (5,3), then solution ramps: ramp_left at (4,3), ramp_left at (3,4), ramp_right at (2,5), ramp_right at (3,6), ramp_left at (4,7), ramp_left at (5,8), ramp_right at (6,9), ramp_right at (7,10), reaching the right lever at (8,11)."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 4023,
+      "tokens_used": 1445
+    },
+    {
+      "task_id": "tt-official-ch03_tt-official-ch03-q2",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "first_triggered_lever": "right",
+        "released_ball_color": "blue",
+        "reasoning": "The first blue ball enters from the blue hopper at (3, 0) and travels down the right ramps. Upon reaching (5, 3), it will continue downwards and eventually trigger the right lever at (8, 0) after passing through the components. This will queue a blue ball to be released from the opposite color hopper."
+      },
+      "expected": {
+        "answer": "The first blue ball triggers the right lever, releasing a red ball."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 5883,
+      "tokens_used": 1282
+    },
+    {
+      "task_id": "tt-official-ch03_tt-official-ch03-q3",
+      "task_type": "understanding",
+      "success": false,
+      "llm_response": "",
+      "predicted": {
+        "final_destination": "left_catcher",
+        "reasoning": "1. The blue ball is released from the blue hopper at (3, 0). 2. It travels down the ramp at (2, 0) to (3, 1). 3. It continues down the ramp at (3, 1) to (4, 2). 4. It goes down the ramp at (4, 2) to (5, 3). 5. It then drops to (5, 4) but there is no ramp, so it does not fall. 6. The ball triggers the red lever at (8, 0), queuing a red ball to be released from the red hopper. 7. The red ball is released from the red hopper at (7, 0). 8. It travels down the ramp at (8, 0) to (7, 1). 9. It goes down the ramp at (7, 1) to (6, 2). 10. It then travels down the ramp at (6, 2) to (5, 3). 11. It drops down to (5, 4), but cannot continue. 12. The ball then travels down the left ramp at (5, 5) to (4, 6). 13. It goes to (3, 7) and drops to (2, 8). 14. Ultimately, both balls end up in the left catcher."
+      },
+      "expected": {
+        "answer": "One blue ball is released first, followed by 8 red balls (one from each time the first blue ball path triggers the right lever, then the subsequent red balls follow the same path)."
+      },
+      "metrics": {
+        "trace_accuracy": 0.0,
+        "state_precision": 0.0
+      },
+      "error": null,
+      "latency_ms": 10443,
+      "tokens_used": 1500
+    }
+  ]
+}

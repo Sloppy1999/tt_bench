@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch01-pA",
+  "questions": [
+    {
+      "qid": "tt-official-ch01-pA-q1",
+      "type": "ball_path",
+      "question": "Starting from the red ball hopper with the solved board configuration, describe the complete path of the first red ball, listing every component it interacts with in order.",
+      "answer": "The first red ball drops from the red hopper at (8, -1), rolls onto the fixed ramp_left at (8, 1), then ramp_right at (7, 2), ramp_left at (8, 3), ramp_right at (7, 4), ramp_left at (8, 5), ramp_right at (7, 6), fixed ramp_right at (7, 6), ramp_left at (8, 7), ramp_right at (7, 8), ramp_left at (8, 9), ramp_right at (7, 9), exiting at the right side of the board.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch01-pA-q2",
+      "type": "output_sequence",
+      "question": "In what order do balls exit the machine (blue exit, red exit, or intercepted)?",
+      "answer": "All 8 red balls exit at the red (right) exit. No balls are intercepted.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch01-pA-q3",
+      "type": "component_count",
+      "question": "How many total ramps (both fixed and placed) are on the board in the solution?",
+      "answer": "There are 10 ramps total: 2 fixed ramps in the starting setup and 8 ramps placed by the solution.",
+      "difficulty": "easy"
+    }
+  ]
+}

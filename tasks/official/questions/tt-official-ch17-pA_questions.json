@@ -1,0 +1,17 @@
+{
+  "questions": [
+    {
+      "question_id": "ch17-pA-q1",
+      "question": "How many red balls reach the bottom?",
+      "answer": "3",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch17-pA-q2",
+      "question": "Which ball is caught in the interceptor?",
+      "answer": "4th",
+      "type": "select",
+      "options": ["1st", "2nd", "3rd", "4th"]
+    }
+  ]
+}

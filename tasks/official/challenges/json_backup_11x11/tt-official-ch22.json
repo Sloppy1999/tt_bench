@@ -1,0 +1,121 @@
+{
+  "task_id": "tt-official-ch22",
+  "challenge_number": 22,
+  "title": "Depletion",
+  "objective": "Register A starts at 15. Subtract the number of blue balls from the register. (Use 15 or less balls.)",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 1,
+        "state": 1
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 3,
+        "state": 1
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 5,
+        "state": 1
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 7,
+        "state": 1
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 15
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 0
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 4,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      }
+    ],
+    "explanation": "You can make a register count down instead of up by flipping the ramps around to the other side of the register!. NOTE - fixed_components positions are estimates pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

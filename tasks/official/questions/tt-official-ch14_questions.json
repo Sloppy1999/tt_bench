@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch14",
+  "questions": [
+    {
+      "qid": "tt-official-ch14-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with bit A pointing to the LEFT with the solved board configuration, describe the path of the blue ball.",
+      "answer": "The blue ball drops from (2,-1), rolls through the ramps at (1,8), (2,7), (3,8), (4,9), (5,10), landing on bit A which points left, directing the ball to the interceptor at (8,9) - intercepting a blue ball.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch14-q2",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with bit A pointing to the RIGHT with the solved board configuration, describe the path of the balls.",
+      "answer": "The blue ball drops from (2,-1), rolls through the ramps to the right lever, triggering the release of a red ball. The red ball then rolls through the left-side ramps (7,10), (8,11) into the interceptor - intercepting a red ball.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch14-q3",
+      "type": "output_sequence",
+      "question": "Based on the starting state of bit A, what color ball gets intercepted?",
+      "answer": "If bit A starts pointing LEFT, a blue ball is intercepted. If bit A starts pointing RIGHT, a red ball is intercepted.",
+      "difficulty": "easy"
+    }
+  ]
+}

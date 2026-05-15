@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch20",
+  "questions": [
+    {
+      "qid": "tt-official-ch20-q1",
+      "type": "logic_analysis",
+      "question": "What logical operation does this puzzle represent?",
+      "answer": "This is an OR gate. It intercepts a blue ball when EITHER bit A OR bit B starts pointed to the right. The only case where red is intercepted is when BOTH bits start left (A=false AND B=false).",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch20-q2",
+      "type": "state_tracking",
+      "question": "List all four possible starting states of bits A and B and indicate which color ball gets intercepted in each case.",
+      "answer": "1) A=right, B=right \u2192 blue. 2) A=right, B=left \u2192 blue. 3) A=left, B=right \u2192 blue. 4) A=left, B=left \u2192 red.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch20-q3",
+      "type": "conceptual",
+      "question": "Compare Challenge 19 (AND) and Challenge 20 (OR). How do the outputs differ for the same input state (A=left, B=right)?",
+      "answer": "For A=left, B=right: Challenge 19 (AND) intercepts red because not both are right. Challenge 20 (OR) intercepts blue because at least one (B) is right. This demonstrates the difference between AND and OR logic gates.",
+      "difficulty": "hard"
+    }
+  ]
+}

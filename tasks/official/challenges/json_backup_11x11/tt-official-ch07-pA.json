@@ -1,0 +1,111 @@
+{
+  "task_id": "tt-official-ch07-pA",
+  "challenge_number": 7,
+  "title": "Path of Least Resistance",
+  "objective": "Create a path for the blue balls to reach the output with only 6 ramps.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 6,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 7
+      }
+    ],
+    "explanation": "At the top, you've got to decide, 'Do I go to the left or to the right?' The right is the better path because you can use two crossovers instead of just one. NOTE - component positions are estimates pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch18",
+  "questions": [
+    {
+      "qid": "tt-official-ch18-q1",
+      "type": "logic_analysis",
+      "question": "What logical operation does this puzzle represent, and when does it output T vs F?",
+      "answer": "This is an AND gate. It outputs T (interceptor T) only when BOTH bits A and B start pointed to the right. Any other combination (A right/B left, A left/B right, or both left) outputs F (interceptor F).",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch18-q2",
+      "type": "state_tracking",
+      "question": "What are the four possible starting states of bits A and B, and which interceptor does each case route the ball to?",
+      "answer": "1) A=right, B=right \u2192 interceptor T. 2) A=right, B=left \u2192 interceptor F. 3) A=left, B=right \u2192 interceptor F. 4) A=left, B=left \u2192 interceptor F.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch18-q3",
+      "type": "conceptual",
+      "question": "Why is this considered a 'non-destructive read' puzzle?",
+      "answer": "The bits' states are read to determine the routing, but the puzzle doesn't require the balls to flip or change the bits - it only uses their initial states to make a routing decision.",
+      "difficulty": "hard"
+    }
+  ]
+}

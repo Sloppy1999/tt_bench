@@ -1,0 +1,154 @@
+{
+  "task_id": "tt-official-ch29-bA",
+  "challenge_number": 29,
+  "title": "One-Shot Switch",
+  "objective": "Release three blue balls and then the rest of the red balls.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "gear",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "gear",
+        "x": 6,
+        "y": 4
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 999,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 2,
+    "gear": 1,
+    "interceptor": 2,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 10
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 10
+      }
+    ],
+    "explanation": "This one's tricky! The first blue ball triggers the first latch and releases another blue ball. The second blue ball triggers the second latch and releases another blue ball. The third ball, and all balls from then on, trigger red balls to be released. NOTE - placed_components is incomplete pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

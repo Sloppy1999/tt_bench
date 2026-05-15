@@ -1,0 +1,17 @@
+{
+  "questions": [
+    {
+      "question_id": "ch16-pA-q1",
+      "question": "How many balls reach the bottom in the solution?",
+      "answer": "0",
+      "type": "numeric"
+    },
+    {
+      "question_id": "ch16-pA-q2",
+      "question": "Which ball is caught in the interceptor?",
+      "answer": "1st",
+      "type": "select",
+      "options": ["1st", "2nd", "3rd", "4th"]
+    }
+  ]
+}

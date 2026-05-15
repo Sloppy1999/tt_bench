@@ -1,0 +1,130 @@
+{
+  "task_id": "tt-official-ch15-pB",
+  "challenge_number": 15,
+  "title": "Inversion",
+  "objective": "If bit A starts to the left, intercept a red ball. If bit A starts to the right, intercept a blue ball.",
+  "board": {
+    "width": 11,
+    "height": 11,
+    "fixed_components": [
+      {
+        "type": "interceptor",
+        "x": 8,
+        "y": 9
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 11,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 10
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 10
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 10
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 8
+      }
+    ],
+    "explanation": "This one is tricky! Bit A is all the way at the bottom of the board. How can you set the color of the ball that goes in an interceptor based on a bit that is below the interceptor? You need to send information up the board! There are two ways to do that. The first way (the way we do it here) is to use the right and left levers. The color of the second ball released from the top will tell you the direction the bit at the bottom was pointing. The second way to send information up the board is with gears and gear bits. We'll get to that later. :). NOTE - component positions are estimates pending simulator verification",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "red",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 8,
+    "right_catcher": 0
+  }
+}

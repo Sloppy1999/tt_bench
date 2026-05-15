@@ -1,0 +1,34 @@
+{
+  "task_id": "tt-official-ch21_questions",
+  "challenge_number": 21,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What number does register A show after 5 blue balls pass through?",
+      "type": "calculation",
+      "expected_answer": "5",
+      "hints": ["Each bit represents 1, 2, 4, 8 in binary", "After 5 balls: bits 1 and 4 should be pointing right"]
+    },
+    {
+      "id": "q2",
+      "question": "After 10 blue balls, what is the value of register A?",
+      "type": "calculation",
+      "expected_answer": "10",
+      "hints": ["10 in binary is 1010", "Which bits should be pointing right for value 10?"]
+    },
+    {
+      "id": "q3",
+      "question": "If you run 15 blue balls through, what value does register A show?",
+      "type": "calculation",
+      "expected_answer": "15",
+      "hints": ["15 is the maximum value for a 4-bit register", "All bits (1, 2, 4, 8) should be pointing right"]
+    },
+    {
+      "id": "q4",
+      "question": "Trace the state of each bit after each ball in a state trace table",
+      "type": "state_trace",
+      "expected_answer": "Ball 1: 1=right,2=left,4=left,8=left; Ball 2: 1=left,2=right,4=left,8=left; Ball 3: 1=right,2=right,4=left,8=left; Ball 4: 1=left,2=left,4=right,8=left",
+      "hints": ["Top bit flips with every ball", "2nd bit flips when top bit flips to left", "3rd bit flips when 2nd bit flips to left"]
+    }
+  ]
+}

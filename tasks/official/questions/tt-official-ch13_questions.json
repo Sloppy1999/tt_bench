@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch13",
+  "questions": [
+    {
+      "qid": "tt-official-ch13-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls through the ramps at (1,8), (2,7), (3,8), (4,9), (5,10), (6,11), reaching the right lever at (8,11) which releases a red ball.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch13-q2",
+      "type": "output_sequence",
+      "question": "What color ball is intercepted?",
+      "answer": "A red ball is intercepted.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch13-q3",
+      "type": "final_state",
+      "question": "Explain how the solution works - why does releasing a blue ball lead to intercepting a red ball?",
+      "answer": "The solution uses the blue ball to trigger the right lever, which releases a red ball. The ramps then guide this red ball to the interceptor.",
+      "difficulty": "medium"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+%%{init: {'theme': 'neutral'}}%%
+flowchart LR
+    subgraph Routing["Routing Components"]
+        RR["▶ RAMP_RIGHT<br/>enter ↑  exit ↘"]
+        RL["◀ RAMP_LEFT<br/>enter ↑  exit ↙"]
+        CO["✕ CROSSOVER<br/>enter ↖  exit ↘<br/>enter ↗  exit ↙"]
+    end
+
+    subgraph State["Stateful Components"]
+        BIT["B BIT<br/>state 0 → 1 (→)<br/>state 1 → 0 (←)"]
+        GB["⛭ GEAR_BIT<br/>like BIT + gear sync"]
+        G["◎ GEAR<br/>structural connector<br/>(no marble redirect)"]
+    end
+
+    subgraph Control["Control Components"]
+        INT["⊘ INTERCEPTOR<br/>catches marble, ends run"]
+        TRIG["⌐ TRIGGER<br/>queues opposite-color release"]
+    end
+
+    subgraph IO["Board I/O"]
+        HOPPER["Hoppers<br/>ball source at y=-1"]
+        CATCHER["L / R Catchers<br/>ball sink at y=11"]
+    end
+
+    style Routing fill:#d1ecf1,stroke:#0c5460
+    style State fill:#fff3cd,stroke:#856404
+    style Control fill:#f8d7da,stroke:#721c24
+    style IO fill:#d4edda,stroke:#155724

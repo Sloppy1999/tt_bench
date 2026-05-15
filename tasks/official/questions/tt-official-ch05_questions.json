@@ -1,0 +1,26 @@
+{
+  "task_id": "tt-official-ch05",
+  "questions": [
+    {
+      "qid": "tt-official-ch05-q1",
+      "type": "ball_path",
+      "question": "Starting from the blue ball hopper with the solved board configuration, describe the complete path of the first blue ball.",
+      "answer": "The first blue ball drops from (2,-1), rolls onto crossover at (5,1), through crossovers at (5,2), (5,3), (5,4), then solution: ramp_left at (4,5), ramp_left at (3,6), ramp_left at (2,7), ramp_right at (3,8), ramp_right at (4,9), ramp_right at (5,10), continuing on right side to right lever.",
+      "difficulty": "medium"
+    },
+    {
+      "qid": "tt-official-ch05-q2",
+      "type": "output_sequence",
+      "question": "What is the output pattern after running the machine?",
+      "answer": "The pattern is blue, red, blue, red, blue, red... alternating.",
+      "difficulty": "easy"
+    },
+    {
+      "qid": "tt-official-ch05-q3",
+      "type": "alternating_mechanism",
+      "question": "Explain how the alternating pattern is achieved in this puzzle.",
+      "answer": "Blue balls are led to the right lever via the crossover path, releasing red balls. Those red balls must cross back to the left lever using additional ramps, releasing more blue balls. This creates the alternating loop.",
+      "difficulty": "medium"
+    }
+  ]
+}

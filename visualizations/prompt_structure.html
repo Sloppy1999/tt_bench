@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200, initial-scale=1.0">
+<title>Turing Tumble Benchmark Prompt Structure</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Linux+Biolinum:times new roman&family=JetBrains+Mono:400,500&display=swap');
+
+  :root {
+    --accent: #2e7d32;
+    --accent-light: #a5d6a7;
+    --accent-bg: #e8f5e9;
+    --panel-bg: #fafafa;
+    --border: #c8e6c9;
+    --text: #1b5e20;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Linux Biolinum', 'Times New Roman', Times, serif;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 20pt;
+    text-align: center;
+    color: var(--accent);
+    margin-bottom: 6pt;
+    font-weight: normal;
+    letter-spacing: 0.5px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 11pt;
+    color: #666;
+    margin-bottom: 24pt;
+    font-style: italic;
+  }
+
+  .figure-label {
+    font-size: 10pt;
+    color: #555;
+    text-align: center;
+    margin-bottom: 16pt;
+  }
+
+  .figure-label span {
+    background: var(--accent-bg);
+    padding: 2pt 8pt;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+
+  /* ==============================
+     Layer diagram (left side)
+     ============================== */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .layers-block {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .layers-block-header {
+    background: var(--accent);
+    color: white;
+    font-size: 12pt;
+    padding: 8pt 12pt;
+    font-weight: normal;
+    letter-spacing: 0.3px;
+  }
+
+  .layer {
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .layer:last-child { border-bottom: none; }
+
+  .layer-header {
+    display: flex;
+    align-items: center;
+    padding: 8pt 12pt;
+    cursor: default;
+    background: var(--panel-bg);
+    gap: 8pt;
+  }
+  .layer-header:hover { background: var(--accent-bg); }
+
+  .layer-num {
+    background: var(--accent);
+    color: white;
+    font-size: 8pt;
+    font-family: var(--mono);
+    width: 18pt;
+    height: 18pt;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: bold;
+  }
+
+  .layer-title {
+    font-size: 10.5pt;
+    font-weight: bold;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .layer-badge {
+    font-size: 7pt;
+    font-family: var(--mono);
+    background: var(--accent-bg);
+    border: 1px solid var(--border);
+    padding: 1pt 5pt;
+    border-radius: 3px;
+    color: var(--accent);
+  }
+
+  .layer-content {
+    padding: 0 12pt 8pt 42pt;
+    font-size: 8.5pt;
+    font-family: var(--mono);
+    color: #333;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
+  .layer.open .layer-content {
+    max-height: 600px;
+    padding-bottom: 8pt;
+  }
+
+  .layer-toggle {
+    font-size: 9pt;
+    color: var(--accent);
+    margin-left: 6pt;
+    user-select: none;
+    transition: transform 0.2s;
+  }
+  .layer.open .layer-toggle { transform: rotate(90deg); }
+
+  /* ==============================
+     Example block (right side)
+     ============================== */
+  .example-block {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .example-block-header {
+    background: var(--accent);
+    color: white;
+    font-size: 12pt;
+    padding: 8pt 12pt;
+    font-weight: normal;
+  }
+
+  .example-tabs {
+    display: flex;
+    background: var(--accent-bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .example-tab {
+    padding: 6pt 14pt;
+    font-size: 9pt;
+    font-family: var(--mono);
+    cursor: pointer;
+    color: var(--text);
+    border-right: 1px solid var(--border);
+    user-select: none;
+  }
+  .example-tab.active {
+    background: white;
+    font-weight: bold;
+  }
+
+  .example-content {
+    display: none;
+    font-family: var(--mono);
+    font-size: 7.5pt;
+    line-height: 1.55;
+    overflow: auto;
+    max-height: 520px;
+    padding: 10pt 12pt;
+    color: #222;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .example-content.active { display: block; }
+
+  .example-content .tag {
+    color: var(--accent);
+    font-weight: bold;
+  }
+  .example-content .key {
+    color: #1565c0;
+  }
+  .example-content .str {
+    color: #2e7d32;
+  }
+  .example-content .num {
+    color: #e65100;
+  }
+  .example-content .sep {
+    color: #888;
+  }
+
+  .example-content .section-label {
+    background: var(--accent-bg);
+    color: var(--text);
+    font-weight: bold;
+    font-size: 8.5pt;
+    padding: 3pt 6pt;
+    border: 1px solid var(--border);
+    display: block;
+    margin: 6pt 0 4pt;
+    border-radius: 3px;
+  }
+
+  /* ==============================
+     Flow arrows (bottom)
+     ============================== */
+  .flow {
+    margin-top: 20pt;
+    padding: 10pt 12pt;
+    background: var(--accent-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  .flow-header {
+    font-size: 9pt;
+    font-family: var(--mono);
+    color: var(--text);
+    font-weight: bold;
+    margin-bottom: 6pt;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 4pt;
+    margin-bottom: 4pt;
+    font-family: var(--mono);
+    font-size: 8.5pt;
+  }
+
+  .flow-node {
+    background: white;
+    border: 1px solid var(--border);
+    padding: 2pt 8pt;
+    border-radius: 3px;
+    color: var(--text);
+    font-size: 8pt;
+  }
+
+  .flow-arrow {
+    color: var(--accent);
+    font-size: 12pt;
+  }
+
+  .caption {
+    font-size: 8pt;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    margin-top: 12pt;
+  }
+
+  @media print {
+    body { padding: 16px; }
+    .layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Prompt Structure of the Turing Tumble Benchmark</h1>
+<div class="subtitle">Agentic Synthesis Task &mdash; Challenge 01: Gravity</div>
+<div class="figure-label"><span>Fig. 1: Anatomical breakdown of a benchmark input prompt</span></div>
+
+<div class="layout">
+
+  <!-- LEFT: Anatomical layers -->
+  <div class="layers-block">
+    <div class="layers-block-header">Anatomical Prompt Layers</div>
+
+    <div class="layer" id="l1">
+      <div class="layer-header" onclick="toggle('l1')">
+        <div class="layer-num">1</div>
+        <div class="layer-title">System Prompt</div>
+        <div class="layer-badge">Role + Constraints</div>
+        <div class="layer-toggle">&#9654;</div>
+      </div>
+      <div class="layer-content">You are a Turing Tumble solver agent.
+You MUST use the provided tools to solve this puzzle.
+...
+
+CRITICAL: Marbles may NOT fall through empty cells.
+REQUIRED WORKFLOW:
+1. get_board_state
+2. place_component
+3. run_simulation
+4. Repeat until correct</div>
+    </div>
+
+    <div class="layer" id="l2">
+      <div class="layer-header" onclick="toggle('l2')">
+        <div class="layer-num">2</div>
+        <div class="layer-title">Board JSON</div>
+        <div class="layer-badge">Physical Layout</div>
+        <div class="layer-toggle">&#9654;</div>
+      </div>
+      <div class="layer-content">{
+  "width": 11, "height": 11,
+  "fixed_components": [...],
+  "ball_hoppers": { "blue": {...}, "red": {...} },
+  "trigger_levers": { "left": {...}, "right": {...} }
+}</div>
+    </div>
+
+    <div class="layer" id="l3">
+      <div class="layer-header" onclick="toggle('l3')">
+        <div class="layer-num">3</div>
+        <div class="layer-title">Task Objective</div>
+        <div class="layer-badge">Target Behavior</div>
+        <div class="layer-toggle">&#9654;</div>
+      </div>
+      <div class="layer-content">Solve this Turing Tumble puzzle using the available tools.
+
+Target: "Make all of the blue balls (and only the blue balls)
+reach the end."</div>
+    </div>
+
+    <div class="layer" id="l4">
+      <div class="layer-header" onclick="toggle('l4')">
+        <div class="layer-num">4</div>
+        <div class="layer-title">Available Parts</div>
+        <div class="layer-badge">Inventory</div>
+        <div class="layer-toggle">&#9654;</div>
+      </div>
+      <div class="layer-content">ramp_right: 2
+ramp_left:  2
+crossover:  0
+bit:        0
+gear_bit:   0
+gear:       0
+interceptor: 0
+trigger:    0</div>
+    </div>
+
+    <div class="layer" id="l5">
+      <div class="layer-header" onclick="toggle('l5')">
+        <div class="layer-num">5</div>
+        <div class="layer-title">Component Rules</div>
+        <div class="layer-badge">Physics Reference</div>
+        <div class="layer-toggle">&#9654;</div>
+      </div>
+      <div class="layer-content">Turing Tumble Component Rules:
+- CRITICAL: Marbles may NOT fall through empty in-board cells.
+- RAMP_RIGHT: Marble exits lower-right.
+- RAMP_LEFT:  Marble exits lower-left.
+- BIT (state 0): exits lower-right, flips to 1.
+- BIT (state 1): exits lower-left,  flips to 0.
+- GEAR_BIT: BIT + coupled group flip.
+- CROSSOVER: upper-left→lower-right; upper-right→lower-left.
+- INTERCEPTOR: marble caught, run ends.
+- TRIGGER: pass-through + queue opposite ball.
+...</div>
+    </div>
+
+    <div class="layer" id="l6">
+      <div class="layer-header" onclick="toggle('l6')">
+        <div class="layer-num">6</div>
+        <div class="layer-title">Output Format</div>
+        <div class="layer-badge">JSON Schema</div>
+        <div class="layer-toggle">&#9654;</div>
+      </div>
+      <div class="layer-content">{
+  "final_solution": [
+    {"component_type": "ramp_left",  "x": 3, "y": 5},
+    {"component_type": "ramp_right", "x": 2, "y": 6}
+  ],
+  "success": true,
+  "verification": {"left_catcher": 8, "right_catcher": 0}
+}</div>
+    </div>
+
+    <div class="layer" id="l7">
+      <div class="layer-header" onclick="toggle('l7')">
+        <div class="layer-num">7</div>
+        <div class="layer-title">Tool Definitions</div>
+        <div class="layer-badge">MCP Interface</div>
+        <div class="layer-toggle">&#9654;</div>
+      </div>
+      <div class="layer-content">get_board_state  → Board snapshot
+place_component → Add piece (type, x, y)
+remove_component → Remove piece (x, y)
+run_simulation  → Execute &amp; return catcher counts</div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Example prompt from ch01 -->
+  <div class="example-block">
+    <div class="example-block-header">Actual Prompt &mdash; ch01 &ldquo;Gravity&rdquo; (Agentic Synthesis)</div>
+
+    <div class="example-tabs">
+      <div class="example-tab active" onclick="showTab('sys')">System</div>
+      <div class="example-tab" onclick="showTab('board')">Board JSON</div>
+      <div class="example-tab" onclick="showTab('rules')">Rules</div>
+      <div class="example-tab" onclick="showTab('full')">Full Prompt</div>
+    </div>
+
+    <div class="example-content active" id="tab-sys"><span class="section-label">SYSTEM PROMPT</span><span class="tag">You are a Turing Tumble solver agent.</span> You MUST use the provided tools to solve this puzzle. You cannot solve it by just thinking, you MUST call the tools.
+
+<span class="tag">CRITICAL CONSTRAINT:</span> Marbles may NOT fall through empty cells. Every cell a marble visits between entering the board and reaching a catcher/interceptor MUST contain a component. Solutions with any empty-cell traversal will be rejected even if the catcher counts are correct.
+
+<span class="tag">REQUIRED WORKFLOW</span> (you MUST follow this exactly):
+1. First call <span class="key">get_board_state</span> to see what&rsquo;s already placed
+2. Call <span class="key">place_component</span> to add components from your available parts
+3. Call <span class="key">run_simulation</span> to test if it works
+4. If wrong, adjust with more place_component or remove_component calls
+5. Repeat steps 3-4 until the solution is correct
+6. ONLY when simulation shows correct results, output your final solution</div>
+
+    <div class="example-content" id="tab-board"><span class="section-label">BOARD JSON (formatted)</span>{
+  <span class="key">"width"</span>: <span class="num">11</span>,
+  <span class="key">"height"</span>: <span class="num">11</span>,
+  <span class="key">"fixed_components"</span>: [
+    {<span class="key">"type"</span>: <span class="str">"ramp_right"</span>, <span class="key">"x"</span>: <span class="num">2</span>, <span class="key">"y"</span>: <span class="num">0</span>},
+    {<span class="key">"type"</span>: <span class="str">"ramp_left"</span>,  <span class="key">"x"</span>: <span class="num">3</span>, <span class="key">"y"</span>: <span class="num">1</span>},
+    {<span class="key">"type"</span>: <span class="str">"ramp_right"</span>, <span class="key">"x"</span>: <span class="num">2</span>, <span class="key">"y"</span>: <span class="num">2</span>},
+    {<span class="key">"type"</span>: <span class="str">"ramp_left"</span>,  <span class="key">"x"</span>: <span class="num">3</span>, <span class="key">"y"</span>: <span class="num">3</span>},
+    {<span class="key">"type"</span>: <span class="str">"ramp_right"</span>, <span class="key">"x"</span>: <span class="num">2</span>, <span class="key">"y"</span>: <span class="num">4</span>},
+    {<span class="key">"type"</span>: <span class="str">"ramp_left"</span>,  <span class="key">"x"</span>: <span class="num">3</span>, <span class="key">"y"</span>: <span class="num">5</span>}
+  ],
+  <span class="key">"ball_hoppers"</span>: {
+    <span class="key">"blue"</span>: {<span class="key">"x"</span>: <span class="num">2</span>, <span class="key">"y"</span>: <span class="num">-1</span>, <span class="key">"count"</span>: <span class="num">8</span>},
+    <span class="key">"red"</span>:  {<span class="key">"x"</span>: <span class="num">8</span>, <span class="key">"y"</span>: <span class="num">-1</span>, <span class="key">"count"</span>: <span class="num">8</span>}
+  },
+  <span class="key">"trigger_levers"</span>: {
+    <span class="key">"left"</span>:  {<span class="key">"x"</span>: <span class="num">2</span>, <span class="key">"y"</span>: <span class="num">11</span>},
+    <span class="key">"right"</span>: {<span class="key">"x"</span>: <span class="num">8</span>, <span class="key">"y"</span>: <span class="num">11</span>}
+  }
+}
+
+<span class="section-label">AVAILABLE PARTS</span>
+<span class="key">ramp_right</span>: 2
+<span class="key">ramp_left</span>:  2
+<span class="key">crossover</span>:  0
+<span class="key">bit</span>:        0
+<span class="key">gear_bit</span>:   0
+<span class="key">gear</span>:       0
+<span class="key">interceptor</span>: 0
+<span class="key">trigger</span>:    0
+
+<span class="section-label">OBJECTIVE</span>
+<span class="str">Make all of the blue balls (and only the blue balls) reach the end.</span></div>
+
+    <div class="example-content" id="tab-rules"><span class="section-label">COMPONENT RULES</span><span class="tag">Turing Tumble Component Rules:</span>
+<span class="tag">- CRITICAL:</span> Marbles may NOT fall through empty in-board cells. Every cell a marble visits after entering the board must contain a component until reaching a catcher or interceptor. Solutions with free-fall gaps are INVALID.
+<span class="tag">- Coordinates:</span> positions are (x, y) with x the column (0..width-1) and y the row (0..height-1). y grows downward.
+<span class="tag">- RAMP_RIGHT:</span> Marble entering from above always exits to the lower-right.
+<span class="tag">- RAMP_LEFT:</span> Marble entering from above always exits to the lower-left.
+<span class="tag">- CROSSOVER:</span> Marble entering from upper-left exits lower-right; upper-right exits lower-left.
+<span class="tag">- BIT (state 0, pointing right):</span> Marble exits lower-right AND bit flips to state 1.
+<span class="tag">- BIT (state 1, pointing left):</span> Marble exits lower-left AND bit flips to state 0.
+<span class="tag">- GEAR_BIT:</span> Behaves like BIT on impact. When one flips, every gear_bit in the same gear_groups entry flips with it (instantly, before the marble exits).
+<span class="tag">- GEAR:</span> Couples neighbouring gear_bits; does not redirect marbles on its own.
+<span class="tag">- INTERCEPTOR:</span> Marble is caught and the current run ends.
+<span class="tag">- TRIGGER:</span> Marble passes through AND queues the release of one ball from the OPPOSITE-coloured hopper (blue trigger → red ball, red trigger → blue ball). Queued releases fire after the current marble terminates.
+<span class="tag">- Ball hoppers:</span> a marble from hopper `side` enters the playfield at column `ball_hoppers.&lt;side&gt;.entry_x`, starting at y=0.
+<span class="tag">- Trigger levers (catchers):</span> a marble that falls off the bottom is caught only if its column equals `trigger_levers.left.x` (left_catcher) or `trigger_levers.right.x` (right_catcher). Any other bottom column is a miss.
+<span class="tag">- All geometry</span> (hoppers, entry columns, catchers, components, bit states, gear groups) is given exactly in the board JSON; do not assume defaults.</div>
+
+    <div class="example-content" id="tab-full"><span class="section-label">FULL AGENTIC SYNTHESIS PROMPT (ch01)</span><span class="tag">SYSTEM:</span>
+You are a Turing Tumble solver agent.
+You MUST use the provided tools to solve this puzzle. You cannot solve it by just thinking, you MUST call the tools.
+
+CRITICAL CONSTRAINT: Marbles may NOT fall through empty cells. Every cell a marble visits between entering the board and reaching a catcher/interceptor MUST contain a component.
+
+REQUIRED WORKFLOW:
+1. get_board_state → see board
+2. place_component → add pieces
+3. run_simulation → test
+4. Repeat until correct
+5. Output final_solution JSON
+
+---
+<span class="tag">USER PROMPT:</span>
+Solve this Turing Tumble puzzle using the available tools.
+
+<span class="key">Board (JSON)</span>
+{
+  "width": 11, "height": 11,
+  "fixed_components": [
+    {"type": "ramp_right", "x": 2, "y": 0},
+    {"type": "ramp_left",  "x": 3, "y": 1},
+    {"type": "ramp_right", "x": 2, "y": 2},
+    {"type": "ramp_left",  "x": 3, "y": 3},
+    {"type": "ramp_right", "x": 2, "y": 4},
+    {"type": "ramp_left",  "x": 3, "y": 5}
+  ],
+  "ball_hoppers": {
+    "blue": {"x": 2, "y": -1, "count": 8},
+    "red":  {"x": 8, "y": -1, "count": 8}
+  },
+  "trigger_levers": {
+    "left":  {"x": 2, "y": 11},
+    "right": {"x": 8, "y": 11}
+  }
+}
+
+<span class="key">Available Parts</span>
+ramp_right: 2 | ramp_left: 2 | crossover: 0 | bit: 0 | gear_bit: 0 | gear: 0 | interceptor: 0 | trigger: 0
+
+<span class="key">Target Behavior</span>
+"Make all of the blue balls (and only the blue balls) reach the end."
+
+<span class="key">Component Rules</span>
+Turing Tumble Component Rules:
+- CRITICAL: Marbles may NOT fall through empty in-board cells. ...
+- RAMP_RIGHT: exits lower-right
+- RAMP_LEFT:  exits lower-left
+- BIT state 0: exits lower-right, flips to 1
+- BIT state 1: exits lower-left,  flips to 0
+- GEAR_BIT: BIT + group flip
+- CROSSOVER: upper-left→lower-right; upper-right→lower-left
+- INTERCEPTOR: caught, run ends
+- TRIGGER: pass-through + queue opposite ball
+- Ball hoppers: enter at column x, starting y=0
+- Catchers: left at column 2, right at column 8
+
+<span class="key">Output Format</span>
+{
+  "final_solution": [...],
+  "success": true,
+  "verification": {"left_catcher": 8, "right_catcher": 0}
+}</div>
+
+  </div>
+
+</div>
+
+<!-- Flow diagram -->
+<div class="flow">
+  <div class="flow-header">Prompt Construction Flow</div>
+  <div class="flow-row">
+    <div class="flow-node">Challenge JSON</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-node">task_info extraction</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-node">AGENTIC_PROMPT_TEMPLATE.format(...)</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-node">LLM (gpt-4o / claude-3)</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-node">Tool Calls</div>
+    <span class="flow-arrow">&rarr;</span>
+    <div class="flow-node">Scoring</div>
+  </div>
+</div>
+
+<div class="caption">Fig. 2: Pipeline from challenge JSON to scored LLM response. Tool execution is handled by <code>tool_executor.py</code>; scoring by <code>run_benchmark.py</code>.</div>
+
+<script>
+function toggle(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+function showTab(name) {
+  document.querySelectorAll('.example-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.example-content').forEach(c => c.classList.remove('active'));
+  document.querySelector('[onclick="showTab(\'' + name + '\')"]').classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
+
+</body>
+</html>
