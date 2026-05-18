@@ -2,9 +2,10 @@
 """LLM Client for Turing Tumble Benchmark.
 
 Supports multiple LLM providers:
-- OpenAI 
-- Anthropic 
+- OpenAI
+- Anthropic
 - Ollama
+- DeepSeek
 - Mock (for testing)
 """
 
@@ -92,13 +93,13 @@ class ToolResult:
 class LLMConfig:
     """Configuration for LLM client."""
 
-    provider: str = "mock"  # openai, anthropic, ollama, mock
+    provider: str = "mock"  # openai, anthropic, ollama, deepseek, mock
     model: str = "gpt-4"
     temperature: float = 0.7
     max_tokens: int = 2048
     api_key: Optional[str] = None
     base_url: Optional[str] = None
-    timeout: int = 120
+    timeout: int = 300
     max_retries: int = 3
 
 
@@ -770,6 +771,323 @@ class OllamaClient(LLMClient):
         logger.info(f"Signaling completion for Ollama model: {self.config.model}")
 
 
+class DeepSeekClient(LLMClient):
+    """DeepSeek API client."""
+
+    # Canonical model options (v4 reasoning models).
+    MODEL_REPLACEMENTS: Dict[str, Tuple[str, ...]] = {
+        "deepseek-v4": ("deepseek-v4-pro", "deepseek-v4-flash"),
+    }
+
+    def __init__(self, config: LLMConfig):
+        super().__init__(config)
+        self.api_key = config.api_key or os.environ.get("DEEPSEEK_API_KEY")
+        self.base_url = config.base_url or "https://api.deepseek.com"
+
+        if not self.api_key:
+            raise ValueError(
+                "DeepSeek API key required. Set DEEPSEEK_API_KEY in your environment or .env file, or pass api_key."
+            )
+
+    def _resolve_model_id(self, model: str) -> str:
+        """Resolve shorthand model names to full DeepSeek model IDs."""
+        replacement_options = self.MODEL_REPLACEMENTS.get(model)
+        if replacement_options:
+            resolved = replacement_options[0]
+            logger.warning(
+                "DeepSeek model '%s' is a shorthand; options=%s; using '%s'.",
+                model,
+                ", ".join(replacement_options),
+                resolved,
+            )
+            return resolved
+        return model
+
+    def _is_v4_reasoning_model(self, model: str) -> bool:
+        """Check if the model is a DeepSeek v4 reasoning model."""
+        return "deepseek-v4" in model or "deepseek-v4" in self.config.model
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        **kwargs,
+    ) -> LLMResponse:
+        model = self._resolve_model_id(self.config.model)
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        is_v4 = self._is_v4_reasoning_model(model)
+
+        payload = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+        }
+
+        # v4 reasoning models: skip temperature, use reasoning_effort instead
+        if is_v4:
+            payload["reasoning_effort"] = "low"
+        else:
+            payload["temperature"] = kwargs.get("temperature", self.config.temperature)
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        start_time = time.time()
+
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=self.config.timeout,
+        )
+        if response.status_code != 200:
+            logger.error(f"DeepSeek API error: {response.status_code} - {response.text}")
+            response.raise_for_status()
+
+        data = response.json()
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        choice = data["choices"][0]
+        msg = choice["message"]
+        content = msg.get("content", "")
+
+        return LLMResponse(
+            content=content,
+            model=data["model"],
+            usage=data.get("usage", {}),
+            finish_reason=choice.get("finish_reason", ""),
+            latency_ms=latency_ms,
+            raw_response=data,
+        )
+
+    def generate_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict[str, Any]],
+        tool_executor,
+        system_prompt: Optional[str] = None,
+        max_turns: int = 10,
+        **kwargs,
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int]]:
+        """Generate using DeepSeek function calling."""
+        model = self._resolve_model_id(self.config.model)
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        tool_calls_made: List[ToolCall] = []
+        tool_results: List[ToolResult] = []
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
+
+        is_v4 = self._is_v4_reasoning_model(model)
+
+        # The tool-calling loop grows context every turn and many
+        # models (especially DeepSeek) generate verbose analysis
+        # alongside tool_calls.  2048 is too low — 8192 gives
+        # headroom for reasoning + tool_call arguments + content.
+        max_tokens_val = kwargs.get("max_tokens")
+        if max_tokens_val is None:
+            max_tokens_val = 8192
+
+        for turn in range(max_turns):
+            payload = {
+                "model": model,
+                "messages": messages,
+                "tools": tools,
+                "max_tokens": max_tokens_val,
+            }
+
+            # v4 reasoning models: disable thinking mode for tool calls.
+            # Thinking mode splits output into reasoning_content (internal)
+            # and content (user-facing). The model often puts the answer in
+            # reasoning_content and leaves content empty, causing the agent
+            # loop to return no final solution. Non-thinking mode merges
+            # everything into content — simpler and faster for tool-calling.
+            if is_v4:
+                payload["thinking"] = {"type": "disabled"}
+
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+
+            start_time = time.time()
+
+            try:
+                response = requests.post(
+                    f"{self.base_url}/v1/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=self.config.timeout,
+                )
+                if response.status_code != 200:
+                    logger.error(
+                        f"DeepSeek API error: {response.status_code} - {response.text}"
+                    )
+                    return (
+                        None,
+                        f"API error: {response.text}",
+                        tool_calls_made,
+                        tool_results,
+                        {},
+                    )
+
+                data = response.json()
+                latency_ms = int((time.time() - start_time) * 1000)
+
+                usage = data.get("usage", {})
+                total_prompt_tokens += usage.get("prompt_tokens", 0)
+                total_completion_tokens += usage.get("completion_tokens", 0)
+
+                choice = data["choices"][0]
+                msg = choice["message"]
+                finish_reason = choice.get("finish_reason", "")
+
+                # Warn if the model output was truncated (token limit hit).
+                # Reasoning models can burn the entire budget on
+                # reasoning_content before producing content or tool_calls.
+                if finish_reason == "length":
+                    logger.warning(
+                        "DeepSeek turn %d: response truncated (finish_reason=length). "
+                        "max_tokens=%d may be too low for this reasoning model. "
+                        "Increase max_tokens to leave room for content after reasoning.",
+                        turn,
+                        max_tokens_val,
+                    )
+
+                # Check for tool calls
+                if msg.get("tool_calls"):
+                    # Add assistant message with tool_calls first
+                    messages.append(msg)
+
+                    # Then process each tool call and add tool result messages
+                    for tc in msg["tool_calls"]:
+                        tool_call_id = tc.get("id", "")
+                        tool_call = ToolCall(
+                            name=tc["function"]["name"],
+                            arguments=json.loads(tc["function"]["arguments"]),
+                            tool_call_id=tool_call_id,
+                            turn_index=turn,
+                        )
+                        tool_calls_made.append(tool_call)
+
+                        # Execute tool
+                        try:
+                            result = tool_executor.execute(tool_call.name, tool_call.arguments)
+                            tool_result = ToolResult(
+                                tool_name=tool_call.name,
+                                result=result,
+                                tool_call_id=tool_call.tool_call_id,
+                                turn_index=turn,
+                            )
+                        except Exception as e:
+                            tool_result = ToolResult(
+                                tool_name=tool_call.name,
+                                result=None,
+                                error=str(e),
+                                tool_call_id=tool_call.tool_call_id,
+                                turn_index=turn,
+                            )
+                        tool_results.append(tool_result)
+
+                        # Add tool result message
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.tool_call_id,
+                            "content": json.dumps(tool_result.result) if tool_result.result else tool_result.error,
+                        })
+
+                    # Early termination: if the executor detected a valid
+                    # solution (run_simulation with no free-fall and marbles
+                    # reaching catchers), stop the loop immediately.  Saves
+                    # tokens and prevents the LLM from second-guessing a
+                    # correct board.
+                    if (
+                        hasattr(tool_executor, "is_solution_found")
+                        and tool_executor.is_solution_found()
+                    ):
+                        logger.info(
+                            "DeepSeek turn %d: valid solution detected — "
+                            "terminating agentic loop early.",
+                            turn,
+                        )
+                        return (
+                            {"content": "", "solution_found": True},
+                            "",
+                            tool_calls_made,
+                            tool_results,
+                            {
+                                "prompt_tokens": total_prompt_tokens,
+                                "completion_tokens": total_completion_tokens,
+                            },
+                        )
+                else:
+                    # No more tool calls, return the final response.
+                    content = msg.get("content", "")
+                    error_msg = ""
+
+                    # Safety net: reasoning models sometimes put the answer
+                    # in reasoning_content and leave content empty.
+                    if not content:
+                        reasoning = msg.get("reasoning_content", "")
+                        if reasoning:
+                            logger.warning(
+                                "DeepSeek turn %d: content is empty but "
+                                "reasoning_content has %d chars. Using "
+                                "reasoning_content as fallback.",
+                                turn,
+                                len(reasoning),
+                            )
+                            content = reasoning
+
+                    if not content and finish_reason == "length":
+                        error_msg = (
+                            f"Response truncated: max_tokens={max_tokens_val} exhausted "
+                            f"before content could be generated. reasoning_content consumed "
+                            f"the entire token budget."
+                        )
+                        logger.warning("DeepSeek turn %d: %s", turn, error_msg)
+                    return (
+                        {"content": content},
+                        error_msg,
+                        tool_calls_made,
+                        tool_results,
+                        {
+                            "prompt_tokens": total_prompt_tokens,
+                            "completion_tokens": total_completion_tokens,
+                        },
+                    )
+
+            except Exception as e:
+                logger.exception(f"DeepSeek API exception: {e}")
+                return (
+                    None,
+                    f"Exception: {str(e)}",
+                    tool_calls_made,
+                    tool_results,
+                    {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
+                )
+
+        # Max turns reached
+        return (
+            None,
+            "Max turns reached",
+            tool_calls_made,
+            tool_results,
+            {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
+        )
+
+
 class MockClient(LLMClient):
     """Mock client for testing."""
 
@@ -814,6 +1132,7 @@ def create_llm_client(config: LLMConfig) -> LLMClient:
         "openai": OpenAIClient,
         "anthropic": AnthropicClient,
         "ollama": OllamaClient,
+        "deepseek": DeepSeekClient,
         "mock": MockClient,
     }
 

@@ -712,7 +712,10 @@ class TuringTumbleBenchmark:
 
             # Create tool executor with fixed components
             fixed = board_data.get("fixed_components", [])
-            executor = tool_executor.create_executor_from_task(board_data, fixed)
+            available_parts = task_info.get("available_parts", {})
+            executor = tool_executor.create_executor_from_task(
+                board_data, fixed, available_parts=available_parts
+            )
 
             # Build prompt
             prompt = self.build_agentic_prompt(task_info)
@@ -723,16 +726,29 @@ class TuringTumbleBenchmark:
                     tools=llm_client_.TURING_TUMBLE_TOOLS,
                     tool_executor=executor,
                     system_prompt=AGENTIC_SYSTEM_PROMPT,
-                    max_turns=100,
+                    max_turns=20,
                 )
 
             is_valid, msg = False, "No solution found"
+            placed = executor.get_placed_components()
+            solution_used = placed
 
-            if final_result:
-                is_valid, msg = self.validate_synthesis(
-                    task_info,
-                    executor.get_placed_components(),
-                )
+            # Validate if the LLM submitted a final_answer *or* if it
+            # placed components before running out of turns.  This catches
+            # the common case where a model finds the right board but
+            # exhausts its turn budget before emitting a final_solution.
+            if final_result or placed:
+                is_valid, msg = self.validate_synthesis(task_info, placed)
+
+            # Fall back to the best board state recorded during successful
+            # simulation runs — handles the case where the LLM places a
+            # correct component, verifies it, then removes it.
+            if not is_valid:
+                best = executor.get_best_placement()
+                if best and best != placed:
+                    is_valid, msg = self.validate_synthesis(task_info, best)
+                    if is_valid:
+                        solution_used = best
 
             transcript = []
             for tc, tr in zip(tool_calls, tool_results):
@@ -753,7 +769,7 @@ class TuringTumbleBenchmark:
                 success=is_valid,
                 llm_response=json.dumps(final_result) if final_result else "",
                 predicted={
-                    "final_solution": executor.get_placed_components(),
+                    "final_solution": solution_used,
                     "tool_calls": [
                         {"name": tc.name, "args": tc.arguments} for tc in tool_calls
                     ],
@@ -1019,7 +1035,7 @@ def main():
 
     # LLM options
     parser.add_argument(
-        "--provider", default="mock", choices=["openai", "anthropic", "ollama", "mock"]
+        "--provider", default="mock", choices=["openai", "anthropic", "ollama", "deepseek", "mock"]
     )
     parser.add_argument("--model", default="gpt-4")
     parser.add_argument("--api-key", type=str, help="API key (or set env var)")
@@ -1041,6 +1057,9 @@ def main():
         help="Task type: understanding, agentic_synthesis",
     )
     parser.add_argument(
+        "--timeout", type=int, default=300, help="HTTP timeout in seconds (default: 300)"
+    )
+    parser.add_argument(
         "--save-report", action="store_true", help="Save benchmark report"
     )
     parser.add_argument(
@@ -1060,6 +1079,7 @@ def main():
         model=args.model,
         api_key=args.api_key,
         base_url=args.base_url,
+        timeout=args.timeout,
     )
     llm_client = llm_client_.create_llm_client(llm_config)
 

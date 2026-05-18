@@ -37,9 +37,30 @@ class TuringTumbleToolExecutor:
     during the agentic synthesis loop.
     """
 
-    def __init__(self, board: Board):
+    def __init__(
+        self,
+        board: Board,
+        available_parts: Optional[Dict[str, int]] = None,
+        *,
+        fixed_positions: Optional[set] = None,
+    ):
         self.board = board
         self.placed_components: List[Dict[str, Any]] = []
+        self.available_parts: Dict[str, int] = dict(available_parts) if available_parts else {}
+        # Tracks how many of each type have been placed (for inventory enforcement).
+        self._used_parts: Dict[str, int] = {}
+        # Set of (x, y) tuples for components that were pre-placed (fixed) and
+        # must not be removed by the LLM.
+        self._fixed_positions: set = fixed_positions or set()
+        # Best board state seen so far, saved whenever run_simulation
+        # completes without free-fall errors.  Used as a fallback when the
+        # LLM places a correct component, verifies it, but then removes it
+        # before submitting a final_solution.
+        self._best_placement: Optional[List[Dict[str, Any]]] = None
+        # Flag set to True when run_simulation completes with no free-fall
+        # errors and at least one marble reaches a catcher.  The agentic
+        # loop can check this to terminate early instead of burning turns.
+        self._solution_found: bool = False
 
     def execute(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a tool by name with given arguments.
@@ -92,6 +113,23 @@ class TuringTumbleToolExecutor:
                     "error": f"Position ({x}, {y}) already occupied by {existing.component_type.value}",
                 }
 
+            # Enforce available-parts inventory when declared.
+            # If available_parts is empty (not provided), all types are allowed
+            # (backward-compatible with tasks that don't declare inventory).
+            if self.available_parts:
+                allowed = self.available_parts.get(component_type, 0)
+                used = self._used_parts.get(component_type, 0)
+                if used >= allowed:
+                    return {
+                        "success": False,
+                        "error": (
+                            f"No {component_type} available: "
+                            f"inventory allows {allowed}, already used {used}. "
+                            f"Available types: {[k for k, v in self.available_parts.items() if v > 0]}"
+                        ),
+                    }
+                self._used_parts[component_type] = used + 1
+
             # Create component
             comp_dict = {
                 "type": component_type,
@@ -113,6 +151,8 @@ class TuringTumbleToolExecutor:
                     "state": state,
                 }
             )
+            # Board changed — the last solution_found state is now stale.
+            self._solution_found = False
 
             return {
                 "success": True,
@@ -141,13 +181,34 @@ class TuringTumbleToolExecutor:
             if existing is None:
                 return {"success": False, "error": f"No component at ({x}, {y})"}
 
+            # Reject removal of fixed (pre-placed) components — the LLM may
+            # only remove components it placed itself.
+            if (x, y) in self._fixed_positions:
+                return {
+                    "success": False,
+                    "error": (
+                        f"Cannot remove fixed component {existing.component_type.value} "
+                        f"at ({x}, {y}) — only components you placed may be removed."
+                    ),
+                }
+
             # Remove from board
             self.board.remove(x, y)
 
             # Remove from tracking
+            removed = [c for c in self.placed_components if c["x"] == x and c["y"] == y]
             self.placed_components = [
                 c for c in self.placed_components if not (c["x"] == x and c["y"] == y)
             ]
+
+            # Decrement inventory usage counter if applicable
+            for c in removed:
+                ct = c.get("component_type", "")
+                if ct in self._used_parts and self._used_parts[ct] > 0:
+                    self._used_parts[ct] -= 1
+
+            # Board changed — the last solution_found state is now stale.
+            self._solution_found = False
 
             return {"success": True, "message": f"Removed component from ({x}, {y})"}
 
@@ -157,7 +218,11 @@ class TuringTumbleToolExecutor:
     def run_simulation(
         self, input_sequence: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        """Run simulation with given input sequence.
+        """Run simulation with given input sequence — non-destructive.
+
+        Marble counts and pending trigger releases are saved before the run
+        and restored afterwards so exploratory simulations do not permanently
+        drain hoppers or leak queued trigger releases.
 
         Args:
             input_sequence: List of marble colors ("blue" or "red")
@@ -165,12 +230,16 @@ class TuringTumbleToolExecutor:
         Returns:
             Simulation results including marble destinations and final bit states
         """
-        try:
-            # Default to single blue marble
-            if input_sequence is None:
-                input_sequence = ["blue"]
+        # Default to single blue marble
+        if input_sequence is None:
+            input_sequence = ["blue"]
 
-            # Run simulation (cumulative — state persists across calls)
+        # Save hopper state so the run is non-destructive
+        saved_blue = self.board.blue_balls_remaining
+        saved_red = self.board.red_balls_remaining
+        saved_triggers = list(self.board._pending_trigger_releases)
+
+        try:
             results = self.board.run(input_sequence)
 
             # Extract results
@@ -194,6 +263,55 @@ class TuringTumbleToolExecutor:
                 }
                 )
 
+            # Detect illegal in-board free-fall through empty cells.
+            # The simulator allows it, but valid Turing Tumble solutions
+            # require a component at every in-board cell a marble visits.
+            free_fall_errors: List[str] = []
+            for marble_idx, result in enumerate(results, start=1):
+                path = result.path or []
+                for path_idx, curr in enumerate(path[1:], start=1):
+                    prev = path[path_idx - 1]
+                    x, y = curr
+
+                    # Hopper-to-board entry may be empty; subsequent cells
+                    # inside the board may not.
+                    if prev[1] < 0 and y >= 0:
+                        continue
+
+                    # Last cell just above a catcher is a valid approach slot.
+                    next_pos = path[path_idx + 1] if path_idx + 1 < len(path) else None
+                    if (
+                        y == self.board.rows - 1
+                        and next_pos is not None
+                        and next_pos[1] >= self.board.rows
+                        and x in (
+                            self.board.left_catcher_x,
+                            self.board.right_catcher_x,
+                        )
+                    ):
+                        continue
+
+                    if (
+                        0 <= x < self.board.cols
+                        and 0 <= y < self.board.rows
+                        and curr not in self.board.components
+                    ):
+                        free_fall_errors.append(
+                            f"marble {marble_idx} traversed empty cell {curr}"
+                        )
+
+            # Snapshot best board when simulation succeeds without free-fall.
+            # Used as fallback when the LLM finds a correct placement but
+            # then removes it before submitting a final_solution.
+            if (
+                not free_fall_errors
+                and (left_count > 0 or right_count > 0)
+            ):
+                self._best_placement = [
+                    dict(p) for p in self.placed_components
+                ]
+                self._solution_found = True
+
             return {
                 "success": True,
                 "left_catcher": left_count,
@@ -202,10 +320,16 @@ class TuringTumbleToolExecutor:
                 "final_bit_states": self.board.get_all_states(),
                 "execution_traces": traces,
                 "total_marbles": len(results),
+                "free_fall_errors": free_fall_errors,
             }
 
         except Exception as e:
             return {"success": False, "error": str(e)}
+        finally:
+            # Restore hopper counts so exploratory runs don't drain them
+            self.board.blue_balls_remaining = saved_blue
+            self.board.red_balls_remaining = saved_red
+            self.board._pending_trigger_releases = saved_triggers
 
     def get_board_state(self) -> Dict[str, Any]:
         """Get the current board configuration in the canonical LLM shape.
@@ -234,16 +358,45 @@ class TuringTumbleToolExecutor:
         """
         return self.placed_components.copy()
 
+    def get_best_placement(self) -> List[Dict[str, Any]]:
+        """Get the best placement snapshot from any successful simulation.
+
+        Falls back to current placed_components if no successful
+        simulation was recorded.
+
+        Returns:
+            List of component dictionaries
+        """
+        if self._best_placement is not None:
+            return [dict(p) for p in self._best_placement]
+        return self.placed_components.copy()
+
+    def is_solution_found(self) -> bool:
+        """Check whether a valid solution has been found.
+
+        Set to True when run_simulation completes without free-fall
+        errors and at least one marble reaches a catcher.  Cleared
+        whenever the board is modified (place_component/remove_component).
+
+        The agentic loop can use this to terminate early instead of
+        waiting for the LLM to submit a final_solution.
+        """
+        return self._solution_found
+
 
 def create_executor_from_task(
     board_data: Dict[str, Any],
     fixed_components: Optional[List[Dict[str, Any]]] = None,
+    available_parts: Optional[Dict[str, int]] = None,
 ) -> TuringTumbleToolExecutor:
     """Create a tool executor from task configuration.
 
     Args:
         board_data: Board configuration (dimensions, ball hoppers)
         fixed_components: Components that are already placed
+        available_parts: Inventory of placeable component types (count per type).
+            When provided, ``place_component`` rejects placements exceeding the
+            declared inventory.
 
     Returns:
         Configured TuringTumbleToolExecutor
@@ -272,13 +425,15 @@ def create_executor_from_task(
         right_catcher_x=right_lever_x,
     )
 
-    # Place fixed components
+    # Place fixed components and track their positions
+    fixed_positions = set()
     if fixed_components:
         for comp_dict in fixed_components:
             comp = Component.from_dict(comp_dict)
             board.place(comp.x, comp.y, comp)
+            fixed_positions.add((comp.x, comp.y))
 
-    return TuringTumbleToolExecutor(board)
+    return TuringTumbleToolExecutor(board, available_parts=available_parts, fixed_positions=fixed_positions)
 
 
 # ---------------------------------------------------------------------------
