@@ -31,7 +31,7 @@ ANTHROPIC_API_KEY=... uv run python scorer/run_benchmark.py --provider anthropic
 
 `tests/test_tt_sim.py` imports from `tt_sim` directly. The simulator lives in `simulator/tt_sim.py`, so you **must** add `simulator/` to `PYTHONPATH` before running tests. The `scorer/run_benchmark.py` script handles this internally via `sys.path.insert`, but pytest does not.
 
-The old CLAUDE.md references `simulator/tests/test_tt_sim.py` — that path does **not exist**. Tests are at `tests/test_tt_sim.py`.
+Tests are at `tests/test_tt_sim.py`, not `simulator/tests/` (that path does not exist).
 
 ## Architecture
 
@@ -40,7 +40,8 @@ simulator/tt_sim.py          — Physics engine: Board, Ramp, Bit, GearBit, Gear
 simulator/board_renderer.py  — Matplotlib-based board renderer + MP4 animation export
 scorer/run_benchmark.py      — Benchmark orchestrator (loads challenges, dispatches to LLM, produces reports)
 scorer/llm_client.py         — LLM provider abstraction (OpenAI, Anthropic, Ollama, Mock) using raw `requests`
-scorer/tool_executor.py      — Bridges LLM tool calls (place/remove/run/get_state) to the simulator
+scorer/tool_executor.py      — Bridges LLM tool calls (place_component, remove_component, run_simulation, get_board_state) to the simulator
+scorer/visualize_boards.py  — Board visualization and prompt rendering utilities
 tasks/official/challenges/   — Challenge JSONs (57+ puzzles)
 tasks/official/questions/    — Procedural understanding questions per challenge
 tasks/official/INDEX.json    — Master index: tier, tags, metadata for all challenges
@@ -53,7 +54,7 @@ tests/                       — Test suite (test_tt_sim.py, test_canonical_boar
 - **Board is 11×11 by default**, configurable via `Board(rows=N, cols=M)`.
 - **Marble step limit:** 500 steps per marble to prevent infinite loops.
 - **`scorer/scorer/benchmark_results/`** is a nested directory that really exists (not a mistake).
-- **No official APRC** — CLAUDE.md mentions APRC but the `APRC/` directory is not present in this repo. Ignore APRC references.
+- **Simulator utilities:** `load_challenge(path)` loads a challenge JSON into a board+task tuple. `verify_solution(path)` runs the challenge's release sequence and checks the objective.
 - **`--task-type`** flag on `run_benchmark.py` accepts `understanding` and/or `agentic_synthesis`. Default runs both.
 - **Provider env vars:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`. Ollama and mock need none.
 - **`--pattern`** accepts a glob to filter tasks (e.g., `"ch0[1-5]*"`).

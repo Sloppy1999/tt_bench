@@ -286,7 +286,7 @@ TURING_TUMBLE_TOOLS = [
         "type": "function",
         "function": {
             "name": "remove_component",
-            "description": "Remove a component from the board at the specified position",
+            "description": "Remove a component YOU previously placed from the board. IMPORTANT: only components with source='user' (shown in get_board_state) can be removed. Components with source='fixed' are part of the original board layout and CANNOT be removed — attempting to remove them will fail.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -329,7 +329,7 @@ TURING_TUMBLE_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_board_state",
-            "description": "Get the current board configuration including all placed components and their positions",
+            "description": "Get the current board configuration including all placed components and their positions. Each component has a 'source' field: 'fixed' (original board, cannot be removed) or 'user' (you placed it, can be removed).",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -893,11 +893,12 @@ class DeepSeekClient(LLMClient):
 
         # The tool-calling loop grows context every turn and many
         # models (especially DeepSeek) generate verbose analysis
-        # alongside tool_calls.  2048 is too low — 8192 gives
-        # headroom for reasoning + tool_call arguments + content.
+        # alongside tool_calls.  2048 is too low — 32768 gives
+        # headroom for reasoning + tool_call arguments + content,
+        # even on complex multi-component challenges.
         max_tokens_val = kwargs.get("max_tokens")
         if max_tokens_val is None:
-            max_tokens_val = 8192
+            max_tokens_val = 32768
 
         for turn in range(max_turns):
             payload = {
@@ -924,12 +925,34 @@ class DeepSeekClient(LLMClient):
             start_time = time.time()
 
             try:
-                response = requests.post(
-                    f"{self.base_url}/v1/chat/completions",
-                    json=payload,
-                    headers=headers,
-                    timeout=self.config.timeout,
-                )
+                # Retry transient network errors (timeouts, connection
+                # drops) up to 3 times with exponential backoff so a
+                # single hung API call doesn't sink the entire task.
+                for attempt in range(3):
+                    try:
+                        response = requests.post(
+                            f"{self.base_url}/v1/chat/completions",
+                            json=payload,
+                            headers=headers,
+                            timeout=self.config.timeout,
+                        )
+                        break
+                    except (
+                        requests.exceptions.Timeout,
+                        requests.exceptions.ConnectionError,
+                    ) as retry_err:
+                        if attempt < 2:
+                            wait = 2**attempt
+                            logger.warning(
+                                "DeepSeek API %s (attempt %d/3), "
+                                "retrying in %ds…",
+                                type(retry_err).__name__,
+                                attempt + 1,
+                                wait,
+                            )
+                            time.sleep(wait)
+                        else:
+                            raise
                 if response.status_code != 200:
                     logger.error(
                         f"DeepSeek API error: {response.status_code} - {response.text}"

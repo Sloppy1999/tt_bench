@@ -1,5 +1,5 @@
 {
-  "task_id": "tt-official-ch06-1comp",
+  "task_id": "tt-official-ch06-2comp",
   "challenge_number": 6,
   "title": "Entropy (1 Component)",
   "objective": "Make the pattern blue, red, blue, red, blue, red... using a shorter path.",
@@ -77,15 +77,10 @@
         "x": 5,
         "y": 7
       },
-             {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 8
-       },
       {
         "type": "crossover",
         "x": 5,
-        "y": 3
+        "y": 5
       }
     ],
     "ball_hoppers": {
@@ -113,7 +108,7 @@
   },
   "available_parts": {
     "ramp_right": 0,
-    "ramp_left": 0,
+    "ramp_left": 1,
     "crossover": 1,
     "bit": 0,
     "gear_bit": 0,
@@ -123,10 +118,15 @@
   },
   "solution": {
     "placed_components": [
-     {
+       {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 8
+       },
+      {
         "type": "crossover",
         "x": 5,
-        "y": 5
+        "y": 3
       }
 
     ],

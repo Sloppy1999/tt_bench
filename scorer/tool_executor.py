@@ -43,6 +43,7 @@ class TuringTumbleToolExecutor:
         available_parts: Optional[Dict[str, int]] = None,
         *,
         fixed_positions: Optional[set] = None,
+        target_sequence: Optional[List[str]] = None,
     ):
         self.board = board
         self.placed_components: List[Dict[str, Any]] = []
@@ -58,9 +59,14 @@ class TuringTumbleToolExecutor:
         # before submitting a final_solution.
         self._best_placement: Optional[List[Dict[str, Any]]] = None
         # Flag set to True when run_simulation completes with no free-fall
-        # errors and at least one marble reaches a catcher.  The agentic
-        # loop can check this to terminate early instead of burning turns.
+        # errors and at least one marble reaches a catcher using the
+        # target_sequence.  The agentic loop can check this to terminate
+        # early instead of burning turns.
         self._solution_found: bool = False
+        # The expected release sequence for this challenge.  run_simulation
+        # only sets _solution_found when the input matches this sequence
+        # (prevents false positives from exploratory simulations).
+        self._target_sequence: Optional[List[str]] = target_sequence
 
     def execute(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a tool by name with given arguments.
@@ -249,24 +255,43 @@ class TuringTumbleToolExecutor:
                 1 for r in results if r.caught_by and "interceptor" in r.caught_by
             )
 
-            # Build execution traces
-            traces = []
+            # Build compact execution traces: group marbles that follow
+            # identical paths and emit one representative per group with
+            # a ``_path_group_size`` count.  This keeps the transcript
+            # small even when 8+ marbles traverse the same ramp sequence —
+            # the LLM only needs to see the canonical path once.
+            path_groups: dict = {}  # path_tuple -> {trace, count, first_marble}
             for idx, r in enumerate(results):
-                traces.append(
-                {
-                    "marble": idx + 1,
-                    "path": r.path,
-                    "final_destination": r.caught_by,
-                    "steps": r.steps,
-                    "terminated": r.terminated,
-                    "termination_reason": r.termination_reason,
-                }
+                path_tuple = tuple(tuple(p) for p in r.path)
+                if path_tuple not in path_groups:
+                    path_groups[path_tuple] = {
+                        "trace": {
+                            "marble": idx + 1,
+                            "path": r.path,
+                            "final_destination": r.caught_by,
+                            "steps": r.steps,
+                            "terminated": r.terminated,
+                            "termination_reason": r.termination_reason,
+                        },
+                        "first_marble": idx + 1,
+                    }
+                path_groups[path_tuple]["_path_group_size"] = (
+                    path_groups[path_tuple].get("_path_group_size", 0) + 1
                 )
+
+            traces = []
+            for pg in path_groups.values():
+                pg["trace"]["_path_group_size"] = pg["_path_group_size"]
+                traces.append(pg["trace"])
 
             # Detect illegal in-board free-fall through empty cells.
             # The simulator allows it, but valid Turing Tumble solutions
             # require a component at every in-board cell a marble visits.
-            free_fall_errors: List[str] = []
+            #
+            # Group errors by unique cell rather than emitting one message
+            # per (marble, cell) pair — when 8 identical marbles follow
+            # the same path, the LLM only needs to see each empty cell once.
+            cell_errors: dict[tuple[int, int], list[int]] = {}
             for marble_idx, result in enumerate(results, start=1):
                 path = result.path or []
                 for path_idx, curr in enumerate(path[1:], start=1):
@@ -296,13 +321,29 @@ class TuringTumbleToolExecutor:
                         and 0 <= y < self.board.rows
                         and curr not in self.board.components
                     ):
-                        free_fall_errors.append(
-                            f"marble {marble_idx} traversed empty cell {curr}"
-                        )
+                        cell_errors.setdefault(curr, []).append(marble_idx)
+
+            free_fall_errors: List[str] = []
+            for cell, marble_indices in sorted(cell_errors.items()):
+                count = len(marble_indices)
+                if count == 1:
+                    free_fall_errors.append(
+                        f"marble {marble_indices[0]} traversed empty cell {cell}"
+                    )
+                else:
+                    first = marble_indices[0]
+                    free_fall_errors.append(
+                        f"cell {cell}: traversed by {count} marbles "
+                        f"(first: marble {first})"
+                    )
 
             # Snapshot best board when simulation succeeds without free-fall.
             # Used as fallback when the LLM finds a correct placement but
             # then removes it before submitting a final_solution.
+            #
+            # Only flag as "solution found" when the input_sequence matches
+            # the challenge's target sequence — prevents false positives
+            # from exploratory simulations with different inputs.
             if (
                 not free_fall_errors
                 and (left_count > 0 or right_count > 0)
@@ -310,7 +351,11 @@ class TuringTumbleToolExecutor:
                 self._best_placement = [
                     dict(p) for p in self.placed_components
                 ]
-                self._solution_found = True
+                if (
+                    self._target_sequence is None
+                    or input_sequence == self._target_sequence
+                ):
+                    self._solution_found = True
 
             return {
                 "success": True,
@@ -339,9 +384,20 @@ class TuringTumbleToolExecutor:
         mode (with precomputed ``entry_x``), trigger-lever positions,
         components with their current states, a flat bit-state map, and
         connected gear groups.
+
+        Each component also receives a ``source`` field: ``"fixed"`` for
+        components that were part of the original board layout (cannot be
+        removed), ``"user"`` for components placed by the LLM via
+        ``place_component`` (can be removed).
         """
         try:
             payload = self.board.to_llm_dict()
+
+            # Mark each component as fixed (original board) or user-placed.
+            user_positions = {(c["x"], c["y"]) for c in self.placed_components}
+            for comp in payload["components"]:
+                comp["source"] = "user" if (comp["x"], comp["y"]) in user_positions else "fixed"
+
             return {
                 "success": True,
                 "placed_count": len(payload["components"]),
@@ -388,6 +444,8 @@ def create_executor_from_task(
     board_data: Dict[str, Any],
     fixed_components: Optional[List[Dict[str, Any]]] = None,
     available_parts: Optional[Dict[str, int]] = None,
+    *,
+    target_sequence: Optional[List[str]] = None,
 ) -> TuringTumbleToolExecutor:
     """Create a tool executor from task configuration.
 
@@ -397,6 +455,9 @@ def create_executor_from_task(
         available_parts: Inventory of placeable component types (count per type).
             When provided, ``place_component`` rejects placements exceeding the
             declared inventory.
+        target_sequence: The expected marble release sequence for this challenge.
+            When set, ``run_simulation`` only flags ``solution_found`` when the
+            simulation input matches this sequence.
 
     Returns:
         Configured TuringTumbleToolExecutor
@@ -433,7 +494,12 @@ def create_executor_from_task(
             board.place(comp.x, comp.y, comp)
             fixed_positions.add((comp.x, comp.y))
 
-    return TuringTumbleToolExecutor(board, available_parts=available_parts, fixed_positions=fixed_positions)
+    return TuringTumbleToolExecutor(
+        board,
+        available_parts=available_parts,
+        fixed_positions=fixed_positions,
+        target_sequence=target_sequence,
+    )
 
 
 # ---------------------------------------------------------------------------

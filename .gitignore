@@ -17,6 +17,7 @@ pdf_images/
 
 # Generated visualizations
 scorer/scorer/benchmark_results/
+scorer/benchmark_results/
 *.mp4
 *.html
 *.png

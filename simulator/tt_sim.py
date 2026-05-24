@@ -381,8 +381,8 @@ class Board:
 
     def __init__(
         self,
-        rows: int = 10,
-        cols: int = 10,
+        rows: int = 11,
+        cols: int = 11,
         blue_hopper_x: int = 2,
         red_hopper_x: int = 8,
         blue_hopper_count: int = 8,
@@ -900,8 +900,8 @@ class Board:
         """Deserialize board from dictionary."""
         levers = data.get("trigger_levers", {})
         board = cls(
-            rows=data.get("height", 10),
-            cols=data.get("width", 10),
+            rows=data.get("height", 11),
+            cols=data.get("width", 11),
             blue_hopper_x=data.get("blue_hopper", {}).get("x", 2),
             red_hopper_x=data.get("red_hopper", {}).get("x", 8),
             blue_hopper_count=data.get("blue_hopper", {}).get("count", 8),
@@ -939,8 +939,8 @@ class Board:
 
         # Create board
         board = cls(
-            rows=board_data.get("height", 10),
-            cols=board_data.get("width", 10),
+            rows=board_data.get("height", 11),
+            cols=board_data.get("width", 11),
             blue_hopper_x=board_data.get("ball_hoppers", {})
             .get("blue", {})
             .get("x", 2),

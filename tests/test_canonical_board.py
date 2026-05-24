@@ -135,7 +135,15 @@ class TestToolExecutorParity:
         assert state["success"] is True
         for key in ("dimensions", "hopper_entry_mode", "ball_hoppers",
                     "trigger_levers", "components", "bit_states", "gear_groups"):
-            assert state[key] == canonical[key], f"{key} diverged"
+            actual = state[key]
+            expected = canonical[key]
+            # ToolExecutor augments components with a 'source' field
+            # ("fixed"/"user"). Strip it for parity comparison against
+            # the raw to_llm_dict which doesn't carry agentic metadata.
+            if key == "components":
+                actual = [{k: v for k, v in c.items() if k != "source"} for c in actual]
+                expected = [{k: v for k, v in c.items() if k != "source"} for c in expected]
+            assert actual == expected, f"{key} diverged"
 
 
 if __name__ == "__main__":

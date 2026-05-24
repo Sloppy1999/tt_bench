@@ -63,8 +63,8 @@ COLOURS = {
 }
 
 CELL = 1.0
-BOARD_W = 10
-BOARD_H = 10
+BOARD_W = 11
+BOARD_H = 11
 MARGIN_TOP = 4.5
 MARGIN_BOTTOM = 3.18  # tuned so 150 DPI MP4 height is even (x264 req)
 MARGIN_SIDES = 1.5
@@ -729,8 +729,8 @@ def _build_board_from_task(
     levers = board_data.get("trigger_levers", {})
 
     board = Board(
-        rows=board_data.get("height", 10),
-        cols=board_data.get("width", 10),
+        rows=board_data.get("height", 11),
+        cols=board_data.get("width", 11),
         blue_hopper_x=hoppers.get("blue", {}).get("x", 2),
         red_hopper_x=hoppers.get("red", {}).get("x", 8),
         blue_hopper_count=hoppers.get("blue", {}).get("count", 8),

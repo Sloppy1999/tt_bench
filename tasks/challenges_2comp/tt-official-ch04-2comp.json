@@ -1,11 +1,12 @@
 {
-  "task_id": "tt-official-ch06-1comp",
-  "challenge_number": 6,
-  "title": "Entropy (1 Component)",
-  "objective": "Make the pattern blue, red, blue, red, blue, red... using a shorter path.",
+  "task_id": "tt-official-ch04-2comp",
+  "challenge_number": 4,
+  "title": "Fusion (1 Component)",
+  "objective": "Release one red ball and then all of the blue balls using a shorter path.",
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "column",
     "fixed_components": [
       {
         "type": "ramp_left",
@@ -14,78 +15,88 @@
       },
       {
         "type": "ramp_left",
-        "x": 7,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
+        "x": 8,
         "y": 2
       },
       {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 3
+      },
+      {
         "type": "ramp_left",
-        "x": 6,
+        "x": 8,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
         "y": 6
       },
       {
         "type": "ramp_right",
-        "x": 6,
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
         "y": 8
       },
       {
         "type": "ramp_right",
+        "x": 7,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
         "x": 2,
         "y": 0
       },
       {
         "type": "ramp_right",
-        "x": 3,
+        "x": 1,
         "y": 1
-       },
-       {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 2
-       },
-       {
+      },
+      {
         "type": "ramp_left",
-        "x": 6,
-        "y": 4
-       },
+        "x": 2,
+        "y": 2
+      },
       {
         "type": "ramp_right",
-        "x": 7,
-        "y": 9
-       },
+        "x": 2,
+        "y": 4
+      },
       {
         "type": "ramp_right",
-        "x": 4,
-        "y": 4
-       },
-       {
+        "x": 3,
+        "y": 5
+      },
+      {
         "type": "ramp_right",
         "x": 4,
         "y": 6
-       },
-       {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 9
-       },
+      },
       {
-        "type": "crossover",
+        "type": "ramp_right",
         "x": 5,
         "y": 7
       },
-             {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 8
-       },
       {
-        "type": "crossover",
-        "x": 5,
-        "y": 3
+        "type": "ramp_right",
+        "x": 6,
+        "y": 8
       }
     ],
     "ball_hoppers": {
@@ -112,9 +123,9 @@
     }
   },
   "available_parts": {
-    "ramp_right": 0,
+    "ramp_right": 2,
     "ramp_left": 0,
-    "crossover": 1,
+    "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
@@ -123,12 +134,16 @@
   },
   "solution": {
     "placed_components": [
-     {
-        "type": "crossover",
-        "x": 5,
-        "y": 5
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 1
       }
-
     ],
     "explanation": "This variant truncates the original solution to the first 1 component(s).",
     "verified": true,
@@ -136,39 +151,25 @@
     "position_verified": true,
     "final_marble_state": [
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue"
+      "red"
     ]
   },
   "input_sequence": [
     "blue",
     "red",
-    "blue",
     "red",
-    "blue",
     "red",
-    "blue",
     "red",
-    "blue",
     "red",
-    "blue",
     "red",
-    "blue",
     "red",
-    "blue",
     "red"
   ],
   "expected_output": {

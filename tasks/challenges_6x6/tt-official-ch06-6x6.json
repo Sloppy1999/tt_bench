@@ -1,0 +1,140 @@
+{
+  "task_id": "tt-official-ch06-6x6",
+  "challenge_number": 6,
+  "title": "Total Internal Reflection (6x6)",
+  "objective": "Make the pattern blue, red, blue, red, blue, red...",
+  "board": {
+    "width": 6,
+    "height": 6,
+    "fixed_components": [
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 3,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 6
+      },
+      "right": {
+        "x": 3,
+        "y": 6
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 2,
+    "ramp_left": 0,
+    "crossover": 5,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "crossover",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "type": "crossover",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "crossover",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 0,
+        "y": 4
+      }
+    ],
+    "explanation": "Scaled down from the original board to a 6x6 grid with proportionally adjusted component positions.",
+    "verified": false,
+    "verifier_version": null,
+    "position_verified": false,
+    "final_marble_state": [
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "..."
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

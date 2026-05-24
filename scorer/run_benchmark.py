@@ -128,15 +128,29 @@ CRITICAL CONSTRAINT: Marbles may NOT fall through empty cells. Every cell a marb
 between entering the board and reaching a catcher/interceptor MUST contain a component.
 Solutions with any empty-cell traversal will be rejected even if the catcher counts are correct.
 
+INCREMENTAL STRATEGY (you MUST follow this):
+- Place ONE component at a time, then run_simulation to verify.
+- Target a single problematic cell from the free_fall_errors list.
+- After each simulation, observe what changed and place the NEXT component.
+- DO NOT try to plan all placements in your head — build the solution step by step.
+- Each turn: think briefly, place ONE component, simulate. Repeat.
+
+FIXED vs USER COMPONENTS: The board comes with pre-placed components. In get_board_state,
+each component has a "source" field:
+- "fixed" = part of the original board layout — you CANNOT remove these.
+- "user"  = you placed it via place_component — you CAN remove/replace these.
+Never attempt to remove a "fixed" component; it will fail and waste a turn.
+
 REQUIRED WORKFLOW (you MUST follow this exactly):
-1. First call get_board_state to see what's already placed
-2. Call place_component to add components from your available parts
-3. Call run_simulation to test if it works
-4. If wrong, adjust with more place_component or remove_component calls
-5. Repeat steps 3-4 until the solution is correct
-6. ONLY when simulation shows correct results, output your final solution
+1. First call get_board_state to see what's already placed (note which are fixed vs user)
+2. Call run_simulation to identify free_fall_errors (empty cells marbles pass through)
+3. Call place_component to fill ONE empty cell from the error list
+4. Call run_simulation to verify the fix
+5. Repeat steps 3-4, addressing one cell at a time, until NO free_fall_errors remain
+6. ONLY when simulation shows correct results with zero free_fall_errors, output your final solution
 
 You MUST call run_simulation after EVERY component placement to verify!
+Be CONCISE — your analysis should be 2-3 sentences, not paragraphs.
 Do not just think about the solution - you must USE the tools to build and test it."""
 
 
@@ -186,11 +200,15 @@ class TuringTumbleBenchmark:
         challenges_dir: Path,
         output_dir: Path,
         print_board: bool = False,
+        max_turns: int = 25,
+        max_tokens: int = 32768,
     ):
         self.llm = llm_client
         self.challenges_dir = challenges_dir
         self.output_dir = output_dir
         self.print_board = print_board
+        self.max_turns = max_turns
+        self.max_tokens = max_tokens
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Results storage
@@ -714,7 +732,12 @@ class TuringTumbleBenchmark:
             fixed = board_data.get("fixed_components", [])
             available_parts = task_info.get("available_parts", {})
             executor = tool_executor.create_executor_from_task(
-                board_data, fixed, available_parts=available_parts
+                board_data,
+                fixed,
+                available_parts=available_parts,
+                target_sequence=self._normalize_input_sequence(
+                    task_info.get("input_sequence", ["blue"])
+                ),
             )
 
             # Build prompt
@@ -726,7 +749,8 @@ class TuringTumbleBenchmark:
                     tools=llm_client_.TURING_TUMBLE_TOOLS,
                     tool_executor=executor,
                     system_prompt=AGENTIC_SYSTEM_PROMPT,
-                    max_turns=20,
+                    max_turns=self.max_turns,
+                    max_tokens=self.max_tokens,
                 )
 
             is_valid, msg = False, "No solution found"
@@ -1051,6 +1075,18 @@ def main():
     parser.add_argument("--pattern", default="tt-official-ch*.json")
     parser.add_argument("--max-tasks", type=int, default=None)
     parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=25,
+        help="Max agentic turns per task (default: 25). Increase for complex challenges.",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=32768,
+        help="Max completion tokens per LLM call (default: 32768). Increase for verbose reasoning models.",
+    )
+    parser.add_argument(
         "--task-type",
         action="append",
         default=[],
@@ -1089,6 +1125,8 @@ def main():
         challenges_dir=args.challenges_dir,
         output_dir=args.output_dir,
         print_board=args.print_board,
+        max_turns=args.max_turns,
+        max_tokens=args.max_tokens,
     )
 
     # Run benchmark
