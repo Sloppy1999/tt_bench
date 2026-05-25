@@ -2,46 +2,116 @@
   "task_id": "tt-official-ch21",
   "challenge_number": 21,
   "title": "Quantum Number",
-  "objective": "Use register A to count the number of blue balls. (Use 15 or less balls.)",
+  "objective": "Use register A to coun the number of blue balls.(Use 15 or less balls)",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
         "type": "bit",
-        "x": 3,
-        "y": 1,
+        "x": 2,
+        "y": 0,
         "state": 0
       },
       {
-        "type": "bit",
+        "type": "ramp_right",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
         "x": 3,
-        "y": 3,
-        "state": 0
+        "y": 1
       },
       {
         "type": "bit",
-        "x": 3,
-        "y": 5,
+        "x": 2,
+        "y": 2,
         "state": 0
       },
       {
-        "type": "bit",
+        "type": "ramp_left",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
         "x": 3,
-        "y": 7,
+        "y": 3
+      },
+      {
+        "type": "bit",
+        "x": 2,
+        "y": 4,
         "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "bit",
+        "x": 2,
+        "y": 6,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
         "y": -1,
-        "count": 15
+        "count": 8
       },
       "red": {
         "x": 8,
         "y": -1,
-        "count": 0
+        "count": 8
       }
     },
     "trigger_levers": {
@@ -56,7 +126,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 5,
+    "ramp_right": 0,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
@@ -66,50 +136,14 @@
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 5
-      }
-    ],
-    "explanation": "This seems a lot more complicated than it really is! The top bit flips with every ball. The 2nd bit flips every 2nd ball (whenever the top bit flips to the left). The 3rd bit flips every 4th ball (whenever the 2nd bit flips to the left). The 4th bit flips every 8th ball (whenever the 3rd bit flips to the left). That's it! Remember how this works - it'll be in a lot of the puzzles to come. NOTE - fixed_components positions are estimates pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "..."
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue",
     "blue",
     "blue",

@@ -1,58 +1,148 @@
 {
-  "task_id": "tt-official-ch11",
+  "task_id": "tt-official_ch11",
   "challenge_number": 11,
   "title": "Selectivity",
-  "objective": "Flip bits 2 and 5 to the right.",
+  "objective": "Flip bits 1 and 4",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
-        "type": "crossover",
-        "x": 5,
+        "type": "ramp_right",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
         "y": 2
       },
       {
         "type": "bit",
-        "x": 1,
-        "y": 6,
-        "state": 0
-      },
-      {
-        "type": "bit",
-        "x": 3,
-        "y": 6,
-        "state": 0
-      },
-      {
-        "type": "bit",
         "x": 5,
-        "y": 6,
+        "y": 3,
         "state": 0
       },
       {
-        "type": "bit",
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
         "x": 7,
+        "y": 5
+      },
+      {
+        "type": "bit",
+        "x": 2,
         "y": 6,
         "state": 0
       },
       {
         "type": "bit",
-        "x": 9,
+        "x": 4,
         "y": 6,
         "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 6,
+        "y": 6,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 8,
+        "y": 6,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
         "y": -1,
-        "count": 2
+        "count": 8
       },
       "red": {
         "x": 8,
         "y": -1,
-        "count": 0
+        "count": 8
       }
     },
     "trigger_levers": {
@@ -67,7 +157,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 15,
+    "ramp_right": 0,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
@@ -77,27 +167,20 @@
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 2
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 4
-      }
-    ],
-    "explanation": "The top bit splits the path of the blue balls. One path leads to bit 2 and the other path leads to bit 5. NOTE - fixed_components positions are estimates; placed_components is incomplete (2/15) pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "..."
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
     "blue",
     "blue"
   ],

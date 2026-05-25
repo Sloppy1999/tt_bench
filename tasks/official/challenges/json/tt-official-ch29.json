@@ -1,27 +1,133 @@
 {
   "task_id": "tt-official-ch29",
   "challenge_number": 29,
-  "title": "One-Shot Switch",
+  "title": "One-shot Switch",
   "objective": "Release a blue ball, a red ball, and then the rest of the blue balls.",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
-        "type": "gear",
-        "x": 3,
-        "y": 4
+        "type": "gear_bit",
+        "x": 2,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 0
       },
       {
         "type": "gear_bit",
-        "x": 3,
-        "y": 5,
+        "x": 1,
+        "y": 1,
         "state": 0
       },
       {
         "type": "gear",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
         "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
         "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 9
       }
     ],
     "ball_hoppers": {
@@ -48,88 +154,22 @@
     }
   },
   "available_parts": {
-    "ramp_right": 999,
+    "ramp_right": 0,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
-    "gear_bit": 1,
-    "gear": 1,
-    "interceptor": 1,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 9
-      }
-    ],
-    "explanation": "Use the first blue ball to flip the latch and trigger a red ball. The red ball triggers another blue ball that, from then on, is forced to trigger more blue balls by the (now flipped) latch. NOTE - placed_components is incomplete pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "red",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue"
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
     "blue",

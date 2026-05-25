@@ -2,14 +2,142 @@
   "task_id": "tt-official-ch26",
   "challenge_number": 26,
   "title": "Nucleus",
-  "objective": "Generate the required pattern.",
+  "objective": "Generate the required pattern",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
-        "type": "interceptor",
+        "type": "bit",
+        "x": 2,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "bit",
         "x": 8,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "interceptor",
+        "x": 9,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 2,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 4
+      },
+      {
+        "type": "crossover",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
         "y": 9
       }
     ],
@@ -17,12 +145,12 @@
       "blue": {
         "x": 2,
         "y": -1,
-        "count": 10
+        "count": 8
       },
       "red": {
         "x": 8,
         "y": -1,
-        "count": 10
+        "count": 8
       }
     },
     "trigger_levers": {
@@ -37,79 +165,24 @@
     }
   },
   "available_parts": {
-    "ramp_right": 999,
+    "ramp_right": 0,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
-    "gear_bit": 2,
+    "gear_bit": 0,
     "gear": 0,
-    "interceptor": 2,
+    "interceptor": 0,
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 7
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 5,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 9
-      }
-    ],
-    "explanation": "The 2-bit countdown register on the left releases four blue balls, the last of which triggers the right lever, releasing a red ball. That red ball goes back over to the left side, triggering the release of four more blue balls, the last of which triggers the release of a second red ball. That second red ball is caught by the interceptor. NOTE - placed_components is incomplete pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "..."
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
-    "blue",
-    "blue",
     "blue",
     "blue",
     "blue",

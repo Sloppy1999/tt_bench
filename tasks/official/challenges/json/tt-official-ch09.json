@@ -1,29 +1,134 @@
 {
   "task_id": "tt-official-ch09",
   "challenge_number": 9,
-  "title": "Dimers",
-  "objective": "Make the pattern blue, blue, red, blue, blue, red...",
+  "title": "Custom Dimers",
+  "objective": "",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
         "type": "bit",
-        "x": 5,
-        "y": 2,
+        "x": 2,
+        "y": 0,
         "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
         "y": -1,
-        "count": 10
+        "count": 8
       },
       "red": {
         "x": 8,
         "y": -1,
-        "count": 10
+        "count": 8
       }
     },
     "trigger_levers": {
@@ -38,85 +143,24 @@
     }
   },
   "available_parts": {
-    "ramp_right": 18,
-    "ramp_left": 0,
-    "crossover": 0,
-    "bit": 0,
-    "gear_bit": 0,
-    "gear": 0,
-    "interceptor": 0,
-    "trigger": 0
+    "ramp_right": 5,
+    "ramp_left": 5,
+    "crossover": 5,
+    "bit": 5,
+    "gear_bit": 5,
+    "gear": 5,
+    "interceptor": 5,
+    "trigger": 5
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 8,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 8
-      }
-    ],
-    "explanation": "Just like the last puzzle, the bit makes every other blue ball release a red ball, but every red ball releases a blue ball. Do you see how the bit splits the path of the blue balls to go in two directions? This is very important in the coming puzzles!. NOTE - solution placed_components is incomplete (10/18); positions are estimates pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "blue",
-      "red",
-      "blue",
-      "blue",
-      "red",
-      "..."
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
-    "blue",
-    "blue",
     "blue",
     "blue",
     "blue",

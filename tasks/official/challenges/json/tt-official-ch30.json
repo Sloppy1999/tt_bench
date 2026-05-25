@@ -2,45 +2,127 @@
   "task_id": "tt-official-ch30",
   "challenge_number": 30,
   "title": "Overflow",
-  "objective": "Count the blue balls in register A. If there are more than 7, gear bit OV must flip right (and stay right) to indicate the overflow.",
+  "objective": "Count the blue balls in register A. If there are more than 7 gear bit OV must flip right(and stay right) to indicate the overflow",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
+        "type": "bit",
+        "x": 2,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "bit",
+        "x": 2,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "bit",
+        "x": 2,
+        "y": 4,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      },
+      {
         "type": "gear",
-        "x": 8,
+        "x": 0,
+        "y": 5
+      },
+      {
+        "type": "gear_bit",
+        "x": 1,
+        "y": 5,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "gear_bit",
+        "x": 0,
+        "y": 6,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
         "y": 6
       },
       {
-        "type": "bit",
-        "x": 3,
-        "y": 1,
-        "state": 0
+        "type": "ramp_right",
+        "x": 0,
+        "y": 7
       },
       {
-        "type": "bit",
+        "type": "ramp_right",
         "x": 3,
-        "y": 3,
-        "state": 0
+        "y": 7
       },
       {
-        "type": "bit",
+        "type": "ramp_left",
+        "x": 1,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
         "x": 3,
-        "y": 5,
-        "state": 0
+        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
         "y": -1,
-        "count": 15
+        "count": 8
       },
       "red": {
         "x": 8,
         "y": -1,
-        "count": 0
+        "count": 8
       }
     },
     "trigger_levers": {
@@ -55,85 +137,24 @@
     }
   },
   "available_parts": {
-    "ramp_right": 14,
+    "ramp_right": 0,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
-    "gear_bit": 1,
-    "gear": 1,
+    "gear_bit": 0,
+    "gear": 0,
     "interceptor": 0,
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 7
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 5,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 9
-      }
-    ],
-    "explanation": "The latch flips when the count up register increments past 7. Once flipped, it remains flipped no matter how many balls run through the register. NOTE - fixed_components positions are estimates; placed_components is incomplete (10/14+1gb+1g) pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "..."
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue",
     "blue",
     "blue",
@@ -144,7 +165,7 @@
     "blue"
   ],
   "expected_output": {
-    "left_catcher": 0,
-    "right_catcher": 15
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
   }
 }

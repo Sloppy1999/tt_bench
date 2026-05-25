@@ -1,5 +1,5 @@
 {
-  "task_id": "tt-official-ch20",
+  "task_id": "tt-official-20",
   "challenge_number": 20,
   "title": "Symbiosis",
   "objective": "If the top bit OR the bottom bit start pointed to the right, intercept a blue ball. Otherwise, intercept a red ball.",
@@ -8,8 +8,125 @@
     "height": 11,
     "fixed_components": [
       {
-        "type": "interceptor",
+        "type": "ramp_right",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
         "x": 8,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 5,
+        "y": 3,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "bit",
+        "x": 5,
+        "y": 5,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "crossover",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 8
+      },
+      {
+        "type": "interceptor",
+        "x": 5,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
         "y": 9
       }
     ],
@@ -37,66 +154,22 @@
     }
   },
   "available_parts": {
-    "ramp_right": 999,
+    "ramp_right": 0,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
-    "interceptor": 2,
+    "interceptor": 0,
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 2
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 2
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 7
-      }
-    ],
-    "explanation": "It's easiest to consider the first condition - when both bits are pointed left. Make that path go directly to the red lever and make a path for the red ball to go directly to the interceptor. Then make every other possible path for that first blue ball lead to the interceptor.",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "red"
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
     "blue",
@@ -109,7 +182,7 @@
     "blue"
   ],
   "expected_output": {
-    "left_catcher": 0,
-    "right_catcher": 8
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
   }
 }

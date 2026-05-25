@@ -1,15 +1,154 @@
 {
-  "task_id": "tt-official-ch17",
+  "task_id": "tt-official-17",
   "challenge_number": 17,
   "title": "Fixed Ratio",
-  "objective": "Make the pattern blue, blue, blue, red, red, red.",
+  "objective": "Make a pattern blue, blue, blue, red, red, red",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
-        "type": "interceptor",
+        "type": "bit",
+        "x": 2,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "bit",
         "x": 8,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 2,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 8,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "interceptor",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
         "y": 9
       }
     ],
@@ -37,65 +176,22 @@
     }
   },
   "available_parts": {
-    "ramp_right": 999,
-    "ramp_left": 0,
-    "crossover": 0,
-    "bit": 0,
-    "gear_bit": 0,
-    "gear": 0,
-    "interceptor": 0,
-    "trigger": 0
+    "ramp_right": 5,
+    "ramp_left": 5,
+    "crossover": 5,
+    "bit": 5,
+    "gear_bit": 5,
+    "gear": 5,
+    "interceptor": 5,
+    "trigger": 5
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 9
-      }
-    ],
-    "explanation": "Now we have two 2-bit counters - one on the left and one on the right. Notice the starting positions of the bits! To get three blues and three reds in the output, we have to count out 3 blue balls, and 4 red balls (the 4th ball goes into the interceptor!).",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "blue",
-      "blue",
-      "red",
-      "red",
-      "red"
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
     "blue",

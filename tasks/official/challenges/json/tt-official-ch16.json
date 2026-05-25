@@ -1,15 +1,72 @@
 {
-  "task_id": "tt-official-ch16",
+  "task_id": "tt-official-16",
   "challenge_number": 16,
   "title": "Termination",
-  "objective": "Let only 3 blue balls reach the bottom and catch the 4th ball in the interceptor.",
+  "objective": "Let only 3 balls reach the bottom and catch the 4th ball in the interceptor ",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
+        "type": "bit",
+        "x": 2,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "bit",
+        "x": 2,
+        "y": 2,
+        "state": 0
+      },
+      {
         "type": "interceptor",
-        "x": 8,
+        "x": 1,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
         "y": 9
       }
     ],
@@ -37,78 +94,22 @@
     }
   },
   "available_parts": {
-    "ramp_right": 10,
-    "ramp_left": 0,
-    "crossover": 0,
-    "bit": 0,
-    "gear_bit": 0,
-    "gear": 0,
-    "interceptor": 0,
-    "trigger": 0
+    "ramp_right": 5,
+    "ramp_left": 5,
+    "crossover": 5,
+    "bit": 5,
+    "gear_bit": 5,
+    "gear": 5,
+    "interceptor": 5,
+    "trigger": 5
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 9
-      }
-    ],
-    "explanation": "Like the previous puzzle, think about the direction the bits point when each ball is released: 1st ball, 2nd ball, 3rd ball, 4th ball. The way these bits count out balls is important! You'll use it many times in the coming puzzles. NOTE - added component positions are estimates pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "blue",
-      "blue",
-      "blue"
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
     "blue",

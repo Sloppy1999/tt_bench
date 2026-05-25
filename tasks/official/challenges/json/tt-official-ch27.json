@@ -1,46 +1,101 @@
 {
   "task_id": "tt-official-ch27",
   "challenge_number": 27,
-  "title": "Reflection",
-  "objective": "Reverse the direction of each of the 9 starting bits, regardless of the direction they point to start.",
+  "title": "Reflection ",
+  "objective": "Reverse the direction of each of the 9 starting bits, regardless of the direction thy point to start",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
         "type": "bit",
-        "x": 1,
-        "y": 1,
+        "x": 2,
+        "y": 0,
         "state": 0
       },
       {
-        "type": "bit",
-        "x": 3,
-        "y": 1,
-        "state": 0
-      },
-      {
-        "type": "bit",
-        "x": 5,
-        "y": 1,
-        "state": 0
+        "type": "ramp_right",
+        "x": 8,
+        "y": 0
       },
       {
         "type": "bit",
         "x": 1,
-        "y": 3,
+        "y": 1,
         "state": 0
       },
       {
-        "type": "bit",
+        "type": "ramp_right",
         "x": 3,
+        "y": 1
+      },
+      {
+        "type": "bit",
+        "x": 9,
+        "y": 1,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 4,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 1,
         "y": 3,
         "state": 0
       },
       {
-        "type": "bit",
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
         "x": 5,
-        "y": 3,
+        "y": 3
+      },
+      {
+        "type": "interceptor",
+        "x": 9,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "type": "bit",
+        "x": 4,
+        "y": 4,
         "state": 0
       },
       {
@@ -50,16 +105,72 @@
         "state": 0
       },
       {
-        "type": "bit",
+        "type": "ramp_right",
         "x": 3,
-        "y": 5,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "type": "bit",
+        "x": 4,
+        "y": 6,
         "state": 0
       },
       {
         "type": "bit",
-        "x": 5,
-        "y": 5,
+        "x": 1,
+        "y": 7,
         "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 8
+      },
+      {
+        "type": "bit",
+        "x": 4,
+        "y": 8,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 9
       }
     ],
     "ball_hoppers": {
@@ -86,65 +197,22 @@
     }
   },
   "available_parts": {
-    "ramp_right": 999,
+    "ramp_right": 0,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
-    "gear_bit": 1,
-    "gear": 1,
-    "interceptor": 1,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 7
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 9
-      }
-    ],
-    "explanation": "Like the last puzzle, use one bit to split the path of the blue balls. That takes care of the first two columns of bits. The final bit on the right can then be flipped with a red ball, triggered by the second blue ball. NOTE - fixed_components positions are estimates pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "..."
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
     "blue",

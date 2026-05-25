@@ -1,23 +1,138 @@
 {
-  "task_id": "tt-official-ch10",
+  "task_id": "tt-official-10",
   "challenge_number": 10,
   "title": "Double Bond",
-  "objective": "Make the pattern blue, blue, red, red, blue, blue, red, red\u2026",
+  "objective": "Make the pattern blue, blue, red, red, blue, blue, red, red,...",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
         "type": "bit",
-        "x": 3,
-        "y": 1,
+        "x": 2,
+        "y": 0,
         "state": 0
       },
       {
         "type": "bit",
-        "x": 7,
-        "y": 1,
+        "x": 8,
+        "y": 0,
         "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 9
       }
     ],
     "ball_hoppers": {
@@ -44,9 +159,9 @@
     }
   },
   "available_parts": {
-    "ramp_right": 22,
+    "ramp_right": 0,
     "ramp_left": 0,
-    "crossover": 0,
+    "crossover": 1,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
@@ -54,88 +169,22 @@
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 2
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 2
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 8,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 7
-      }
-    ],
-    "explanation": "This time, there are bits in the path of both the red and blue balls. The bits cause only every other ball to cross to the other side of the board. NOTE - solution placed_components is incomplete (11/22); fixed_components positions are estimates pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "blue",
-      "red",
-      "red",
-      "blue",
-      "blue",
-      "red",
-      "red",
-      "..."
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
     "blue",
     "blue",
+    "red",
+    "red",
     "blue",
     "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue"
+    "red",
+    "red"
   ],
   "expected_output": {
     "description": "Where each marble ends up after execution",

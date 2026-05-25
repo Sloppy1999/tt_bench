@@ -2,26 +2,112 @@
   "task_id": "tt-official-ch28",
   "challenge_number": 28,
   "title": "Latch",
-  "objective": "Release only the blue balls.",
+  "objective": "Release only the blue balls",
   "board": {
     "width": 11,
     "height": 11,
     "fixed_components": [
       {
-        "type": "gear",
+        "type": "ramp_right",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
         "x": 3,
-        "y": 4
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 2
       },
       {
         "type": "gear_bit",
-        "x": 3,
-        "y": 5,
+        "x": 5,
+        "y": 3,
+        "state": 0
+      },
+      {
+        "type": "gear_bit",
+        "x": 4,
+        "y": 4,
         "state": 0
       },
       {
         "type": "gear",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
         "x": 3,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
         "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 9
       }
     ],
     "ball_hoppers": {
@@ -48,48 +134,22 @@
     }
   },
   "available_parts": {
-    "ramp_right": 1,
+    "ramp_right": 0,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
-    "gear_bit": 1,
-    "gear": 1,
+    "gear_bit": 0,
+    "gear": 0,
     "interceptor": 0,
     "trigger": 0
   },
   "solution": {
-    "placed_components": [
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 1
-      },
-      {
-        "type": "gear_bit",
-        "x": 5,
-        "y": 4,
-        "state": 0
-      },
-      {
-        "type": "gear",
-        "x": 5,
-        "y": 5
-      }
-    ],
-    "explanation": "Use a latch to send all balls to the ramps on the left side. NOTE - component positions are estimates pending simulator verification",
+    "placed_components": [],
+    "explanation": "",
     "verified": false,
     "verifier_version": null,
     "position_verified": false,
-    "final_marble_state": [
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue"
-    ]
+    "final_marble_state": []
   },
   "input_sequence": [
     "blue",
