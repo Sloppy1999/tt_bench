@@ -23,6 +23,7 @@ analytics_output/
 experiments/
 docs/
 pdf_images/
+visualizations/
 
 # IDE / editor
 .vscode/
