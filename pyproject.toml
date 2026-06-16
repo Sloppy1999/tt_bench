@@ -1,13 +1,39 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "llm-exp"
-version = "0.1.0"
-description = "Add your description here"
+name = "tt-bench"
+version = "0.2.0"
+description = "Turing Tumble benchmark — LLM evaluation on puzzle-solving tasks"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "dotenv>=0.9.9",
-    "matplotlib>=3.10.8",
-    "pyqt6>=6.11.0",
-    "python-dotenv>=1.2.2",
-    "requests>=2.33.1",
+    "matplotlib>=3.10",
+    "pyqt6>=6.11",
+    "python-dotenv>=1.2",
+    "requests>=2.33",
 ]
+
+[project.scripts]
+tt-benchmark = "tt_bench.benchmark.runner:main"
+tt-simulate = "tt_bench.cli.simulate:run_cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

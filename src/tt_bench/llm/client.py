@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 # Project root (for callers that need the path; env loading is opt-in).
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
 def load_env() -> None:

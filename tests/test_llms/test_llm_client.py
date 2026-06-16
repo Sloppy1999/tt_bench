@@ -12,7 +12,7 @@ from typing import Set
 import pytest
 import requests
 
-from scorer.llm_client import AnthropicClient, OpenAIClient
+from tt_bench.llm.client import AnthropicClient, OpenAIClient
 
 
 def _openai_available_models(api_key: str) -> Set[str]:

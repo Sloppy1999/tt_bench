@@ -12,14 +12,12 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "simulator"))
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tt_sim import (
+from tt_bench.simulator import (
     Board, Ramp, Crossover, Bit, GearBit, Gear, Interceptor, Trigger,
     Direction, Side,
 )
-from scorer.complexity_metrics import (
+from tt_bench.analytics.metrics import (
     scr, ctd, dependency_depth, gcc, rpcc, ibr, hic, bici, sac, sac_norm,
     synthesis_load, psde, oss,
     k_approx, compute_all_metrics,
@@ -185,7 +183,7 @@ class TestGCC:
 
     def test_gear_bits_with_connecting_gear(self):
         """Two gear_bits + one gear, properly connected = 100% gear complexity."""
-        import tt_sim
+        from tt_bench import simulator as tt_sim
         b = Board(rows=5, cols=5)
         b.place(2, 1, GearBit(2, 1, state=0))
         b.place(3, 1, Gear(3, 1))
@@ -559,8 +557,8 @@ class TestKApprox:
         """K̃ for real challenges should be in reasonable range."""
         import json, os
         path = os.path.join(BASE_PATH,
-            "tasks/official/challenges/json/tt-official-ch01.json")
-        from tt_sim import Board as B
+            "data/tasks/official/challenges/json/tt-official-ch01.json")
+        from tt_bench.simulator import Board as B
         board = B.from_task_json(path)
         val = k_approx(board)
         assert 0.10 <= val <= 0.80, f"Real board K̃ out of range: {val:.3f}"
@@ -599,10 +597,10 @@ class TestComputeAll:
     def test_integration_real_challenge(self):
         """Load challenge 01 and compute all metrics — no exceptions."""
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch01.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch01.json"
         )
         import json
-        from tt_sim import Board as B
+        from tt_bench.simulator import Board as B
         board = B.from_task_json(path)
         with open(path) as f:
             task_info = json.load(f)
@@ -623,12 +621,12 @@ class TestTierMonotonicity:
     def test_bici_increases_with_tier(self):
         import json
         import glob
-        from tt_sim import Board as B
+        from tt_bench.simulator import Board as B
 
         challenges_dir = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json"
+            BASE_PATH, "data/tasks/official/challenges/json"
         )
-        index_path = os.path.join(BASE_PATH, "tasks/official/INDEX.json")
+        index_path = os.path.join(BASE_PATH, "data/tasks/official/INDEX.json")
 
         if not os.path.exists(index_path):
             pytest.skip("INDEX.json not found")

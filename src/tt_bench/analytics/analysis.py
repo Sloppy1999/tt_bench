@@ -65,17 +65,9 @@ warnings.filterwarnings(
     "ignore", message="An input array is constant",
 )
 
-# --- Path setup so we can import the simulator from here --------------------
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-_sim_path = _PROJECT_ROOT / "simulator"
-_scorer_path = _PROJECT_ROOT / "scorer"
-if str(_sim_path) not in sys.path:
-    sys.path.insert(0, str(_sim_path))
-if str(_scorer_path) not in sys.path:
-    sys.path.insert(0, str(_scorer_path))
-
-import tt_sim  # noqa: E402
-import complexity_metrics as cx  # noqa: E402
+# --- Imports ----------------------------------------------------------------
+from tt_bench import simulator as tt_sim  # noqa: E402
+from tt_bench.analytics import metrics as cx  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(

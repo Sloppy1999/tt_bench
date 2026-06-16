@@ -62,7 +62,7 @@ def _trace_path(board, side: str = "blue") -> List[Tuple[int, int]]:
 
 def _gear_groups_typed(board) -> List[List[Tuple[int, int]]]:
     """Return connected groups of GearBit + Gear components via BFS."""
-    from tt_sim import GearBit, Gear
+    from tt_bench.simulator import GearBit, Gear
 
     visited: set[Tuple[int, int]] = set()
     groups: List[List[Tuple[int, int]]] = []
@@ -175,7 +175,7 @@ def gcc(board) -> float:
 
     Range [0, 1].
     """
-    from tt_sim import GearBit, Gear
+    from tt_bench.simulator import GearBit, Gear
 
     groups = _gear_groups_typed(board)
     total_weight = 0.0
@@ -584,7 +584,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).parent.parent / "simulator"))
-    import tt_sim
+    from tt_bench import simulator as tt_sim
 
     parser = argparse.ArgumentParser(description="Compute complexity metrics for one board")
     parser.add_argument("challenge_json", help="Path to a challenge JSON file")

@@ -27,7 +27,7 @@ from matplotlib.lines import Line2D
 from matplotlib.image import imread
 import numpy as np
 
-from tt_sim import Board, Component, Side, build_gear_connections
+from tt_bench.simulator import Board, Component, Side, build_gear_connections
 
 # ---------------------------------------------------------------------------
 # Load component assets

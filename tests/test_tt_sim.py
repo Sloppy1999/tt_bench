@@ -13,7 +13,7 @@ Tests cover:
 
 import os
 import pytest
-from tt_sim import (
+from tt_bench.simulator import (
     Board,
     Component,
     Ramp,
@@ -572,7 +572,7 @@ class TestChallengeLoading:
     def test_load_challenge_01(self):
         """Test loading challenge 1."""
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch01.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch01.json"
         )
         board, task = load_challenge(path)
 
@@ -583,7 +583,7 @@ class TestChallengeLoading:
     def test_load_challenge_02(self):
         """Test loading challenge 2."""
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch02.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch02.json"
         )
         board, task = load_challenge(path)
 
@@ -593,7 +593,7 @@ class TestChallengeLoading:
     def test_load_challenge_03(self):
         """Test loading challenge 3."""
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch03.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch03.json"
         )
         board, task = load_challenge(path)
 
@@ -605,7 +605,7 @@ class TestChallengeLoading:
         """Test loading challenge 2."""
         board, task = load_challenge(
             os.path.join(
-                BASE_PATH, "tasks/official/challenges/json/tt-official-ch02.json"
+                BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch02.json"
             )
         )
 
@@ -616,7 +616,7 @@ class TestChallengeLoading:
         """Test loading challenge 3."""
         board, task = load_challenge(
             os.path.join(
-                BASE_PATH, "tasks/official/challenges/json/tt-official-ch03.json"
+                BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch03.json"
             )
         )
 
@@ -712,7 +712,7 @@ class TestFullSimulation:
     def test_challenge_01_hopper_entry_alignment(self):
         """Blue hopper should enter one column inward and zigzag down the ramp chain."""
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch01.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch01.json"
         )
         board, _ = load_challenge(path)
 
@@ -733,7 +733,7 @@ class TestFullSimulation:
     def test_challenge_04_red_hopper_entry_alignment(self):
         """Red hopper should enter one column inward and hit the first red-side ramp."""
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch04.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch04.json"
         )
         board, _ = load_challenge(path)
 
@@ -752,7 +752,7 @@ class TestFullSimulation:
         return empty ``no_blue_balls`` results.  Total results = 8 real + 7 empty = 15.
         """
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch01.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch01.json"
         )
         board, task = load_challenge(path)
 
@@ -777,7 +777,7 @@ class TestFullSimulation:
         all 8 blues end up in the left catcher.
         """
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch02.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch02.json"
         )
         board, task = load_challenge(path)
 
@@ -797,7 +797,7 @@ class TestFullSimulation:
         result count that changes with cascading behaviour.
         """
         path = os.path.join(
-            BASE_PATH, "tasks/official/challenges/json/tt-official-ch03.json"
+            BASE_PATH, "data/tasks/official/challenges/json/tt-official-ch03.json"
         )
         board, task = load_challenge(path)
 

@@ -1,0 +1,50 @@
+# Environment variables
+.env
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+*.egg
+
+# Virtual environments
+.venv
+
+# Generated visualizations and reports
+*.mp4
+*.html
+*.png
+*.svg
+benchmark_results/
+analytics_output/
+experiments/
+docs/
+pdf_images/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# Cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific exclusions
+.claude/
+.github/
+.opencode/
+Papers/
+CLAUDE.md
+benchmark_table.md
+openspec/
+generate_table_fig.py
+regenerate_table.py
+generate_challenge_inventory_viz.py

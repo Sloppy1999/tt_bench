@@ -20,7 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = REPO_ROOT / "docs" / "visualizations"
 
 sys.path.insert(0, str(REPO_ROOT / "scorer"))
-from run_benchmark import (
+from tt_bench.benchmark.runner import (
     COMPONENT_RULES,
     UNDERSTANDING_SYSTEM_PROMPT,
     UNDERSTANDING_PROMPT_TEMPLATE,
@@ -281,8 +281,8 @@ The figure is academic, clean, and thesis-safe: grayscale surfaces with a single
 
 def _load_example_challenge() -> tuple[dict, dict]:
     """Load a real challenge and its question for the example prompt."""
-    challenges_dir = REPO_ROOT / "tasks" / "official" / "challenges" / "json"
-    questions_dir = REPO_ROOT / "tasks" / "official" / "questions"
+    challenges_dir = REPO_ROOT / "data" / "tasks" / "official" / "challenges" / "json"
+    questions_dir = REPO_ROOT / "data" / "tasks" / "official" / "questions"
 
     challenge_path = challenges_dir / "tt-official-ch01.json"
     question_path = questions_dir / "tt-official-ch01_questions.json"

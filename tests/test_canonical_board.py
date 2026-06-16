@@ -14,12 +14,10 @@ import sys
 import pytest
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, os.path.join(REPO_ROOT, "simulator"))
-sys.path.insert(0, os.path.join(REPO_ROOT, "scorer"))
 
-from tt_sim import Board, Bit, GearBit, Gear, Ramp, Direction, Side  # noqa: E402
+from tt_bench.simulator import Board, Bit, GearBit, Gear, Ramp, Direction, Side  # noqa: E402
 
-CH01 = os.path.join(REPO_ROOT, "tasks/official/challenges/json/tt-official-ch01.json")
+CH01 = os.path.join(REPO_ROOT, "data/tasks/official/challenges/json/tt-official-ch01.json")
 
 
 class TestToLlmDictOnOfficialChallenge:
@@ -80,7 +78,7 @@ class TestToLlmDictWithBitsAndGears:
         b.place(3, 2, GearBit(3, 2, state=0))
         b.place(4, 2, GearBit(4, 2, state=0))
         # Force gear adjacency graph.
-        from tt_sim import build_gear_connections
+        from tt_bench.simulator import build_gear_connections
         build_gear_connections(b)
         return b
 
@@ -125,7 +123,7 @@ class TestRoundTrip:
 
 class TestToolExecutorParity:
     def test_get_board_state_matches_to_llm_dict(self):
-        from tool_executor import TuringTumbleToolExecutor
+        from tt_bench.tools import TuringTumbleToolExecutor
 
         board = Board.from_task_json(CH01)
         executor = TuringTumbleToolExecutor(board)

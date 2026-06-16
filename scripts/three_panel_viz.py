@@ -103,7 +103,7 @@ def generate_python_code(task: dict) -> str:
 
     lines = [
         '"""Build and simulate a Turing Tumble board."""',
-        "from tt_sim import (",
+        "from tt_bench.simulator import (",
         "    Board, Ramp, Bit,",
         "    Crossover, Interceptor,",
         "    GearBit, Gear, Trigger,",
