@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch29-bA",
   "challenge_number": 29,
+  "tier": 4,
   "title": "One-Shot Switch",
   "objective": "Release three blue balls and then the rest of the red balls.",
   "board": {
@@ -121,7 +122,6 @@
     ],
     "explanation": "This one's tricky! The first blue ball triggers the first latch and releases another blue ball. The second blue ball triggers the second latch and releases another blue ball. The third ball, and all balls from then on, trigger red balls to be released. NOTE - placed_components is incomplete pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

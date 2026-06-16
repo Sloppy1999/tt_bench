@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch17-pA",
   "challenge_number": 17,
+  "tier": 3,
   "title": "Fixed Ratio",
   "objective": "Let only 3 red balls reach the bottom and catch the 4th ball in the interceptor.",
   "board": {
@@ -101,7 +102,6 @@
     ],
     "explanation": "This puzzle demonstrates how you can flip the solution to the previous puzzle around and get the same thing.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "red",

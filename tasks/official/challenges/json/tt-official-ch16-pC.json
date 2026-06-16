@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch16-pC",
   "challenge_number": 16,
+  "tier": 2,
   "title": "Termination",
   "objective": "Let only 2 blue balls reach the bottom and catch the 3rd ball in the interceptor.",
   "board": {
@@ -71,7 +72,6 @@
     ],
     "explanation": "Think about the direction the bits are pointing when each ball is released: 1st ball, 2nd ball, 3rd ball. Notice that the top bit flips with every ball, but the bottom bit only flips when the top bit points left. NOTE - interceptor position is an estimate pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

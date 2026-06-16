@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch28-pA",
   "challenge_number": 28,
+  "tier": 4,
   "title": "Latch",
   "objective": "Release two blue balls and then all of the red balls.",
   "board": {
@@ -126,7 +127,6 @@
     ],
     "explanation": "Two gear bits connected together make a permanent latch. After being flipped once, they can't be flipped back again. The first blue ball flips the latch. The second blue ball and all the rest of the red balls are sent to the red lever by the flipped latch. Ball 1, Ball 2, Ball 3, Ball 4, Ball 5. Actually, there is a way to flip the latch back to the original position. Can you figure out how? Send a ball onto the lower bit only. NOTE - interceptor position is an estimate pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

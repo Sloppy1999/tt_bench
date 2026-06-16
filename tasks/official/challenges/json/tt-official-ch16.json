@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-16",
   "challenge_number": 16,
+  "tier": 2,
   "title": "Termination",
   "objective": "Let only 3 balls reach the bottom and catch the 4th ball in the interceptor ",
   "board": {
@@ -107,7 +108,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

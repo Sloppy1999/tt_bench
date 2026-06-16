@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch07-1comp",
   "challenge_number": 7,
+  "tier": 2,
   "title": "Path of Least Resistance (1 Component)",
   "objective": "Create a path for the blue balls to reach the ouutput with only 6 ramps",
   "board": {
@@ -12,31 +13,31 @@
         "x": 2,
         "y": 0
       },
-       {
+      {
         "type": "crossover",
         "x": 4,
         "y": 2
-       },
+      },
       {
         "type": "ramp_right",
         "x": 0,
         "y": 4
-       },
+      },
       {
         "type": "crossover",
         "x": 1,
         "y": 5
-       },
-       {
+      },
+      {
         "type": "ramp_right",
         "x": 4,
         "y": 6
-       },
-       {
+      },
+      {
         "type": "ramp_left",
         "x": 3,
         "y": 9
-       },
+      },
       {
         "type": "crossover",
         "x": 5,
@@ -46,27 +47,27 @@
         "type": "ramp_left",
         "x": 4,
         "y": 8
-       },
-     {
+      },
+      {
         "type": "ramp_left",
         "x": 2,
         "y": 6
-       },
+      },
       {
         "type": "crossover",
         "x": 1,
         "y": 7
-       },
+      },
       {
         "type": "ramp_right",
         "x": 0,
         "y": 8
-       },
+      },
       {
         "type": "ramp_right",
         "x": 1,
         "y": 9
-       },
+      },
       {
         "type": "crossover",
         "x": 2,
@@ -76,12 +77,12 @@
         "type": "ramp_left",
         "x": 3,
         "y": 1
-       },
-       {
+      },
+      {
         "type": "ramp_left",
         "x": 1,
         "y": 3
-       }
+      }
     ],
     "ball_hoppers": {
       "blue": {
@@ -118,16 +119,14 @@
   },
   "solution": {
     "placed_components": [
-     {
+      {
         "type": "crossover",
         "x": 3,
         "y": 5
       }
-
     ],
     "explanation": "This variant truncates the original solution to the first 1 component(s).",
     "verified": true,
-    "verifier_version": "1.0",
     "position_verified": true,
     "final_marble_state": [
       "blue",
@@ -141,14 +140,14 @@
     ]
   },
   "input_sequence": [
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue"
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
   ],
   "expected_output": {
     "description": "Where each marble ends up after execution",

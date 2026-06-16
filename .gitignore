@@ -14,6 +14,7 @@ wheels/
 
 # PDF page images
 pdf_images/
+Papers/
 
 # Generated visualizations
 scorer/scorer/benchmark_results/
@@ -25,6 +26,13 @@ scorer/benchmark_results/
 
 # Claude files
 CLAUDE.md
+.claude/
+
+# Opencode files
+.opencode/
+
+#Github files
+.github/
 
 # Cache directories
 .pytest_cache/
@@ -33,3 +41,13 @@ CLAUDE.md
 # Scripts
 generate_table_fig.py
 regenerate_table.py
+generate_challenge_inventory_viz.py
+
+# Analysis output
+analytics_output/
+experiments/
+docs/
+openspec/
+scorer/complexity_metrics.csv
+scorer/complexity_metrics.json
+

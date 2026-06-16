@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official_ch11",
   "challenge_number": 11,
+  "tier": 2,
   "title": "Selectivity",
   "objective": "Flip bits 1 and 4",
   "board": {
@@ -170,7 +171,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch15-pA",
   "challenge_number": 15,
+  "tier": 2,
   "title": "Inversion",
   "objective": "Let only one blue ball reach the end. Intercept the 2nd ball.",
   "board": {
@@ -111,7 +112,6 @@
     ],
     "explanation": "Use the bit to make the first ball take a path that leads to the bottom and the second ball take a path to the interceptor. NOTE - component positions are estimates pending simulator verification; interceptor placement not yet included",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

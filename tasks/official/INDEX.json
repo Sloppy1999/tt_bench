@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "source": "Turing Tumble Practice Guide v1.0",
-  "total_puzzles": 57,
+  "total_puzzles": 58,
   "total_questions": 160,
   "tasks": [
     {
@@ -12,6 +12,16 @@
       "tier": 1,
       "page_number": 1,
       "tags": ["routing"],
+      "question_count": 3
+    },
+    {
+      "task_id": "tt-official-ch01-pA",
+      "challenge_number": 1,
+      "variant": "practice_A",
+      "title": "Gravity",
+      "tier": 1,
+      "page_number": 2,
+      "tags": ["routing", "color_symmetry"],
       "question_count": 3
     },
     {
@@ -557,7 +567,7 @@
     {
       "task_id": "tt-official-ch29-bA",
       "challenge_number": 29,
-      "variant": "bonus_A",
+      "variant": "variant_A",
       "title": "One-Shot Switch",
       "tier": 4,
       "page_number": 111,

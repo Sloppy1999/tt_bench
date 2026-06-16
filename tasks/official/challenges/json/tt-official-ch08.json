@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch08",
   "challenge_number": 8,
+  "tier": 2,
   "title": "Depolarization",
   "objective": "Make the pattern blue, red, blue, red, blue, red...",
   "board": {
@@ -122,7 +123,6 @@
     ],
     "explanation": "A bit is used to alternate the color of the balls released. NOTE - fixed_components positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

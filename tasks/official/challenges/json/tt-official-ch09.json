@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch09",
   "challenge_number": 9,
+  "tier": 2,
   "title": "Custom Dimers",
   "objective": "",
   "board": {
@@ -156,7 +157,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch30",
   "challenge_number": 30,
+  "tier": 4,
   "title": "Overflow",
   "objective": "Count the blue balls in register A. If there are more than 7 gear bit OV must flip right(and stay right) to indicate the overflow",
   "board": {
@@ -150,7 +151,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

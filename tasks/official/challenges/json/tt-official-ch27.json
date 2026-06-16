@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch27",
   "challenge_number": 27,
+  "tier": 4,
   "title": "Reflection ",
   "objective": "Reverse the direction of each of the 9 starting bits, regardless of the direction thy point to start",
   "board": {
@@ -210,7 +211,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

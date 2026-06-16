@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch23-pC",
   "challenge_number": 23,
+  "tier": 4,
   "title": "Tetrad",
   "objective": "Let exactly two blue balls reach the end. Intercept the 3rd ball.",
   "board": {
@@ -108,7 +109,6 @@
     "placed_components": [],
     "explanation": "Set the countdown register to a value of 2 before starting the computer. It will let two balls through and the third ball will be captured in the interceptor. NOTE - Solution is initial bit configuration only (register=2). No parts to place. Component positions are estimates pending simulator verification.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

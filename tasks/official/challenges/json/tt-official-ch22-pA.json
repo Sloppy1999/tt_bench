@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch22-pA",
   "challenge_number": 22,
+  "tier": 3,
   "title": "Depletion",
   "objective": "Draw bits to solve the following problems.",
   "board": {
@@ -44,7 +45,6 @@
     "placed_components": [],
     "explanation": "You're getting the hang of it now! Now see if you can answer the question: Why do computers use binary numbers instead of regular, base 10 numbers? Because you can represent them with simple switches.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "..."

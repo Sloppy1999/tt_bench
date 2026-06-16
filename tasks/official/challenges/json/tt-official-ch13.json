@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-13",
   "challenge_number": 13,
+  "tier": 2,
   "title": "Duality-Part 2",
   "objective": "Intercept a red ball",
   "board": {
@@ -141,7 +142,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch06",
   "challenge_number": 6,
+  "tier": 2,
   "title": "Total Internal Reflection",
   "objective": "Make the pattern blue, red, blue, red, blue, red...",
   "board": {
@@ -111,7 +112,6 @@
     ],
     "explanation": "The paths for the red and blue balls cross over each other five times. Crossovers must be placed at each point where they cross. In the last two puzzles, the paths crossed each other one and three times. One, three, and five are all odd numbers. What would happen if the paths crossed over each other an even number of times?. NOTE - component positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

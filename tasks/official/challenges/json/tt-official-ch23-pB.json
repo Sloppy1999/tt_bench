@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch23-pB",
   "challenge_number": 23,
+  "tier": 4,
   "title": "Tetrad",
   "objective": "Let only one blue ball reach the end. Intercept the 2nd ball.",
   "board": {
@@ -108,7 +109,6 @@
     "placed_components": [],
     "explanation": "This time, set the register to a value of 1 before starting the computer. It will let one ball through and capture the next ball. NOTE - Solution is initial bit configuration only (register=1). No parts to place. Component positions are estimates pending simulator verification.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

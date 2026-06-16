@@ -1,6 +1,7 @@
 {
-  "task_id": "tt-official-ch01",
+  "task_id": "tt-official-ch01-pA",
   "challenge_number": 1,
+  "tier": 1,
   "title": "Gravity",
   "objective": "Make all of the red balls (and only the red balls) reach the end.",
   "board": {
@@ -96,7 +97,6 @@
     ],
     "explanation": "The four ramps complete the path from the top of the board to the bottom of the board. Remember that it's against the rules to allow balls to fall freely for any distance! When a ball rolls off a part, it must immediately land on the next part.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "red",

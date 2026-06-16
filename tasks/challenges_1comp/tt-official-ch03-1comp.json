@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch03-1comp",
   "challenge_number": 3,
+  "tier": 1,
   "title": "Ignition (1 Component)",
   "objective": "Release one blue ball and then all of the red balls using a shorter path.",
   "board": {
@@ -42,7 +43,7 @@
         "x": 6,
         "y": 2
       },
-            {
+      {
         "type": "ramp_right",
         "x": 5,
         "y": 5
@@ -111,7 +112,6 @@
     ],
     "explanation": "This variant truncates the original solution to the first 1 component(s).",
     "verified": true,
-    "verifier_version": "1.0",
     "position_verified": true,
     "final_marble_state": [
       "red",

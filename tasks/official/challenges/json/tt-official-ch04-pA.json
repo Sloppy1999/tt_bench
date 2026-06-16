@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch04-pA",
   "challenge_number": 4,
+  "tier": 1,
   "title": "Fusion",
   "objective": "Release one blue ball and then all of the red balls.",
   "board": {
@@ -91,7 +92,6 @@
     ],
     "explanation": "The paths of the blue and red balls come together near the bottom of the board and then lead to the red side. Since all paths lead to the red side, only red balls are released after the first blue ball.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

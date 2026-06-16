@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch02",
   "challenge_number": 2,
+  "tier": 1,
   "title": "Re-entry",
   "objective": "Make all of the blue balls (and only the blue balls) reach the end.",
   "board": {
@@ -96,7 +97,6 @@
     ],
     "explanation": "The starting setup leads the balls over onto the right side. That's a problem! If the balls hit the right lever, they'd release red balls, but you're only supposed to let the blue balls get to the bottom. To solve this puzzle, you have to use the 5 ramps to lead balls back over to the left lever.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

@@ -1,6 +1,7 @@
 {
   "task_id": "tt-officaial-23",
   "challenge_number": 23,
+  "tier": 4,
   "title": "Tetrad",
   "objective": "Let exactly 4 blue balls reach the end. (Intercept the 5th.)",
   "board": {
@@ -123,7 +124,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

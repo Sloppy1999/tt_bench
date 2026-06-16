@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-14",
   "challenge_number": 14,
+  "tier": 2,
   "title": "Duality-Part 3",
   "objective": "If the machine starts with bit A pointing to the left, intercept a blue ball. Otherwise, intercept red.",
   "board": {
@@ -136,7 +137,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

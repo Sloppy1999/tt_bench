@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch28",
   "challenge_number": 28,
+  "tier": 4,
   "title": "Latch",
   "objective": "Release only the blue balls",
   "board": {
@@ -147,7 +148,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

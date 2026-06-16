@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch03-pA",
   "challenge_number": 3,
+  "tier": 1,
   "title": "Ignition",
   "objective": "Start the machine by releasing the blue ball. The blue ball should then release the red ball.",
   "board": {
@@ -101,7 +102,6 @@
     ],
     "explanation": "The 8 ramps make a path down to the right lever. When the blue ball is released, it lands on the right lever, releasing the red ball.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

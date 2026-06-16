@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch18",
   "challenge_number": 18,
+  "tier": 3,
   "title": "Entanglement",
   "objective": "If the top bit AND the bottom bit start pointed to the right, put a ball in interceptor T. Otherwise put a ball in interceptor F.",
   "board": {
@@ -107,7 +108,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

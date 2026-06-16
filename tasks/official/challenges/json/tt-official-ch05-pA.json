@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch05-pA",
   "challenge_number": 5,
+  "tier": 1,
   "title": "Entropy",
   "objective": "Make the pattern blue, red, blue, red, blue, red...",
   "board": {
@@ -71,7 +72,6 @@
     ],
     "explanation": "To get the alternating pattern, blue balls have to get to the right side to release red balls, and red balls have to get to the left side to release blue balls. The paths have to cross over each other! Where they cross, use the crossover part. NOTE - component positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

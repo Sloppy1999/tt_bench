@@ -15,6 +15,7 @@ import os
 import sys
 import time
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -27,6 +28,7 @@ import llm_client as llm_client_
 import tool_executor
 
 import tt_sim
+import complexity_metrics
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,6 +56,9 @@ class TaskResult:
     error: Optional[str] = None
     latency_ms: int = 0
     tokens_used: int = 0
+    component_score: Optional[float] = None
+    """Jaccard component-placement accuracy against ground-truth (0--1).
+    Only populated for agentic_synthesis tasks."""
 
 
 @dataclass
@@ -67,6 +72,7 @@ class BenchmarkReport:
     successful: int
     failed: int
     task_results: List[TaskResult]
+    per_tier: Dict[int, Dict[str, int]] = field(default_factory=dict)
     error: Optional[str] = None
 
 
@@ -202,6 +208,7 @@ class TuringTumbleBenchmark:
         print_board: bool = False,
         max_turns: int = 25,
         max_tokens: int = 32768,
+        compute_complexity: bool = False,
     ):
         self.llm = llm_client
         self.challenges_dir = challenges_dir
@@ -209,7 +216,9 @@ class TuringTumbleBenchmark:
         self.print_board = print_board
         self.max_turns = max_turns
         self.max_tokens = max_tokens
+        self.compute_complexity = compute_complexity
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._workers: int = 1
 
         # Results storage
         self.results: List[TaskResult] = []
@@ -217,6 +226,17 @@ class TuringTumbleBenchmark:
         # Load questions from the questions folder
         self.questions_dir = challenges_dir.parent.parent / "questions"
         self._questions_cache: Dict[str, List[Dict[str, Any]]] = {}
+
+    def _run_single_challenge(
+        self, task_path: Path, task_types: List[str],
+    ) -> List[TaskResult]:
+        """Run all task types for a single challenge file (thread-safe)."""
+        chunk: List[TaskResult] = []
+        if "understanding" in task_types:
+            chunk.extend(self.run_understanding_task(task_path))
+        if "agentic_synthesis" in task_types:
+            chunk.append(self.run_agentic_task(task_path))
+        return chunk
 
     def load_questions(self, task_id: str) -> List[Dict[str, Any]]:
         """Load questions from the questions JSON file for a task."""
@@ -251,6 +271,7 @@ class TuringTumbleBenchmark:
 
         task_info = {
             "task_id": task_id,
+            "tier": data.get("tier", 1),
             "objective": data.get("objective", ""),
             "board": data.get("board", {}),
             "available_parts": data.get("available_parts", {}),
@@ -304,6 +325,46 @@ class TuringTumbleBenchmark:
 
     def _normalize_placements(self, placements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return [self._normalize_placement(p) for p in placements]
+
+    @staticmethod
+    def _compute_component_score(
+        placements: List[Dict[str, Any]],
+        ground_truth: List[Dict[str, Any]],
+    ) -> Tuple[float, int, int, int]:
+        """Jaccard-like component-placement accuracy against ground truth.
+
+        A placement *matches* when (x, y, type, state) are identical.
+        The score is :math:`|correct| / |placements \\cup ground\\ truth|`
+        — penalising both missing ground-truth components and extra, wrong
+        placements equally.  Returns 1.0 when both lists are empty (vacuously
+        correct).
+
+        Returns
+        -------
+        score : float  0--1
+        correct : int  number of placements matching ground truth
+        placed_count : int  |placements|
+        gt_count : int  |ground_truth|
+        """
+        def _key(comp: Dict[str, Any]) -> tuple:
+            return (
+                int(comp.get("x", comp.get("col", 0))),
+                int(comp.get("y", comp.get("row", 0))),
+                str(comp.get("type", comp.get("component_type", ""))),
+                int(comp.get("state", 0)),
+            )
+
+        placed_keys = {_key(p) for p in placements}
+        gt_keys = {_key(g) for g in ground_truth}
+
+        correct = len(placed_keys & gt_keys)
+        union = len(placed_keys | gt_keys)
+
+        if union == 0:
+            return 1.0, 0, 0, 0
+
+        score = correct / union
+        return score, correct, len(placements), len(ground_truth)
 
     def _build_board(
         self,
@@ -602,6 +663,14 @@ class TuringTumbleBenchmark:
             solution = task_info.get("solution", {}).get("placed_components", [])
             board = self._build_board(task_info, include_solution=True)
 
+            # Compute complexity metrics if requested
+            cx_metrics: Dict[str, float] = {}
+            if self.compute_complexity:
+                try:
+                    cx_metrics = complexity_metrics.compute_all_metrics(board, task_info)
+                except Exception as e:
+                    logger.warning(f"Complexity metrics failed for {task_id}: {e}")
+
             # Get component list for prompts
             all_components = board_data.get("fixed_components", []) + solution
 
@@ -669,6 +738,7 @@ class TuringTumbleBenchmark:
                                 "state_precision": validation_result.get(
                                     "state_precision", 0.0
                                 ),
+                                **cx_metrics,
                             },
                             error=validation_result.get("error", error),
                             latency_ms=int((time.time() - start_time) * 1000),
@@ -728,6 +798,15 @@ class TuringTumbleBenchmark:
 
             logger.info(f"Running agentic synthesis task: {task_id}")
 
+            # Compute complexity metrics if requested (on initial board, pre-solution)
+            cx_metrics: Dict[str, float] = {}
+            if self.compute_complexity:
+                try:
+                    init_board = self._build_board(task_info, include_solution=False)
+                    cx_metrics = complexity_metrics.compute_all_metrics(init_board, task_info)
+                except Exception as e:
+                    logger.warning(f"Complexity metrics failed for {task_id}: {e}")
+
             # Create tool executor with fixed components
             fixed = board_data.get("fixed_components", [])
             available_parts = task_info.get("available_parts", {})
@@ -774,6 +853,12 @@ class TuringTumbleBenchmark:
                     if is_valid:
                         solution_used = best
 
+            # Compute component-level accuracy against ground truth
+            gt_placements = task_info.get("solution", {}).get("placed_components", [])
+            comp_score, comp_correct, comp_placed, comp_gt = self._compute_component_score(
+                solution_used, gt_placements
+            )
+
             transcript = []
             for tc, tr in zip(tool_calls, tool_results):
                 transcript.append(
@@ -806,10 +891,16 @@ class TuringTumbleBenchmark:
                     "valid": float(is_valid),
                     "tool_calls_count": len(tool_calls),
                     "turns": len(tool_calls),
+                    "component_score": comp_score,
+                    "component_correct": comp_correct,
+                    "component_placed": comp_placed,
+                    "component_gt": comp_gt,
+                    **cx_metrics,
                 },
                 error=msg if not is_valid else error,
                 latency_ms=int((time.time() - start_time) * 1000),
                 tokens_used=usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0),
+                component_score=comp_score,
             )
 
         except Exception as e:
@@ -949,12 +1040,17 @@ class TuringTumbleBenchmark:
         pattern: str = "tt-official-ch*.json",
         max_tasks: Optional[int] = None,
         task_types: Optional[List[str]] = None,
+        tiers: Optional[List[int]] = None,
     ) -> BenchmarkReport:
         """Run the full benchmark.
 
         Task types:
         - "understanding": Answer questions about board behavior
         - "agentic_synthesis": Use tools to build and verify solution iteratively
+
+        Tiers:
+        - Filter challenges by tier number (e.g., [1, 2]).
+        - None means all tiers.
         """
         task_types = task_types or ["understanding", "agentic_synthesis"]
 
@@ -980,19 +1076,86 @@ class TuringTumbleBenchmark:
         if max_tasks:
             challenge_files = challenge_files[:max_tasks]
 
+        # Filter by tier if specified
+        if tiers is not None:
+            tier_set = set(tiers)
+            filtered = []
+            for cf in challenge_files:
+                try:
+                    with open(cf) as f:
+                        data = json.load(f)
+                    file_tier = data.get("tier", 1)
+                    if file_tier in tier_set:
+                        filtered.append(cf)
+                except Exception:
+                    pass  # skip unreadable files
+            challenge_files = filtered
+            logger.info(
+                "Tier filter %s → %d challenge(s)", sorted(tier_set), len(challenge_files)
+            )
+
         logger.info(f"Found {len(challenge_files)} challenge files")
 
-        for task_path in challenge_files:
-            if "understanding" in task_types:
-                results = self.run_understanding_task(task_path)
-                self.results.extend(results)
+        task_types = task_types or ["understanding", "agentic_synthesis"]
+        workers = getattr(self, "_workers", 1)
 
-            if "agentic_synthesis" in task_types:
-                result = self.run_agentic_task(task_path)
-                self.results.append(result)
+        # ── sequential path (default) ──────────────────────────────────
+        if workers <= 1:
+            for task_path in challenge_files:
+                if "understanding" in task_types:
+                    results = self.run_understanding_task(task_path)
+                    self.results.extend(results)
+                if "agentic_synthesis" in task_types:
+                    result = self.run_agentic_task(task_path)
+                    self.results.append(result)
+        else:
+            # ── parallel path ──────────────────────────────────────────
+            logger.info(f"Using {workers} parallel workers")
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures: dict = {}
+                for task_path in challenge_files:
+                    fut = pool.submit(
+                        self._run_single_challenge, task_path, task_types,
+                    )
+                    futures[fut] = task_path
+
+                for fut in as_completed(futures):
+                    tp = futures[fut]
+                    try:
+                        chunk = fut.result()
+                        self.results.extend(chunk)
+                        logger.info(
+                            "Completed %s → %d result(s)", tp.name, len(chunk),
+                        )
+                    except Exception as exc:
+                        logger.exception("Task %s failed: %s", tp.name, exc)
 
         successful = sum(1 for r in self.results if r.success is True)
         failed = len(self.results) - successful
+
+        # Per-tier aggregation
+        per_tier: Dict[int, Dict[str, int]] = {}
+        task_tier_map: Dict[str, int] = {}
+        for cf in challenge_files:
+            try:
+                with open(cf) as f:
+                    data = json.load(f)
+                task_id = data.get("task_id", cf.stem)
+                if cf.stem.startswith("tt-official-") and task_id != cf.stem:
+                    task_id = cf.stem
+                task_tier_map[task_id] = data.get("tier", 1)
+            except Exception:
+                pass
+
+        for r in self.results:
+            tier = task_tier_map.get(r.task_id, 1)
+            if tier not in per_tier:
+                per_tier[tier] = {"total": 0, "successful": 0, "failed": 0}
+            per_tier[tier]["total"] += 1
+            if r.success is True:
+                per_tier[tier]["successful"] += 1
+            else:
+                per_tier[tier]["failed"] += 1
 
         return BenchmarkReport(
             timestamp=datetime.now().isoformat(),
@@ -1001,6 +1164,7 @@ class TuringTumbleBenchmark:
             total_tasks=len(self.results),
             successful=successful,
             failed=failed,
+            per_tier=per_tier,
             task_results=self.results,
         )
 
@@ -1019,6 +1183,7 @@ class TuringTumbleBenchmark:
                     "task_id": r.task_id,
                     "task_type": r.task_type,
                     "success": r.success,
+                    "component_score": r.component_score,
                     "llm_response": r.llm_response,
                     "predicted": r.predicted,
                     "expected": r.expected,
@@ -1028,6 +1193,17 @@ class TuringTumbleBenchmark:
                     "tokens_used": r.tokens_used,
                 }
             )
+
+        # Build per-tier summary with rates
+        per_tier_json = {}
+        for tier, stats in sorted(report.per_tier.items()):
+            total = stats["total"]
+            per_tier_json[str(tier)] = {
+                "total": total,
+                "successful": stats["successful"],
+                "failed": stats["failed"],
+                "success_rate": round(stats["successful"] / total * 100, 1) if total > 0 else 0,
+            }
 
         data = {
             "timestamp": report.timestamp,
@@ -1039,6 +1215,7 @@ class TuringTumbleBenchmark:
             "success_rate": report.successful / report.total_tasks
             if report.total_tasks > 0
             else 0,
+            "per_tier": per_tier_json,
             "results": results_data,
         }
 
@@ -1096,12 +1273,31 @@ def main():
         "--timeout", type=int, default=300, help="HTTP timeout in seconds (default: 300)"
     )
     parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for task execution (default: 1 = sequential). "
+             "Each worker runs one puzzle at a time.  Set to 4-8 for cloud LLM providers.",
+    )
+    parser.add_argument(
+        "--tiers",
+        type=int,
+        nargs="+",
+        default=None,
+        help="Filter challenges by tier (e.g., --tiers 1 2). If omitted, all tiers are run.",
+    )
+    parser.add_argument(
         "--save-report", action="store_true", help="Save benchmark report"
     )
     parser.add_argument(
         "--print-board",
         action="store_true",
         help="Print the ASCII board for each task while running",
+    )
+    parser.add_argument(
+        "--compute-complexity",
+        action="store_true",
+        help="Compute and attach board complexity metrics to each task result",
     )
 
     args = parser.parse_args()
@@ -1127,7 +1323,9 @@ def main():
         print_board=args.print_board,
         max_turns=args.max_turns,
         max_tokens=args.max_tokens,
+        compute_complexity=args.compute_complexity,
     )
+    benchmark._workers = args.workers if args.workers > 1 else 1
 
     # Run benchmark
     task_types = args.task_type if args.task_type else ["understanding", "agentic_synthesis"]
@@ -1135,6 +1333,7 @@ def main():
         pattern=args.pattern,
         max_tasks=args.max_tasks,
         task_types=task_types,
+        tiers=args.tiers,
     )
 
     # Print summary
@@ -1150,6 +1349,16 @@ def main():
         print(f"Success Rate: {report.successful / report.total_tasks * 100:.1f}%")
     else:
         print("Success Rate: N/A (no tasks matched)")
+
+    # Per-tier breakdown
+    if report.per_tier:
+        print(f"\nPer-Tier Breakdown")
+        print(f"{'-' * 30}")
+        for tier in sorted(report.per_tier):
+            stats = report.per_tier[tier]
+            total = stats["total"]
+            rate = stats["successful"] / total * 100 if total > 0 else 0
+            print(f"  Tier {tier}: {stats['successful']}/{total} ({rate:.1f}%)")
 
     # Save report
     if args.save_report:

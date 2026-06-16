@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch07",
   "challenge_number": 7,
+  "tier": 2,
   "title": "Path of Least Resistance",
   "objective": "Create a path for the blue balls to reach the output with only 6 ramps.",
   "board": {
@@ -81,7 +82,6 @@
     ],
     "explanation": "This one is a little tricker than the last challenge. At the top, you must make a choice on whether to go to the left or to the right. You must go to the left this time.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

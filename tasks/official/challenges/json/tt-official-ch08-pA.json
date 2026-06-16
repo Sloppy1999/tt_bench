@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch08-pA",
   "challenge_number": 8,
+  "tier": 2,
   "title": "Depolarization",
   "objective": "Make all of the blue balls (and only the blue balls) reach the end.",
   "board": {
@@ -102,7 +103,6 @@
     ],
     "explanation": "The bit sends the blue balls in alternating directions. First right, then left, then right, and so on. You must add ramps on either side of the bit to get the balls to a path that leads to the bottom. NOTE - component positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

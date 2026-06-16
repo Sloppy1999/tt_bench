@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch21",
   "challenge_number": 21,
+  "tier": 3,
   "title": "Quantum Number",
   "objective": "Use register A to coun the number of blue balls.(Use 15 or less balls)",
   "board": {
@@ -139,7 +140,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

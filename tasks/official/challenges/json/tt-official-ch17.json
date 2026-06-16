@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-17",
   "challenge_number": 17,
+  "tier": 2,
   "title": "Fixed Ratio",
   "objective": "Make a pattern blue, blue, blue, red, red, red",
   "board": {
@@ -189,7 +190,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

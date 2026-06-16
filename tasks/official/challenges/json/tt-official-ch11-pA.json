@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch11-pA",
   "challenge_number": 11,
+  "tier": 2,
   "title": "Selectivity",
   "objective": "Flip bits A and B to the right.",
   "board": {
@@ -73,7 +74,6 @@
     ],
     "explanation": "The top bit is used to distribute the blue balls between two paths - one leads to the left bit and the other leads to the right bit. NOTE - fixed_components positions are estimates; placed_components is incomplete (2/15) pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "..."

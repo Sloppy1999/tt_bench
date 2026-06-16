@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch04",
   "challenge_number": 4,
+  "tier": 1,
   "title": "Fusion",
   "objective": "Release one red ball and then all of the blue balls.",
   "board": {
@@ -101,7 +102,6 @@
     ],
     "explanation": "The paths need to come together, but they start far apart! Use the ramps to bring the paths together and lead all of the balls to the left side.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "red",

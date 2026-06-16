@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch06-pA",
   "challenge_number": 6,
+  "tier": 2,
   "title": "Total Internal Reflection",
   "objective": "Make the pattern blue, red, blue, red, blue, red...",
   "board": {
@@ -86,7 +87,6 @@
     ],
     "explanation": "In this puzzle, the red and blue paths cross each other three times! At each point where they cross, you must place a crossover. NOTE - component positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

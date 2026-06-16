@@ -951,7 +951,7 @@ class Board:
             red_hopper_count=board_data.get("ball_hoppers", {})
             .get("red", {})
             .get("count", 8),
-            hopper_entry_mode="inward",
+            hopper_entry_mode=board_data.get("hopper_entry_mode", "inward"),
             left_catcher_x=board_data.get("trigger_levers", {})
             .get("left", {})
             .get("x"),
@@ -1158,19 +1158,69 @@ def verify_solution(challenge_path: str, sequence: list[str] | None = None) -> b
 
     Args:
         challenge_path: Path to challenge JSON file
-        sequence: Optional marble release sequence
+        sequence: Optional marble release sequence (defaults to challenge's input_sequence)
 
     Returns:
         bool: True if solution is valid
     """
     board, task = load_challenge(challenge_path)
 
-    # First try the preferred method: expected_output from task
+    # Use challenge's input_sequence if no explicit sequence provided
+    if sequence is None:
+        raw_seq = task.get("input_sequence", ["blue"])
+        if isinstance(raw_seq, str):
+            sequence = [s.strip() for s in raw_seq.split(",") if s.strip()]
+        else:
+            sequence = [str(s).strip() for s in raw_seq if str(s).strip()]
+
+    # Run simulation
+    results = board.run(sequence)
+
+    # --- Free-fall check (no empty in-board cell traversal) ---
+    for marble_idx, result in enumerate(results, start=1):
+        path = result.path or []
+        for path_idx, curr in enumerate(path[1:], start=1):
+            prev = path[path_idx - 1]
+            x, y = curr
+            if prev[1] < 0 and y >= 0:
+                continue
+            next_pos = path[path_idx + 1] if path_idx + 1 < len(path) else None
+            if (
+                y == board.rows - 1
+                and next_pos is not None
+                and next_pos[1] >= board.rows
+                and x in (board.left_catcher_x, board.right_catcher_x)
+            ):
+                continue
+            if 0 <= x < board.cols and 0 <= y < board.rows and curr not in board.components:
+                return False  # Free-fall through empty cell
+
+    # --- Check final_marble_state (primary ground truth) ---
+    final_marble_state = task.get("solution", {}).get("final_marble_state")
+    if final_marble_state is not None:
+        actual_colours = []
+        for r in results:
+            if r.caught_by == "left_catcher":
+                actual_colours.append("blue")
+            elif r.caught_by == "right_catcher":
+                actual_colours.append("red")
+            elif r.caught_by and "interceptor" in str(r.caught_by):
+                actual_colours.append("intercepted")
+        if actual_colours != final_marble_state:
+            return False
+        return True
+
+    # --- Check expected_output counts (explicit numeric fields) ---
     expected_output = task.get("expected_output")
     if expected_output:
-        return _verify_against_expected_output(board, expected_output, sequence)
+        has_numeric = any(
+            k in expected_output
+            for k in ("left_catcher", "right_catcher", "intercepted")
+        )
+        if has_numeric:
+            return _verify_against_expected_output(board, expected_output, sequence)
 
-    # Fallback to heuristic-based verification
+    # --- Fallback to heuristic-based verification ---
     objective = task.get("objective", "").lower()
     return _verify_heuristic(board, objective, sequence)
 

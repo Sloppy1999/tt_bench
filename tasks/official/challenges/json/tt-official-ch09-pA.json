@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch09-pA",
   "challenge_number": 9,
+  "tier": 2,
   "title": "Dimers",
   "objective": "Make the pattern blue, blue, red, blue, blue, red...",
   "board": {
@@ -117,7 +118,6 @@
     ],
     "explanation": "The bit only lets every other blue ball reach the right lever, but every red ball ends at the left lever. NOTE - component positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

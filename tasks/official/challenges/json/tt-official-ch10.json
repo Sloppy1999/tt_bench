@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-10",
   "challenge_number": 10,
+  "tier": 2,
   "title": "Double Bond",
   "objective": "Make the pattern blue, blue, red, red, blue, blue, red, red,...",
   "board": {
@@ -172,7 +173,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

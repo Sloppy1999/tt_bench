@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch07-pA",
   "challenge_number": 7,
+  "tier": 2,
   "title": "Path of Least Resistance",
   "objective": "Create a path for the blue balls to reach the output with only 6 ramps.",
   "board": {
@@ -81,7 +82,6 @@
     ],
     "explanation": "At the top, you've got to decide, 'Do I go to the left or to the right?' The right is the better path because you can use two crossovers instead of just one. NOTE - component positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

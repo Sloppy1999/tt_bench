@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-19",
   "challenge_number": 19,
+  "tier": 3,
   "title": "Entanglement",
   "objective": "If the top bit AND the bottom bit strart pointed to the right, intercept a blue ball. Otherwise, intercept a red ball",
   "board": {
@@ -162,7 +163,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

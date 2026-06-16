@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-24",
   "challenge_number": 24,
+  "tier": 4,
   "title": "Enmend",
   "objective": "Let exactly 9 blue balls reach the end(Intercept the 10th.)",
   "board": {
@@ -134,7 +135,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

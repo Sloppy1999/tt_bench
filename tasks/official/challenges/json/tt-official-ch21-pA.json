@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch21-pA",
   "challenge_number": 21,
+  "tier": 3,
   "title": "Quantum Number",
   "objective": "Each register below shows a number. Can you figure out what number is shown by each one?",
   "board": {
@@ -44,7 +45,6 @@
     "placed_components": [],
     "explanation": "Remember - to figure out the number shown, simply add the number next to each bit that is pointed right. A. How many numbers can be represented by a 3-bit register? B. How many numbers can be represented by a 4-bit register? C. What is the smallest number that can be represented on a 4-bit register? D. What is the largest number that can be represented on a 4-bit register? A. 8 B. 16 C. 0 D. 15",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "..."

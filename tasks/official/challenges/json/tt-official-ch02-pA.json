@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch02-pA",
   "challenge_number": 2,
+  "tier": 1,
   "title": "Re-entry",
   "objective": "Make all of the blue balls (and only the blue balls) reach the end.",
   "board": {
@@ -96,7 +97,6 @@
     ],
     "explanation": "The ramps fill the gaps in the path from the top of the board to the bottom of the board.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

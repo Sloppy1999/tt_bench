@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch27-pA",
   "challenge_number": 27,
+  "tier": 4,
   "title": "Reflection",
   "objective": "Reverse the direction of each of the two starting bits, regardless of the direction they point to start.",
   "board": {
@@ -138,7 +139,6 @@
     ],
     "explanation": "The key is to split the path of the blue balls so that one flips the left bit and the next flips the right bit. NOTE - fixed_components positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "..."

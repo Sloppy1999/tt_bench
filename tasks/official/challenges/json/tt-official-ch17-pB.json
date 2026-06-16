@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch17-pB",
   "challenge_number": 17,
+  "tier": 3,
   "title": "Fixed Ratio",
   "objective": "Make the pattern blue, red, red, red.",
   "board": {
@@ -131,7 +132,6 @@
     ],
     "explanation": "Here you can kick off the computer by releasing a blue ball that travels to the right lever and releases a red ball. The red ball starts the two bit counter (just like the previous puzzle) that stops after 4 red balls are released.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

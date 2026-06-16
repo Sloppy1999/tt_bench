@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch05",
   "challenge_number": 5,
+  "tier": 1,
   "title": "Entropy",
   "objective": "Make the pattern blue, red, blue, red, blue, red...",
   "board": {
@@ -111,7 +112,6 @@
     ],
     "explanation": "This time, you have to create your own path for the red balls to get over to the left lever! You must use the crossover where your path crosses the path of the blue balls.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

@@ -307,6 +307,7 @@ class BoardCanvas(FigureCanvas):
         return {
             "task_id": meta["task_id"],
             "challenge_number": meta["challenge_number"],
+            "tier": meta.get("tier", 1),
             "title": meta["title"],
             "objective": meta["objective"],
             "board": {
@@ -327,7 +328,6 @@ class BoardCanvas(FigureCanvas):
                 "placed_components": [],
                 "explanation": "",
                 "verified": False,
-                "verifier_version": None,
                 "position_verified": False,
                 "final_marble_state": [],
             },

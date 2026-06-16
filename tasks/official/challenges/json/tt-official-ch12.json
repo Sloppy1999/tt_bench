@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-12",
   "challenge_number": 12,
+  "tier": 2,
   "title": "Duality-Part1",
   "objective": "Intercept a blue ball",
   "board": {
@@ -96,7 +97,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

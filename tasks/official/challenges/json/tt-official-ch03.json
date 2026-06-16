@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch03",
   "challenge_number": 3,
+  "tier": 1,
   "title": "Ignition",
   "objective": "Release one blue ball and then all of the red balls.",
   "board": {
@@ -111,7 +112,6 @@
     ],
     "explanation": "Like the last puzzle, the ramps bring the paths of the red and blue balls into one path that leads to the right lever. After the first blue ball, all the rest are red. NOTE - component positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue",

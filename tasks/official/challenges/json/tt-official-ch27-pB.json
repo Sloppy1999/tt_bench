@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch27-pB",
   "challenge_number": 27,
+  "tier": 4,
   "title": "Reflection",
   "objective": "Reverse the direction of each of the three starting bits, regardless of the direction they point to start.",
   "board": {
@@ -169,7 +170,6 @@
     ],
     "explanation": "We have one bit to split the path of the blue balls. That allows us to flip two of the bits, but how can we flip the third bit? Use the second blue ball to trigger the release of a red ball that flips that third bit. NOTE - fixed_components positions are estimates pending simulator verification",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "..."

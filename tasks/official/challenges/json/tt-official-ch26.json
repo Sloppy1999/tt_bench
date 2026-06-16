@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch26",
   "challenge_number": 26,
+  "tier": 4,
   "title": "Nucleus",
   "objective": "Generate the required pattern",
   "board": {
@@ -178,7 +179,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

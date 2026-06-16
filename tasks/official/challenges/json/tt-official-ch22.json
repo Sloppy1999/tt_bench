@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-22",
   "challenge_number": 22,
+  "tier": 3,
   "title": "Depletion",
   "objective": "Register A starts at 15. Substract the number of blue balls from the register. (Use 15 or less balls)",
   "board": {
@@ -139,7 +140,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

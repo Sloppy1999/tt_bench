@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-ch23-pA",
   "challenge_number": 23,
+  "tier": 4,
   "title": "Tetrad",
   "objective": "Let no blue balls reach the end. Intercept the 1st ball.",
   "board": {
@@ -108,7 +109,6 @@
     "placed_components": [],
     "explanation": "Think of the bits as a register. The register is set up to count down. To capture the 1st ball that falls, you must set the register to a value of 0 before starting the computer. NOTE - Solution is initial bit configuration only (register=0). No parts to place. Component positions are estimates pending simulator verification.",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": [
       "blue"

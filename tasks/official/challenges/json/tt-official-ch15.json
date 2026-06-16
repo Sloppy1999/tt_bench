@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-15",
   "challenge_number": 15,
+  "tier": 2,
   "title": "Inversion",
   "objective": "If bit A starts to the left, intercept a blue ball. If bit A starts to the right, intercept a red ball",
   "board": {
@@ -142,7 +143,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },

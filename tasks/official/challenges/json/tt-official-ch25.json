@@ -1,6 +1,7 @@
 {
   "task_id": "tt-official-25",
   "challenge_number": 25,
+  "tier": 4,
   "title": "Regular expression",
   "objective": "",
   "board": {
@@ -180,7 +181,6 @@
     "placed_components": [],
     "explanation": "",
     "verified": false,
-    "verifier_version": null,
     "position_verified": false,
     "final_marble_state": []
   },
