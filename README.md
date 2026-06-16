@@ -137,20 +137,6 @@ uv run python scorer/analyze_results.py \
   --compare results_openai.json results_anthropic.json
 ```
 
-### Simulator as a Library
-
-```python
-from tt_sim import Board, Ramp, Bit, Side, Direction
-
-board = Board()
-board.place(3, 3, Ramp(x=3, y=3, direction=Direction.RIGHT))
-board.place(5, 5, Bit(x=5, y=5, state=0))
-
-result = board.release_marble(Side.BLUE)
-print(f"Path: {result.path}")
-print(f"Caught by: {result.caught_by}")
-```
-
 ---
 
 ## Task Types
