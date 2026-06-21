@@ -106,6 +106,9 @@ ANTHROPIC_API_KEY=sk-ant-... uv run tt-benchmark \
 # Ollama (local)
 uv run tt-benchmark --provider ollama --model llama3.1 --save-report
 
+# LMStudio (local)
+uv run tt-benchmark --provider lmstudio --model llama-3.1-8b-instruct --save-report
+
 # DeepSeek
 DEEPSEEK_API_KEY=sk-... uv run tt-benchmark \
   --provider deepseek --model deepseek-chat --save-report
@@ -119,7 +122,7 @@ uv run tt-benchmark \
 
 | Flag | Description |
 |------|-------------|
-| `--provider` | `openai`, `anthropic`, `ollama`, `deepseek`, `mock` |
+| `--provider` | `openai`, `anthropic`, `ollama`, `lmstudio`, `deepseek`, `mock` |
 | `--model` | Model name (provider-specific) |
 | `--pattern` | Glob filter for tasks (e.g., `"ch0[1-5]*"`) |
 | `--task-type` | `understanding`, `agentic_synthesis`, or both (default) |
