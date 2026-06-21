@@ -62,6 +62,10 @@ class TaskResult:
     component_score: Optional[float] = None
     """Jaccard component-placement accuracy against ground-truth (0--1).
     Only populated for agentic_synthesis tasks."""
+    logprobs: Any = None
+    """Token-level log probabilities from the LLM.  For understanding tasks
+    this is a single list of per-token logprob dicts.  For agentic tasks it is
+    a list of per-turn logprob lists.  ``None`` when not captured."""
 
 
 @dataclass
@@ -600,7 +604,7 @@ class TuringTumbleBenchmark:
                     )
 
                     # Query LLM
-                    predicted, error, usage = self.llm.generate_json(
+                    predicted, error, usage, logprobs = self.llm.generate_json(
                         prompt=prompt,
                         system_prompt=UNDERSTANDING_SYSTEM_PROMPT,
                     )
@@ -632,6 +636,7 @@ class TuringTumbleBenchmark:
                             error=validation_result.get("error", error),
                             latency_ms=int((time.time() - start_time) * 1000),
                             tokens_used=total_tokens,
+                            logprobs=logprobs,
                         )
                     )
 
@@ -712,7 +717,7 @@ class TuringTumbleBenchmark:
             prompt = self.build_agentic_prompt(task_info)
 
             # Run agent with tools
-            final_result, error, tool_calls, tool_results, usage = self.llm.generate_with_tools(
+            final_result, error, tool_calls, tool_results, usage, turn_logprobs = self.llm.generate_with_tools(
                     prompt=prompt,
                     tools=llm_client_.TURING_TUMBLE_TOOLS,
                     tool_executor=executor,
@@ -790,6 +795,7 @@ class TuringTumbleBenchmark:
                 latency_ms=int((time.time() - start_time) * 1000),
                 tokens_used=usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0),
                 component_score=comp_score,
+                logprobs=turn_logprobs,
             )
 
         except Exception as e:
@@ -1080,6 +1086,7 @@ class TuringTumbleBenchmark:
                     "error": r.error,
                     "latency_ms": r.latency_ms,
                     "tokens_used": r.tokens_used,
+                    "logprobs": r.logprobs,
                 }
             )
 
@@ -1188,6 +1195,12 @@ def main():
         action="store_true",
         help="Compute and attach board complexity metrics to each task result",
     )
+    parser.add_argument(
+        "--capture-logprobs",
+        action="store_true",
+        help="Request token-level log probabilities from the LLM provider (OpenAI, DeepSeek). "
+             "Logprobs are stored alongside each task result for confidence analysis.",
+    )
 
     args = parser.parse_args()
 
@@ -1201,6 +1214,7 @@ def main():
         api_key=args.api_key,
         base_url=args.base_url,
         timeout=args.timeout,
+        capture_logprobs=args.capture_logprobs,
     )
     llm_client = llm_client_.create_llm_client(llm_config)
 

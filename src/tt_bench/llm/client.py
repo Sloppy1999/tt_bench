@@ -55,6 +55,11 @@ class LLMResponse:
     finish_reason: str = ""
     latency_ms: int = 0
     raw_response: Optional[Dict[str, Any]] = None
+    logprobs: Optional[List[Dict[str, Any]]] = None
+    """Token-level log probabilities, when ``capture_logprobs`` is enabled.
+    Each dict has keys: ``token``, ``logprob``, ``top_logprobs`` (list of
+    {token, logprob} dicts).  ``None`` when logprobs were not requested or
+    the provider does not support them."""
 
 
 @dataclass
@@ -101,6 +106,8 @@ class LLMConfig:
     base_url: Optional[str] = None
     timeout: int = 300
     max_retries: int = 3
+    capture_logprobs: bool = False
+    """Request token-level log probabilities from the LLM provider."""
 
 
 # ---------------------------------------------------------------------------
@@ -137,10 +144,12 @@ class LLMClient(ABC):
         prompt: str,
         system_prompt: Optional[str] = None,
         **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, Dict[str, int]]:
+    ) -> Tuple[Optional[Dict[str, Any]], str, Dict[str, int], Optional[List[Dict[str, Any]]]]:
         """Generate a JSON response with retry logic.
 
-        Returns (result, error, usage) where usage has 'prompt_tokens' and 'completion_tokens'.
+        Returns (result, error, usage, logprobs) where usage has
+        'prompt_tokens' and 'completion_tokens', and logprobs is a
+        list of per-token log probability dicts (or None if not captured).
         """
         json_prompt = (
             prompt + "\n\nRespond ONLY with valid JSON. No markdown, no explanations."
@@ -178,7 +187,10 @@ class LLMClient(ABC):
                 try:
                     data = json.loads(content)
                     total_tokens = usage.get("total_tokens", 0) if isinstance(usage, dict) else 0
-                    return data, "", {"prompt_tokens": usage.get("prompt_tokens", total_tokens), "completion_tokens": usage.get("completion_tokens", 0)}
+                    return (data, "",
+                            {"prompt_tokens": usage.get("prompt_tokens", total_tokens),
+                             "completion_tokens": usage.get("completion_tokens", 0)},
+                            response.logprobs if hasattr(response, 'logprobs') else None)
                 except json.JSONDecodeError:
                     pass
 
@@ -193,7 +205,10 @@ class LLMClient(ABC):
                             f"Successfully extracted JSON from position {first_brace}-{last_brace}"
                         )
                         total_tokens = usage.get("total_tokens", 0) if isinstance(usage, dict) else 0
-                        return data, "", {"prompt_tokens": usage.get("prompt_tokens", total_tokens), "completion_tokens": usage.get("completion_tokens", 0)}
+                        return (data, "",
+                                {"prompt_tokens": usage.get("prompt_tokens", total_tokens),
+                                 "completion_tokens": usage.get("completion_tokens", 0)},
+                                response.logprobs if hasattr(response, 'logprobs') else None)
                     except json.JSONDecodeError:
                         pass
 
@@ -214,7 +229,8 @@ class LLMClient(ABC):
                 logger.warning(f"LLM call attempt {attempt + 1} failed: {e}")
                 time.sleep(1 * (attempt + 1))
 
-        return None, f"Failed after {self.config.max_retries} attempts", {"prompt_tokens": 0, "completion_tokens": 0}
+        return (None, f"Failed after {self.config.max_retries} attempts",
+                {"prompt_tokens": 0, "completion_tokens": 0}, None)
 
     def generate_with_tools(
         self,
@@ -224,10 +240,12 @@ class LLMClient(ABC):
         system_prompt: Optional[str] = None,
         max_turns: int = 10,
         **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int]]:
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
         """Generate using function calling.
 
-        Returns: (final_response, error, tool_calls, tool_results, usage)
+        Returns: (final_response, error, tool_calls, tool_results, usage, turn_logprobs)
+        turn_logprobs is a list of per-turn logprob lists (one entry per API call),
+        or None if logprobs were not captured.
         """
         raise NotImplementedError("Subclasses must implement generate_with_tools")
 
@@ -403,6 +421,11 @@ class OpenAIClient(LLMClient):
         if not is_gpt5:
             payload["temperature"] = kwargs.get("temperature", self.config.temperature)
 
+        # Request token-level log probabilities when enabled
+        if self.config.capture_logprobs:
+            payload["logprobs"] = True
+            payload["top_logprobs"] = 5
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -435,6 +458,13 @@ class OpenAIClient(LLMClient):
             # Annotations might contain the actual response
             content = str(msg.get("annotations"))
 
+        # Extract logprobs when available
+        logprobs_list: Optional[List[Dict[str, Any]]] = None
+        if self.config.capture_logprobs:
+            logprobs_data = choice.get("logprobs")
+            if logprobs_data and isinstance(logprobs_data, dict):
+                logprobs_list = logprobs_data.get("content")
+
         return LLMResponse(
             content=content,
             model=data["model"],
@@ -442,6 +472,7 @@ class OpenAIClient(LLMClient):
             finish_reason=choice.get("finish_reason", ""),
             latency_ms=latency_ms,
             raw_response=data,
+            logprobs=logprobs_list,
         )
 
     def generate_with_tools(
@@ -452,7 +483,7 @@ class OpenAIClient(LLMClient):
         system_prompt: Optional[str] = None,
         max_turns: int = 10,
         **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int]]:
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
         """Generate using OpenAI function calling."""
         model = self._resolve_model_id(self.config.model)
 
@@ -465,6 +496,7 @@ class OpenAIClient(LLMClient):
         tool_results: List[ToolResult] = []
         total_prompt_tokens = 0
         total_completion_tokens = 0
+        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
 
         is_gpt5 = "gpt-5" in model.lower()
 
@@ -477,6 +509,11 @@ class OpenAIClient(LLMClient):
 
             if is_gpt5:
                 pass
+
+            # Request logprobs when enabled
+            if self.config.capture_logprobs:
+                payload["logprobs"] = True
+                payload["top_logprobs"] = 5
 
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -502,6 +539,7 @@ class OpenAIClient(LLMClient):
                         tool_calls_made,
                         tool_results,
                         {},
+                        turn_logprobs if turn_logprobs else None,
                     )
 
                 data = response.json()
@@ -511,9 +549,20 @@ class OpenAIClient(LLMClient):
                 total_prompt_tokens += usage.get("prompt_tokens", 0)
                 total_completion_tokens += usage.get("completion_tokens", 0)
 
+                # Capture per-turn logprobs
+                if self.config.capture_logprobs:
+                    choice_lp = data["choices"][0]
+                    lp_data = choice_lp.get("logprobs")
+                    if lp_data and isinstance(lp_data, dict):
+                        turn_logprobs.append(lp_data.get("content"))
+                    else:
+                        turn_logprobs.append(None)
+                else:
+                    turn_logprobs.append(None)
+
             except Exception as e:
                 logger.error(f"API call failed: {e}")
-                return None, str(e), tool_calls_made, tool_results, {}
+                return None, str(e), tool_calls_made, tool_results, {}, turn_logprobs if turn_logprobs else None
 
             choice = data["choices"][0]
             msg = choice["message"]
@@ -591,6 +640,7 @@ class OpenAIClient(LLMClient):
                     tool_calls_made,
                     tool_results,
                     {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
+                    turn_logprobs if turn_logprobs else None,
                 )
 
             else:
@@ -600,6 +650,7 @@ class OpenAIClient(LLMClient):
                     tool_calls_made,
                     tool_results,
                     {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
+                    turn_logprobs if turn_logprobs else None,
                 )
 
         return (
@@ -608,6 +659,7 @@ class OpenAIClient(LLMClient):
             tool_calls_made,
             tool_results,
             {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
+            turn_logprobs if turn_logprobs else None,
         )
 
 
@@ -689,6 +741,18 @@ class AnthropicClient(LLMClient):
         )
 
 
+def _extract_ollama_logprobs(data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+    """Extract logprobs from an Ollama /api/chat or /api/generate response.
+
+    Ollama returns logprobs as a top-level list of {token, logprob, bytes}
+    dicts when ``logprobs: true`` is set in the request.
+    """
+    lp = data.get("logprobs")
+    if lp and isinstance(lp, list):
+        return lp
+    return None
+
+
 class OllamaClient(LLMClient):
     """Ollama local model client."""
 
@@ -716,6 +780,10 @@ class OllamaClient(LLMClient):
             "stream": False,
         }
 
+        # Request token-level log probabilities when enabled
+        if self.config.capture_logprobs:
+            payload["logprobs"] = True
+
         start_time = time.time()
 
         try:
@@ -729,13 +797,30 @@ class OllamaClient(LLMClient):
 
             latency_ms = int((time.time() - start_time) * 1000)
 
+            # Extract logprobs when available (Ollama returns them at top level)
+            logprobs_list = _extract_ollama_logprobs(data) if self.config.capture_logprobs else None
+
+            # Some models (lfm, deepseek-r1, etc.) put their answer in the
+            # ``thinking`` field and leave ``content`` empty.
+            msg = data.get("message", {})
+            content = msg.get("content", "")
+            if not content:
+                thinking = msg.get("thinking", "")
+                if thinking:
+                    logger.warning(
+                        "Ollama: content is empty but thinking has %d chars. "
+                        "Using thinking as fallback.", len(thinking),
+                    )
+                    content = thinking
+
             return LLMResponse(
-                content=data["message"]["content"],
+                content=content,
                 model=self.config.model,
                 usage={},
                 finish_reason=data.get("done", False),
                 latency_ms=latency_ms,
                 raw_response=data,
+                logprobs=logprobs_list,
             )
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
@@ -748,6 +833,8 @@ class OllamaClient(LLMClient):
                         "num_predict": kwargs.get("max_tokens", self.config.max_tokens),
                     },
                 }
+                if self.config.capture_logprobs:
+                    payload["logprobs"] = True
                 response = requests.post(
                     f"{self.base_url}/api/generate",
                     json=payload,
@@ -757,6 +844,8 @@ class OllamaClient(LLMClient):
                 data = response.json()
                 latency_ms = int((time.time() - start_time) * 1000)
 
+                logprobs_list = _extract_ollama_logprobs(data) if self.config.capture_logprobs else None
+
                 return LLMResponse(
                     content=data.get("response", ""),
                     model=self.config.model,
@@ -764,11 +853,208 @@ class OllamaClient(LLMClient):
                     finish_reason=data.get("done", False),
                     latency_ms=latency_ms,
                     raw_response=data,
+                    logprobs=logprobs_list,
                 )
             raise
 
     def unload_model(self):
         logger.info(f"Signaling completion for Ollama model: {self.config.model}")
+
+    def generate_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict[str, Any]],
+        tool_executor,
+        system_prompt: Optional[str] = None,
+        max_turns: int = 10,
+        **kwargs,
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
+        """Generate using Ollama native tool calling.
+
+        Ollama /api/chat supports tools natively.  Response format differs
+        from OpenAI: the message is at the top level (no ``choices`` wrapper)
+        and tool-call arguments are already parsed as dicts.
+        """
+        messages: List[Dict[str, Any]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        tool_calls_made: List[ToolCall] = []
+        tool_results: List[ToolResult] = []
+        total_eval_count = 0
+        total_prompt_eval = 0
+        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
+
+        max_tokens_val = kwargs.get("max_tokens", self.config.max_tokens)
+
+        for turn in range(max_turns):
+            payload: Dict[str, Any] = {
+                "model": self.config.model,
+                "messages": messages,
+                "tools": tools,
+                "stream": False,
+                "options": {"num_predict": max_tokens_val},
+            }
+
+            if self.config.capture_logprobs:
+                payload["logprobs"] = True
+
+            start_time = time.time()
+
+            try:
+                response = requests.post(
+                    f"{self.base_url}/api/chat",
+                    json=payload,
+                    timeout=self.config.timeout,
+                )
+                response.raise_for_status()
+            except Exception as e:
+                logger.error(f"Ollama tool call failed: {e}")
+                return (
+                    None, str(e), tool_calls_made, tool_results,
+                    {"prompt_tokens": total_prompt_eval, "completion_tokens": total_eval_count},
+                    turn_logprobs if turn_logprobs else None,
+                )
+
+            data = response.json()
+            latency_ms = int((time.time() - start_time) * 1000)
+
+            # Accumulate proxy token counts (Ollama doesn't have standard usage)
+            total_prompt_eval += data.get("prompt_eval_count", 0)
+            total_eval_count += data.get("eval_count", 0)
+
+            # Capture per-turn logprobs (Ollama returns them at top level)
+            if self.config.capture_logprobs:
+                lp = data.get("logprobs")
+                turn_logprobs.append(lp if isinstance(lp, list) else None)
+            else:
+                turn_logprobs.append(None)
+
+            msg = data.get("message", {})
+            content = (msg.get("content") or "").strip()
+            # Some models (lfm, deepseek-r1 style) put reasoning in the
+            # ``thinking`` field and leave ``content`` empty.  Capture it
+            # as assistant_text so transcripts carry the model's reasoning.
+            thinking = (msg.get("thinking") or "").strip()
+            assistant_text = content if content else thinking
+            tool_calls_raw = msg.get("tool_calls") or []
+
+            if tool_calls_raw:
+                # ── Tool call turn ──────────────────────────────────
+                # Build assistant message with tool_calls for context
+                assistant_msg = {
+                    "role": "assistant",
+                    "content": content,
+                    "tool_calls": tool_calls_raw,
+                }
+                # If the model uses thinking, preserve it in the
+                # assistant message so the context stays coherent.
+                if thinking and not content:
+                    assistant_msg["thinking"] = thinking
+                messages.append(assistant_msg)
+
+                for tc in tool_calls_raw:
+                    fn = tc.get("function", {})
+                    tool_name = fn.get("name", "")
+                    # Ollama returns arguments as a dict, not a JSON string
+                    args = fn.get("arguments", {})
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except json.JSONDecodeError:
+                            pass
+
+                    tc_id = tc.get("id", f"call_{turn}")
+                    tool_call = ToolCall(
+                        name=tool_name,
+                        arguments=args if isinstance(args, dict) else {},
+                        tool_call_id=tc_id,
+                        turn_index=turn,
+                        assistant_text=assistant_text,
+                    )
+                    tool_calls_made.append(tool_call)
+
+                    # Execute the tool
+                    try:
+                        result = tool_executor.execute(tool_name, args if isinstance(args, dict) else {})
+                        tool_results.append(ToolResult(
+                            tool_name=tool_name,
+                            result=result,
+                            tool_call_id=tc_id,
+                            turn_index=turn,
+                        ))
+                        result_content = json.dumps(result)
+                    except Exception as e:
+                        error_result = {"error": str(e)}
+                        tool_results.append(ToolResult(
+                            tool_name=tool_name,
+                            result=error_result,
+                            error=str(e),
+                            tool_call_id=tc_id,
+                            turn_index=turn,
+                        ))
+                        result_content = json.dumps(error_result)
+
+                    messages.append({
+                        "role": "tool",
+                        "content": result_content,
+                    })
+
+                # Early termination: executor detected a valid solution
+                if (
+                    hasattr(tool_executor, "is_solution_found")
+                    and tool_executor.is_solution_found()
+                ):
+                    logger.info(
+                        "Ollama turn %d: valid solution detected — "
+                        "terminating agentic loop early.", turn,
+                    )
+                    return (
+                        {"content": "", "solution_found": True},
+                        "",
+                        tool_calls_made,
+                        tool_results,
+                        {"prompt_tokens": total_prompt_eval, "completion_tokens": total_eval_count},
+                        turn_logprobs if turn_logprobs else None,
+                    )
+
+            elif assistant_text:
+                # ── Final answer turn ───────────────────────────────
+                try:
+                    final_result = json.loads(assistant_text)
+                except json.JSONDecodeError:
+                    final_result = {"final_answer": assistant_text}
+
+                return (
+                    final_result,
+                    "",
+                    tool_calls_made,
+                    tool_results,
+                    {"prompt_tokens": total_prompt_eval, "completion_tokens": total_eval_count},
+                    turn_logprobs if turn_logprobs else None,
+                )
+
+            else:
+                # Empty response — model didn't produce tools or content
+                return (
+                    None,
+                    "Empty response from model",
+                    tool_calls_made,
+                    tool_results,
+                    {"prompt_tokens": total_prompt_eval, "completion_tokens": total_eval_count},
+                    turn_logprobs if turn_logprobs else None,
+                )
+
+        # Max turns reached
+        return (
+            None,
+            f"Max turns ({max_turns}) reached",
+            tool_calls_made,
+            tool_results,
+            {"prompt_tokens": total_prompt_eval, "completion_tokens": total_eval_count},
+            turn_logprobs if turn_logprobs else None,
+        )
 
 
 class DeepSeekClient(LLMClient):
@@ -831,8 +1117,17 @@ class DeepSeekClient(LLMClient):
         # v4 reasoning models: skip temperature, use reasoning_effort instead
         if is_v4:
             payload["reasoning_effort"] = "low"
+            # Disable thinking mode so the model writes directly to content
+            # instead of reasoning_content.  Required for JSON parsing since
+            # reasoning_content contains internal monologue, not structured output.
+            payload["thinking"] = {"type": "disabled"}
         else:
             payload["temperature"] = kwargs.get("temperature", self.config.temperature)
+
+        # Request token-level log probabilities when enabled
+        if self.config.capture_logprobs:
+            payload["logprobs"] = True
+            payload["top_logprobs"] = 5
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -858,6 +1153,26 @@ class DeepSeekClient(LLMClient):
         msg = choice["message"]
         content = msg.get("content", "")
 
+        # Safety net: reasoning models sometimes put the answer in
+        # reasoning_content and leave content empty — even with
+        # reasoning_effort="low".
+        if not content:
+            reasoning = msg.get("reasoning_content", "")
+            if reasoning:
+                logger.warning(
+                    "DeepSeek: content is empty but reasoning_content has %d chars. "
+                    "Using reasoning_content as fallback.",
+                    len(reasoning),
+                )
+                content = reasoning
+
+        # Extract logprobs when available
+        logprobs_list: Optional[List[Dict[str, Any]]] = None
+        if self.config.capture_logprobs:
+            logprobs_data = choice.get("logprobs")
+            if logprobs_data and isinstance(logprobs_data, dict):
+                logprobs_list = logprobs_data.get("content")
+
         return LLMResponse(
             content=content,
             model=data["model"],
@@ -865,6 +1180,7 @@ class DeepSeekClient(LLMClient):
             finish_reason=choice.get("finish_reason", ""),
             latency_ms=latency_ms,
             raw_response=data,
+            logprobs=logprobs_list,
         )
 
     def generate_with_tools(
@@ -875,7 +1191,7 @@ class DeepSeekClient(LLMClient):
         system_prompt: Optional[str] = None,
         max_turns: int = 10,
         **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int]]:
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
         """Generate using DeepSeek function calling."""
         model = self._resolve_model_id(self.config.model)
 
@@ -888,6 +1204,7 @@ class DeepSeekClient(LLMClient):
         tool_results: List[ToolResult] = []
         total_prompt_tokens = 0
         total_completion_tokens = 0
+        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
 
         is_v4 = self._is_v4_reasoning_model(model)
 
@@ -916,6 +1233,11 @@ class DeepSeekClient(LLMClient):
             # everything into content — simpler and faster for tool-calling.
             if is_v4:
                 payload["thinking"] = {"type": "disabled"}
+
+            # Request logprobs when enabled
+            if self.config.capture_logprobs:
+                payload["logprobs"] = True
+                payload["top_logprobs"] = 5
 
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -963,6 +1285,7 @@ class DeepSeekClient(LLMClient):
                         tool_calls_made,
                         tool_results,
                         {},
+                        turn_logprobs if turn_logprobs else None,
                     )
 
                 data = response.json()
@@ -971,6 +1294,17 @@ class DeepSeekClient(LLMClient):
                 usage = data.get("usage", {})
                 total_prompt_tokens += usage.get("prompt_tokens", 0)
                 total_completion_tokens += usage.get("completion_tokens", 0)
+
+                # Capture per-turn logprobs
+                if self.config.capture_logprobs:
+                    choice_lp = data["choices"][0]
+                    lp_data = choice_lp.get("logprobs")
+                    if lp_data and isinstance(lp_data, dict):
+                        turn_logprobs.append(lp_data.get("content"))
+                    else:
+                        turn_logprobs.append(None)
+                else:
+                    turn_logprobs.append(None)
 
                 choice = data["choices"][0]
                 msg = choice["message"]
@@ -1053,6 +1387,7 @@ class DeepSeekClient(LLMClient):
                                 "prompt_tokens": total_prompt_tokens,
                                 "completion_tokens": total_completion_tokens,
                             },
+                            turn_logprobs if turn_logprobs else None,
                         )
                 else:
                     # No more tool calls, return the final response.
@@ -1089,6 +1424,7 @@ class DeepSeekClient(LLMClient):
                             "prompt_tokens": total_prompt_tokens,
                             "completion_tokens": total_completion_tokens,
                         },
+                        turn_logprobs if turn_logprobs else None,
                     )
 
             except Exception as e:
@@ -1099,6 +1435,7 @@ class DeepSeekClient(LLMClient):
                     tool_calls_made,
                     tool_results,
                     {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
+                    turn_logprobs if turn_logprobs else None,
                 )
 
         # Max turns reached
@@ -1108,6 +1445,7 @@ class DeepSeekClient(LLMClient):
             tool_calls_made,
             tool_results,
             {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
+            turn_logprobs if turn_logprobs else None,
         )
 
 
@@ -1144,9 +1482,9 @@ class MockClient(LLMClient):
         system_prompt: Optional[str] = None,
         max_turns: int = 10,
         **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int]]:
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
         self.call_count += 1
-        return None, "MockClient does not support generate_with_tools", [], [], {"prompt_tokens": 0, "completion_tokens": 0}
+        return None, "MockClient does not support generate_with_tools", [], [], {"prompt_tokens": 0, "completion_tokens": 0}, None
 
 
 def create_llm_client(config: LLMConfig) -> LLMClient:
