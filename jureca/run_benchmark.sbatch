@@ -150,7 +150,7 @@ CHALLENGE_SETS=(
 
 ARGS_COMMON="--provider openai \
              --model $MODEL_ID \
-             --base-url http://localhost:${VLLM_PORT}/v1 \
+             --base-url http://localhost:${VLLM_PORT} \
              --api-key none \
              --task-type agentic_synthesis \
              --save-report \
