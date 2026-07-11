@@ -135,12 +135,45 @@ if [ "$GPU_COUNT" -gt 1 ]; then
     TP_FLAG="--tensor-parallel-size $GPU_COUNT"
 fi
 
+# ── Context length: raise to 131072 so long agentic transcripts don't overflow.
+# The YaRN factor is per-model — apply it only where the model's native context
+# is smaller than the target (e.g. Qwen2.5 = 32K → factor 4; DeepSeek-V2-Lite is
+# already 160K+ → no scaling). Read native context from the cached config.json.
+TARGET_CTX=131072
+ROPE_FLAG=""
+set +e
+NATIVE_CTX=$(python3 - "$MODEL_ID" "$HF_HOME" <<'PY'
+import sys, json, glob, os
+model_id, hf_home = sys.argv[1], sys.argv[2]
+repo = "models--" + model_id.replace("/", "--")
+cfgs = sorted(glob.glob(os.path.join(hf_home, "hub", repo, "snapshots", "*", "config.json")))
+n = 0
+if cfgs:
+    c = json.load(open(cfgs[-1]))
+    tc = c.get("text_config") if isinstance(c.get("text_config"), dict) else {}
+    n = c.get("max_position_embeddings") or tc.get("max_position_embeddings") or c.get("max_seq_len") or 0
+print(int(n or 0))
+PY
+)
+set -e
+[ -z "$NATIVE_CTX" ] && NATIVE_CTX=0
+[ "$NATIVE_CTX" -le 0 ] && NATIVE_CTX=32768
+MAX_MODEL_LEN=$TARGET_CTX
+if [ "$NATIVE_CTX" -lt "$TARGET_CTX" ]; then
+    FACTOR=$(python3 -c "print(f'{$TARGET_CTX/$NATIVE_CTX:.2f}')")
+    ROPE_FLAG="--rope-scaling {\"rope_type\":\"yarn\",\"factor\":$FACTOR,\"original_max_position_embeddings\":$NATIVE_CTX}"
+    echo "  Context: $MAX_MODEL_LEN via YaRN (native $NATIVE_CTX, factor $FACTOR)"
+else
+    echo "  Context: $MAX_MODEL_LEN (native $NATIVE_CTX, no scaling)"
+fi
+
 python -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_ID" \
     --served-model-name "$MODEL_ID" \
     --port "$VLLM_PORT" \
     --gpu-memory-utilization 0.90 \
-    --max-model-len 32768 \
+    --max-model-len "$MAX_MODEL_LEN" \
+    $ROPE_FLAG \
     --dtype auto \
     --enable-auto-tool-choice \
     --tool-call-parser "$TOOL_PARSER" \
@@ -189,9 +222,9 @@ CHALLENGE_SETS=(
     "data/tasks/scaled|tt-official-ch*.json|scaled"
 )
 
-# --max-tokens must stay well below --max-model-len (32768): it caps output
-# per turn, and a 25-turn agentic transcript grows the prompt toward the
-# context limit — requesting the full context as output 400s / truncates.
+# --max-tokens caps output per turn and must stay below --max-model-len (now
+# 131072). 32768 gives verbose turns room without truncating, while leaving
+# ~98k of context for the growing agentic transcript.
 ARGS_COMMON="--provider vllm \
              --model $MODEL_ID \
              --base-url http://localhost:${VLLM_PORT} \
@@ -199,7 +232,7 @@ ARGS_COMMON="--provider vllm \
              --task-type agentic_synthesis \
              --save-report \
              --max-turns 25 \
-             --max-tokens 8192 \
+             --max-tokens 32768 \
              --timeout 600 \
              --workers 8 \
              --tiers $TIERS"
