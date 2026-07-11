@@ -61,11 +61,17 @@ export HF_HOME
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
-# Redirect ALL cache to scratch (HOME quota is exhausted)
+# Redirect ALL cache to scratch (HOME quota is exhausted).
+# Triton and Torch Inductor ignore XDG_CACHE_HOME and default to ~/.triton and
+# a HOME/tmp path — torch.compile (enabled on H100) hits them during model
+# init, so they must be redirected explicitly or the job dies on HOME quota.
 export XDG_CACHE_HOME="$PROJECT_DIR/.cache/xdg"
 export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
 export FLASHINFER_WORKSPACE_DIR="$PROJECT_DIR/.cache/flashinfer"
-mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR"
+export TRITON_CACHE_DIR="$PROJECT_DIR/.cache/triton"
+export TORCHINDUCTOR_CACHE_DIR="$PROJECT_DIR/.cache/torchinductor"
+mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR" \
+         "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR"
 
 # ── Load CUDA module (required by flashinfer JIT compilation) ─────────────────
 module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true
@@ -170,14 +176,17 @@ CHALLENGE_SETS=(
     "data/tasks/challenges_2comp|tt-official-ch*.json|2comp"
 )
 
-ARGS_COMMON="--provider openai \
+# --max-tokens must stay well below --max-model-len (32768): it caps output
+# per turn, and a 25-turn agentic transcript grows the prompt toward the
+# context limit — requesting the full context as output 400s / truncates.
+ARGS_COMMON="--provider vllm \
              --model $MODEL_ID \
              --base-url http://localhost:${VLLM_PORT} \
              --api-key none \
              --task-type agentic_synthesis \
              --save-report \
              --max-turns 25 \
-             --max-tokens 32768 \
+             --max-tokens 8192 \
              --timeout 600 \
              --workers 8 \
              --tiers $TIERS"

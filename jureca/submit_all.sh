@@ -119,7 +119,9 @@ banner "HuggingFace cache"
 export HF_HOME="${HF_HOME:-$PROJECT_DIR/.cache/huggingface}"
 echo "  Cache directory: $HF_HOME"
 
-CACHED_COUNT=$(ls -1d "$HF_HOME/hub/models--"* 2>/dev/null | wc -l)
+# Wrap ls so a no-match glob doesn't trip `set -euo pipefail` and abort
+# submission when the cache is empty.
+CACHED_COUNT=$( { ls -1d "$HF_HOME/hub/models--"* 2>/dev/null || true; } | wc -l)
 ok "Cache contains ${CACHED_COUNT} model(s)"
 
 # ── Submit jobs ──────────────────────────────────────────────────────────────
