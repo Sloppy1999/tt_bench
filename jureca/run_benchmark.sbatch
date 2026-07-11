@@ -47,7 +47,10 @@ fail()  { echo -e "  ${RED}✘${NC} $1"; }
 # ── Directories ──────────────────────────────────────────────────────────────
 mkdir -p "$PROJECT_DIR/slurm_logs"
 
-VENV_DIR="/p/scratch/westai0070/$SLURM_JOB_USER/.venv-ttbench"
+VENV_DIR="$PROJECT_DIR/.venv-ttbench"
+if [ ! -d "$VENV_DIR" ]; then
+    VENV_DIR="/p/scratch/westai0070/${SLURM_JOB_USER:-$USER}/.venv-ttbench"
+fi
 if [ ! -d "$VENV_DIR" ]; then
     VENV_DIR="$HOME/.venv-ttbench"
 fi
