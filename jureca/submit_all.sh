@@ -63,7 +63,8 @@ MODELS=(
     "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct|deepseek-coder-v2-lite|1"
     "google/gemma-4-26B-A4B-it|gemma-4-26b-a4b|1"
     "Qwen/Qwen3.6-35B-A3B|qwen3.6-35b-a3b|1"
-    "google/gemma-4-31B|gemma-4-31b|1"
+    # google/gemma-4-31B removed: base (non-instruct) model, no chat template —
+    # vLLM 400s every request. Add a -it instruct variant here if one exists.
 )
 
 # ── Tier selection ────────────────────────────────────────────────────────────
@@ -119,7 +120,9 @@ banner "HuggingFace cache"
 export HF_HOME="${HF_HOME:-$PROJECT_DIR/.cache/huggingface}"
 echo "  Cache directory: $HF_HOME"
 
-CACHED_COUNT=$(ls -1d "$HF_HOME/hub/models--"* 2>/dev/null | wc -l)
+# Wrap ls so a no-match glob doesn't trip `set -euo pipefail` and abort
+# submission when the cache is empty.
+CACHED_COUNT=$( { ls -1d "$HF_HOME/hub/models--"* 2>/dev/null || true; } | wc -l)
 ok "Cache contains ${CACHED_COUNT} model(s)"
 
 # ── Submit jobs ──────────────────────────────────────────────────────────────

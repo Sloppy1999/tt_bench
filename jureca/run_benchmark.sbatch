@@ -61,11 +61,21 @@ export HF_HOME
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
-# Redirect ALL cache to scratch (HOME quota is exhausted)
+# Redirect ALL cache to scratch (HOME quota is exhausted). Each tool uses its
+# OWN variable and ignores XDG_CACHE_HOME:
+#   - Triton / Torch Inductor default to ~/.triton and a HOME path.
+#   - flashinfer builds its cache as <FLASHINFER_WORKSPACE_BASE>/.cache/flashinfer,
+#     defaulting the base to $HOME. The correct knob is FLASHINFER_WORKSPACE_BASE
+#     (NOT FLASHINFER_WORKSPACE_DIR, which flashinfer never reads) — getting it
+#     wrong crashes engine init with "Disk quota exceeded: ~/.cache/flashinfer".
 export XDG_CACHE_HOME="$PROJECT_DIR/.cache/xdg"
 export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
-export FLASHINFER_WORKSPACE_DIR="$PROJECT_DIR/.cache/flashinfer"
-mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR"
+export TRITON_CACHE_DIR="$PROJECT_DIR/.cache/triton"
+export TORCHINDUCTOR_CACHE_DIR="$PROJECT_DIR/.cache/torchinductor"
+export FLASHINFER_WORKSPACE_BASE="$PROJECT_DIR"   # → $PROJECT_DIR/.cache/flashinfer
+export VLLM_USE_FLASHINFER_SAMPLER=0              # skip the flashinfer sampler import path
+mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$TRITON_CACHE_DIR" \
+         "$TORCHINDUCTOR_CACHE_DIR" "$PROJECT_DIR/.cache/flashinfer"
 
 # ── Load CUDA module (required by flashinfer JIT compilation) ─────────────────
 module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true
@@ -147,6 +157,12 @@ banner "Waiting for vLLM server to be ready"
 MAX_WAIT=600  # 10 minutes for model loading
 WAITED=0
 while ! curl -s --max-time 2 "http://localhost:${VLLM_PORT}/v1/models" > /dev/null 2>&1; do
+    # Fail fast if the server process already died (don't poll a corpse for 10 min).
+    if ! kill -0 "$VLLM_PID" 2>/dev/null; then
+        fail "vLLM process ($VLLM_PID) exited before becoming ready — last log lines:"
+        tail -n 25 "$PROJECT_DIR/slurm_logs/vllm_${MODEL_NAME}.log" 2>/dev/null | sed 's/^/    /'
+        exit 1
+    fi
     sleep 10
     WAITED=$((WAITED + 10))
     if [ $WAITED -ge $MAX_WAIT ]; then
@@ -168,16 +184,22 @@ CHALLENGE_SETS=(
     "data/tasks/official/challenges/json|tt-official-ch*.json|official"
     "data/tasks/challenges_1comp|tt-official-ch*.json|1comp"
     "data/tasks/challenges_2comp|tt-official-ch*.json|2comp"
+    # scaled is LAST: ~1000 tier-1 tasks (vs ~10 for the others), so the small
+    # sets complete and save first even if the job hits its --time wall here.
+    "data/tasks/scaled|tt-official-ch*.json|scaled"
 )
 
-ARGS_COMMON="--provider openai \
+# --max-tokens must stay well below --max-model-len (32768): it caps output
+# per turn, and a 25-turn agentic transcript grows the prompt toward the
+# context limit — requesting the full context as output 400s / truncates.
+ARGS_COMMON="--provider vllm \
              --model $MODEL_ID \
              --base-url http://localhost:${VLLM_PORT} \
              --api-key none \
              --task-type agentic_synthesis \
              --save-report \
              --max-turns 25 \
-             --max-tokens 32768 \
+             --max-tokens 8192 \
              --timeout 600 \
              --workers 8 \
              --tiers $TIERS"

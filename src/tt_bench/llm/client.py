@@ -1771,6 +1771,420 @@ class LMStudioClient(LLMClient):
         )
 
 
+class VLLMClient(LLMClient):
+    """vLLM local server client (OpenAI-compatible API).
+
+    vLLM serves an OpenAI-compatible ``/v1/chat/completions`` endpoint on
+    ``http://localhost:8000`` by default.  No API key is required — a dummy
+    value is sent to satisfy the ``Authorization`` header convention.
+
+    ``generate_with_tools`` uses the OpenAI-style tool-calling protocol.
+    Compared with :class:`LMStudioClient`, this client adds vLLM-specific
+    handling:
+
+    * an explicit ``tool_choice="auto"`` in the payload, with a fallback to
+      ``tool_choice="required"`` when the server is started without
+      ``--enable-auto-tool-choice`` (a 400 mentioning that flag);
+    * content-based tool-call extraction — when a misconfigured tool-call
+      parser returns ``tool_calls: []`` but embeds the call JSON in the
+      message ``content`` (hermes ``<tool_call>…</tool_call>`` or bare
+      ``{"name": …}`` from ``llama3_json``);
+    * a ``reasoning_content`` fallback for models that route their answer
+      through the reasoning channel;
+    * no aggressive ``max_tokens`` cap — vLLM enforces its own
+      ``--max-model-len`` server-side.
+    """
+
+    def __init__(self, config: LLMConfig):
+        super().__init__(config)
+        # vLLM doesn't require a real API key; send a dummy value so callers
+        # don't have to conditionally omit the header.
+        self.api_key = config.api_key or "vllm"
+        self.base_url = (
+            config.base_url
+            or os.environ.get("VLLM_BASE_URL", "http://localhost:8000")
+        )
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        **kwargs,
+    ) -> LLMResponse:
+        messages: List[Dict[str, Any]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload: Dict[str, Any] = {
+            "model": self.config.model,
+            "messages": messages,
+            "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+            "temperature": kwargs.get("temperature", self.config.temperature),
+        }
+
+        if self.config.capture_logprobs:
+            payload["logprobs"] = True
+            payload["top_logprobs"] = 5
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        start_time = time.time()
+
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=self.config.timeout,
+        )
+        if response.status_code != 200:
+            logger.error(
+                "vLLM API error: %s - %s", response.status_code, response.text
+            )
+            response.raise_for_status()
+
+        data = response.json()
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        choice = data["choices"][0]
+        msg = choice["message"]
+        # Fall back to reasoning_content for models that only fill that field.
+        content = msg.get("content") or msg.get("reasoning_content") or ""
+
+        logprobs_list: Optional[List[Dict[str, Any]]] = None
+        if self.config.capture_logprobs:
+            logprobs_data = choice.get("logprobs")
+            if logprobs_data and isinstance(logprobs_data, dict):
+                logprobs_list = logprobs_data.get("content")
+
+        return LLMResponse(
+            content=content,
+            model=data.get("model", self.config.model),
+            usage=data.get("usage", {}),
+            finish_reason=choice.get("finish_reason", ""),
+            latency_ms=latency_ms,
+            raw_response=data,
+            logprobs=logprobs_list,
+        )
+
+    def unload_model(self):
+        logger.info("Signaling completion for vLLM model: %s", self.config.model)
+
+    @staticmethod
+    def _extract_tool_call_from_content(content: str, turn: int) -> Optional[Dict[str, Any]]:
+        """Recover an OpenAI-style tool call embedded in message content.
+
+        vLLM with ``--enable-auto-tool-choice`` but a misconfigured parser can
+        return ``tool_calls: []`` while placing the call JSON inside
+        ``content``.  The exact wrapper varies by model/parser:
+
+        * hermes: ``<tool_call>{"name": "...", "arguments": {...}}</tool_call>``
+        * llama3_json: bare ``{"name": "...", "parameters": {...}}``
+        * markdown-fenced: ````json\\n{"name": "...", "arguments": {...}}\\n`````
+
+        Rather than pattern-match each wrapper, scan for the first valid JSON
+        object carrying a ``name`` key — ``raw_decode`` stops at that object's
+        real closing brace, so surrounding prose/fences/tags are ignored.
+
+        Returns a single tool-call dict (OpenAI schema) or ``None``.
+        """
+        decoder = json.JSONDecoder()
+        idx = 0
+        while idx < len(content):
+            brace = content.find("{", idx)
+            if brace == -1:
+                return None
+            try:
+                parsed, end = decoder.raw_decode(content, brace)
+            except json.JSONDecodeError:
+                idx = brace + 1
+                continue
+            if isinstance(parsed, dict) and "name" in parsed:
+                # Normalise: hermes uses 'parameters', OpenAI uses 'arguments'.
+                args = parsed.get("arguments", parsed.get("parameters", {}))
+                return {
+                    "id": f"call_{turn}",
+                    "type": "function",
+                    "function": {
+                        "name": parsed["name"],
+                        "arguments": args if isinstance(args, str) else json.dumps(args),
+                    },
+                }
+            idx = end  # valid JSON but not a tool call — skip past it
+        return None
+
+    def generate_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict[str, Any]],
+        tool_executor,
+        system_prompt: Optional[str] = None,
+        max_turns: int = 10,
+        **kwargs,
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
+        """Generate using vLLM / OpenAI-compatible tool calling."""
+        messages: List[Dict[str, Any]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        tool_calls_made: List[ToolCall] = []
+        tool_results: List[ToolResult] = []
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
+        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
+
+        # vLLM enforces its own --max-model-len server-side, so pass the
+        # configured value through without the aggressive local-model cap.
+        max_tokens_val = kwargs.get("max_tokens", self.config.max_tokens)
+
+        tried_required_fallback = False
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        for turn in range(max_turns):
+            payload: Dict[str, Any] = {
+                "model": self.config.model,
+                "messages": messages,
+                "tools": tools,
+                "tool_choice": "required" if tried_required_fallback else "auto",
+                "max_tokens": max_tokens_val,
+                "temperature": kwargs.get("temperature", self.config.temperature),
+            }
+
+            if self.config.capture_logprobs:
+                payload["logprobs"] = True
+                payload["top_logprobs"] = 5
+
+            start_time = time.time()
+
+            try:
+                # ── Retry transient network errors ──────────────────
+                # +1 attempt covers the tool_choice=required fallback.
+                for attempt in range(4):
+                    try:
+                        response = requests.post(
+                            f"{self.base_url}/v1/chat/completions",
+                            json=payload,
+                            headers=headers,
+                            timeout=self.config.timeout,
+                        )
+                    except (
+                        requests.exceptions.Timeout,
+                        requests.exceptions.ConnectionError,
+                    ) as retry_err:
+                        if attempt < 2:
+                            wait = 2**attempt
+                            logger.warning(
+                                "vLLM API %s (attempt %d/3), retrying in %ds…",
+                                type(retry_err).__name__,
+                                attempt + 1,
+                                wait,
+                            )
+                            time.sleep(wait)
+                            continue
+                        raise
+
+                    if response.status_code == 200:
+                        break  # success
+
+                    # Server started without --enable-auto-tool-choice rejects
+                    # tool_choice="auto".  Fall back to "required".
+                    if (
+                        response.status_code == 400
+                        and "enable-auto-tool-choice" in response.text
+                        and not tried_required_fallback
+                    ):
+                        logger.warning(
+                            "vLLM: tool_choice=auto unsupported by server, "
+                            "retrying with tool_choice=required…"
+                        )
+                        payload["tool_choice"] = "required"
+                        tried_required_fallback = True
+                        continue  # retry same turn with required
+
+                    logger.error(
+                        "vLLM API error: %s - %s",
+                        response.status_code,
+                        response.text,
+                    )
+                    break
+
+                if response.status_code != 200:
+                    return (
+                        None,
+                        f"API error: {response.text}",
+                        tool_calls_made,
+                        tool_results,
+                        {},
+                        turn_logprobs if turn_logprobs else None,
+                    )
+
+                data = response.json()
+                latency_ms = int((time.time() - start_time) * 1000)
+
+                usage = data.get("usage", {})
+                total_prompt_tokens += usage.get("prompt_tokens", 0)
+                total_completion_tokens += usage.get("completion_tokens", 0)
+
+                # Per-turn logprobs
+                if self.config.capture_logprobs:
+                    choice_lp = data["choices"][0]
+                    lp_data = choice_lp.get("logprobs")
+                    if lp_data and isinstance(lp_data, dict):
+                        turn_logprobs.append(lp_data.get("content"))
+                    else:
+                        turn_logprobs.append(None)
+                else:
+                    turn_logprobs.append(None)
+
+                choice = data["choices"][0]
+                msg = choice["message"]
+                finish_reason = choice.get("finish_reason", "")
+
+                if finish_reason == "length":
+                    logger.warning(
+                        "vLLM turn %d: response truncated (finish_reason=length). "
+                        "max_tokens=%d may be too low.",
+                        turn,
+                        max_tokens_val,
+                    )
+
+                # ── Content-based tool-call recovery ────────────────
+                # When the tool-call parser is misconfigured, vLLM returns an
+                # empty tool_calls list with the call JSON inside content.
+                if not msg.get("tool_calls") and (msg.get("content") or "").strip():
+                    recovered = self._extract_tool_call_from_content(
+                        msg["content"].strip(), turn
+                    )
+                    if recovered:
+                        msg["tool_calls"] = [recovered]
+
+                # ── Tool calls? ─────────────────────────────────────
+                if msg.get("tool_calls"):
+                    messages.append(msg)
+
+                    for tc in msg["tool_calls"]:
+                        tool_call_id = tc.get("id", "")
+                        tool_call = ToolCall(
+                            name=tc["function"]["name"],
+                            arguments=json.loads(tc["function"]["arguments"]),
+                            tool_call_id=tool_call_id,
+                            turn_index=turn,
+                        )
+                        tool_calls_made.append(tool_call)
+
+                        try:
+                            result = tool_executor.execute(
+                                tool_call.name, tool_call.arguments
+                            )
+                            tool_result = ToolResult(
+                                tool_name=tool_call.name,
+                                result=result,
+                                tool_call_id=tool_call.tool_call_id,
+                                turn_index=turn,
+                            )
+                        except Exception as e:
+                            tool_result = ToolResult(
+                                tool_name=tool_call.name,
+                                result=None,
+                                error=str(e),
+                                tool_call_id=tool_call.tool_call_id,
+                                turn_index=turn,
+                            )
+                        tool_results.append(tool_result)
+
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.tool_call_id,
+                            "content": (
+                                json.dumps(tool_result.result)
+                                if tool_result.result
+                                else tool_result.error
+                            ),
+                        })
+
+                    if (
+                        hasattr(tool_executor, "is_solution_found")
+                        and tool_executor.is_solution_found()
+                    ):
+                        logger.info(
+                            "vLLM turn %d: valid solution detected — "
+                            "terminating agentic loop early.",
+                            turn,
+                        )
+                        return (
+                            {"content": "", "solution_found": True},
+                            "",
+                            tool_calls_made,
+                            tool_results,
+                            {
+                                "prompt_tokens": total_prompt_tokens,
+                                "completion_tokens": total_completion_tokens,
+                            },
+                            turn_logprobs if turn_logprobs else None,
+                        )
+
+                else:
+                    # Fall back to reasoning_content for models that route the
+                    # answer through the reasoning channel.
+                    content = (
+                        msg.get("content") or msg.get("reasoning_content") or ""
+                    ).strip()
+                    error_msg = ""
+
+                    if not content and finish_reason == "length":
+                        error_msg = (
+                            f"Response truncated: max_tokens={max_tokens_val} "
+                            f"exhausted before content could be generated."
+                        )
+                        logger.warning("vLLM turn %d: %s", turn, error_msg)
+
+                    return (
+                        {"content": content},
+                        error_msg,
+                        tool_calls_made,
+                        tool_results,
+                        {
+                            "prompt_tokens": total_prompt_tokens,
+                            "completion_tokens": total_completion_tokens,
+                        },
+                        turn_logprobs if turn_logprobs else None,
+                    )
+
+            except Exception as e:
+                logger.exception("vLLM API exception: %s", e)
+                return (
+                    None,
+                    f"Exception: {str(e)}",
+                    tool_calls_made,
+                    tool_results,
+                    {
+                        "prompt_tokens": total_prompt_tokens,
+                        "completion_tokens": total_completion_tokens,
+                    },
+                    turn_logprobs if turn_logprobs else None,
+                )
+
+        return (
+            None,
+            f"Max turns ({max_turns}) reached",
+            tool_calls_made,
+            tool_results,
+            {
+                "prompt_tokens": total_prompt_tokens,
+                "completion_tokens": total_completion_tokens,
+            },
+            turn_logprobs if turn_logprobs else None,
+        )
+
+
 class CloudClient(LLMClient):
     """Cloud API client for OpenAI-compatible endpoints (AcademicCloud).
 
@@ -2221,6 +2635,7 @@ def create_llm_client(config: LLMConfig) -> LLMClient:
         "anthropic": AnthropicClient,
         "ollama": OllamaClient,
         "lmstudio": LMStudioClient,
+        "vllm": VLLMClient,
         "deepseek": DeepSeekClient,
         "cloud": CloudClient,
         "mock": MockClient,
