@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import time
 import logging
 from pathlib import Path
@@ -1880,35 +1879,42 @@ class VLLMClient(LLMClient):
 
         vLLM with ``--enable-auto-tool-choice`` but a misconfigured parser can
         return ``tool_calls: []`` while placing the call JSON inside
-        ``content``.  Two known shapes are handled:
+        ``content``.  The exact wrapper varies by model/parser:
 
-        * hermes parser: ``<tool_call>{"name": "...", "arguments": {...}}</tool_call>``
-        * llama3_json parser: bare ``{"name": "...", "parameters": {...}}``
+        * hermes: ``<tool_call>{"name": "...", "arguments": {...}}</tool_call>``
+        * llama3_json: bare ``{"name": "...", "parameters": {...}}``
+        * markdown-fenced: ````json\\n{"name": "...", "arguments": {...}}\\n`````
+
+        Rather than pattern-match each wrapper, scan for the first valid JSON
+        object carrying a ``name`` key — ``raw_decode`` stops at that object's
+        real closing brace, so surrounding prose/fences/tags are ignored.
 
         Returns a single tool-call dict (OpenAI schema) or ``None``.
         """
-        # Try the hermes XML wrapper first, then bare JSON.
-        match = re.search(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", content, re.DOTALL)
-        if not match:
-            match = re.search(r'\{"name"\s*:\s*"[^"]+".*\}', content, re.DOTALL)
-        if not match:
-            return None
-
-        try:
-            parsed = json.loads(match.group(1) if match.lastindex else match.group(0))
-        except json.JSONDecodeError:
-            return None
-
-        # Normalise: hermes uses 'parameters', OpenAI uses 'arguments'.
-        args = parsed.get("arguments", parsed.get("parameters", {}))
-        return {
-            "id": f"call_{turn}",
-            "type": "function",
-            "function": {
-                "name": parsed["name"],
-                "arguments": args if isinstance(args, str) else json.dumps(args),
-            },
-        }
+        decoder = json.JSONDecoder()
+        idx = 0
+        while idx < len(content):
+            brace = content.find("{", idx)
+            if brace == -1:
+                return None
+            try:
+                parsed, end = decoder.raw_decode(content, brace)
+            except json.JSONDecodeError:
+                idx = brace + 1
+                continue
+            if isinstance(parsed, dict) and "name" in parsed:
+                # Normalise: hermes uses 'parameters', OpenAI uses 'arguments'.
+                args = parsed.get("arguments", parsed.get("parameters", {}))
+                return {
+                    "id": f"call_{turn}",
+                    "type": "function",
+                    "function": {
+                        "name": parsed["name"],
+                        "arguments": args if isinstance(args, str) else json.dumps(args),
+                    },
+                }
+            idx = end  # valid JSON but not a tool call — skip past it
+        return None
 
     def generate_with_tools(
         self,
