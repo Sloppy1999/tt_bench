@@ -137,7 +137,7 @@ ARGS_COMMON="--provider openai \
              --max-turns 25 \
              --max-tokens 32768 \
              --timeout 600 \
-             --workers 4 \
+             --workers 8 \
              --tiers $TIERS"
 
 TOTAL_SUCCESS=0
