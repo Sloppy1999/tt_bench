@@ -64,7 +64,8 @@ export TRANSFORMERS_OFFLINE=1
 # Redirect ALL cache to scratch (HOME quota is exhausted)
 export XDG_CACHE_HOME="$PROJECT_DIR/.cache/xdg"
 export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
-mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR"
+export FLASHINFER_WORKSPACE_DIR="$PROJECT_DIR/.cache/flashinfer"
+mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR"
 
 RESULTS_BASE="$PROJECT_DIR/benchmark_results/jureca_tier1"
 RESULTS_DIR="$RESULTS_BASE/${MODEL_NAME}"
