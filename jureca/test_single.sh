@@ -100,7 +100,7 @@ echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(' 
 banner "Running challenge: $CHALLENGE"
 cd "$PROJECT_DIR"
 
-CHALLENGES_DIR="data/tasks/official/challenges/json"
+CHALLENGES_DIR="data/tasks/challenges_1comp"
 OUT_DIR="$PROJECT_DIR/test_results/${MODEL_NAME}"
 mkdir -p "$OUT_DIR"
 
