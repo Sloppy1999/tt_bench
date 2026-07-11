@@ -147,6 +147,7 @@ for entry in "${MODELS[@]}"; do
     echo "  Submitting: $model_name ($model_id) — $gpu_count GPU(s)"
 
     JOB_ID=$(sbatch \
+        --gres="gpu:${gpu_count}" \
         --export=ALL,MODEL_ID="$model_id",MODEL_NAME="$model_name",GPU_COUNT="$gpu_count",TIERS="$TIERS",PROJECT_DIR="$PROJECT_DIR" \
         --parsable \
         "$SBATCH_SCRIPT")

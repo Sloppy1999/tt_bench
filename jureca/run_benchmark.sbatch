@@ -19,8 +19,9 @@
 #SBATCH --partition=dc-hwai
 #SBATCH --account=westai0070
 #SBATCH --nodes=1
-#SBATCH --gpus=${GPU_COUNT:-1}
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16
+# --gres=gpu:N is passed on the sbatch command line (see submit_all.sh)
 #SBATCH --mem=128G
 #SBATCH --time=08:00:00
 #SBATCH --output=slurm_logs/%x-%j-%a.out
