@@ -12,7 +12,15 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Auto-detect project directory (consistent with submit_all.sh)
+if [ -n "${PROJECT_DIR:-}" ]; then
+    :  # already set
+elif [ -d "/p/scratch/westai0070/$USER/tt-bench" ]; then
+    PROJECT_DIR="/p/scratch/westai0070/$USER/tt-bench"
+elif [ -d "$SCRIPT_DIR/.." ]; then
+    PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
 
 RESULTS_DIR="$PROJECT_DIR/benchmark_results/jureca_tier1"
 SUMMARY_FILE="$RESULTS_DIR/summary.json"

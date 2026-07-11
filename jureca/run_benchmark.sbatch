@@ -46,7 +46,10 @@ fail()  { echo -e "  ${RED}✘${NC} $1"; }
 # ── Directories ──────────────────────────────────────────────────────────────
 mkdir -p "$PROJECT_DIR/slurm_logs"
 
-VENV_DIR="$HOME/.venv-ttbench"
+VENV_DIR="/p/scratch/westai0070/$SLURM_JOB_USER/.venv-ttbench"
+if [ ! -d "$VENV_DIR" ]; then
+    VENV_DIR="$HOME/.venv-ttbench"
+fi
 HF_HOME="${HF_HOME:-$PROJECT_DIR/.cache/huggingface}"
 export HF_HOME
 

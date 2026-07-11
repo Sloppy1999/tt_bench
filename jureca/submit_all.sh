@@ -26,14 +26,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Auto-detect project directory: prefer $PROJECT/tt-bench (project storage),
-# fall back to script-relative path (HOME).
-if [ -n "${PROJECT:-}" ] && [ -d "$PROJECT/tt-bench" ]; then
-    PROJECT_DIR="$PROJECT/tt-bench"
+# Auto-detect project directory. On JURECA, prefer scratch storage.
+if [ -n "${PROJECT_DIR:-}" ]; then
+    :  # already set via environment
+elif [ -d "/p/scratch/westai0070/$USER/tt-bench" ]; then
+    PROJECT_DIR="/p/scratch/westai0070/$USER/tt-bench"
 elif [ -d "$SCRIPT_DIR/.." ]; then
     PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 else
-    echo "ERROR: Cannot find project directory. Set PROJECT_DIR or deploy to \$PROJECT/tt-bench"
+    echo "ERROR: Cannot find project directory."
+    echo "Expected at /p/scratch/westai0070/$USER/tt-bench or relative to script."
     exit 1
 fi
 

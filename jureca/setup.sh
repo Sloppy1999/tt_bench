@@ -23,8 +23,12 @@ banner() { echo -e "\n${BOLD}━━━ $1 ━━━${NC}"; }
 ok()    { echo -e "  ${GREEN}✔${NC} $1"; }
 fail()  { echo -e "  ${RED}✘${NC} $1"; }
 
-VENV_DIR="$HOME/.venv-ttbench"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+VENV_DIR="$PROJECT_DIR/.venv-ttbench"
+
+# Move pip cache to scratch to avoid HOME quota
+export PIP_CACHE_DIR="$PROJECT_DIR/.cache/pip"
+export UV_CACHE_DIR="$PROJECT_DIR/.cache/uv"
 
 # ---------------------------------------------------------------------------
 # 1. Install uv (isolated user install — no system packages needed)
