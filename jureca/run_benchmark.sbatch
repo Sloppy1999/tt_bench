@@ -57,6 +57,10 @@ fi
 HF_HOME="${HF_HOME:-$PROJECT_DIR/.cache/huggingface}"
 export HF_HOME
 
+# Compute nodes have no internet — force offline mode
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+
 RESULTS_BASE="$PROJECT_DIR/benchmark_results/jureca_tier1"
 RESULTS_DIR="$RESULTS_BASE/${MODEL_NAME}"
 VLLM_PORT=8000
