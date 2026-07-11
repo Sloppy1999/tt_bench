@@ -68,6 +68,8 @@ python -m vllm.entrypoints.openai.api_server \
     --gpu-memory-utilization 0.90 \
     --max-model-len 8192 \
     --dtype auto \
+    --enable-auto-tool-choice \
+    --tool-call-parser hermes \
     > "$PROJECT_DIR/slurm_logs/vllm_test.log" 2>&1 &
 
 VLLM_PID=$!
