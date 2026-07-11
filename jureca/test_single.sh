@@ -61,6 +61,37 @@ echo "  Port:     $VLLM_PORT"
 pkill -f "vllm.entrypoints.openai.api_server" 2>/dev/null || true
 sleep 2
 
+# ── Auto-detect correct --tool-call-parser for this model ─────────────────
+# Can be overridden by setting TOOL_PARSER in the environment.
+# Empty string = native OpenAI tool calling, no parser needed.
+if [ -z "${TOOL_PARSER:-}" ]; then
+    case "$MODEL_ID" in
+        # Native OpenAI tool calling — no parser needed
+        *Qwen2.5*|*Qwen2.5-Coder*)  TOOL_PARSER="" ;;
+        *DeepSeek-Coder-V2*)        TOOL_PARSER="" ;;  # experimental, may not work
+        *DeepSeek*V3*)              TOOL_PARSER="" ;;  # native OpenAI format
+        *DeepSeek*V3.1*)            TOOL_PARSER="" ;;
+        *Llama*|*llama*)            TOOL_PARSER="" ;;
+        *Mistral*|*mistral*)        TOOL_PARSER="" ;;
+        # Non-standard tool formats — parser required
+        *Qwen3*|*Qwen3.6*|*Qwen3-Coder*)  TOOL_PARSER="qwen3_coder" ;;
+        *gemma-4*|*Gemma-4*)        TOOL_PARSER="gemma4" ;;
+        *functiongemma*)            TOOL_PARSER="functiongemma" ;;
+        *hermes*|*Hermes*)          TOOL_PARSER="hermes" ;;
+        *xlam*|*XLAM*)              TOOL_PARSER="xlam" ;;
+        *)                          TOOL_PARSER="" ;;  # assume native OpenAI
+    esac
+fi
+
+# Build vLLM tool-calling flags (only for models that need a parser)
+TOOL_CALL_FLAGS=""
+if [ -n "${TOOL_PARSER:-}" ]; then
+    TOOL_CALL_FLAGS="--enable-auto-tool-choice --tool-call-parser ${TOOL_PARSER}"
+    echo "  Tool parser: $TOOL_PARSER"
+else
+    echo "  Tool parser: (none — native OpenAI tool calling)"
+fi
+
 python -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_ID" \
     --served-model-name "$MODEL_ID" \
@@ -68,8 +99,7 @@ python -m vllm.entrypoints.openai.api_server \
     --gpu-memory-utilization 0.90 \
     --max-model-len 8192 \
     --dtype auto \
-    --enable-auto-tool-choice \
-    --tool-call-parser hermes \
+    $TOOL_CALL_FLAGS \
     > "$PROJECT_DIR/slurm_logs/vllm_test.log" 2>&1 &
 
 VLLM_PID=$!
