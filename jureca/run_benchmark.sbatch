@@ -174,6 +174,9 @@ CHALLENGE_SETS=(
     "data/tasks/official/challenges/json|tt-official-ch*.json|official"
     "data/tasks/challenges_1comp|tt-official-ch*.json|1comp"
     "data/tasks/challenges_2comp|tt-official-ch*.json|2comp"
+    # scaled is LAST: ~1000 tier-1 tasks (vs ~10 for the others), so the small
+    # sets complete and save first even if the job hits its --time wall here.
+    "data/tasks/scaled|tt-official-ch*.json|scaled"
 )
 
 # --max-tokens must stay well below --max-model-len (32768): it caps output
