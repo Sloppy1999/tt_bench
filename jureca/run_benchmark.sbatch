@@ -141,7 +141,7 @@ banner "Running TT-Bench Tier $TIERS against $MODEL_NAME"
 cd "$PROJECT_DIR"
 
 CHALLENGE_SETS=(
-    "tasks/official/challenges/json|tt-official-ch*.json|official"
+    "data/tasks/official/challenges/json|tt-official-ch*.json|official"
     "data/tasks/challenges_1comp|tt-official-ch*.json|1comp"
     "data/tasks/challenges_2comp|tt-official-ch*.json|2comp"
 )

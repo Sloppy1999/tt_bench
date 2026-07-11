@@ -100,7 +100,7 @@ echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(' 
 banner "Running challenge: $CHALLENGE"
 cd "$PROJECT_DIR"
 
-CHALLENGES_DIR="tasks/official/challenges/json"
+CHALLENGES_DIR="data/tasks/official/challenges/json"
 OUT_DIR="$PROJECT_DIR/test_results/${MODEL_NAME}"
 mkdir -p "$OUT_DIR"
 
@@ -118,7 +118,6 @@ uv run tt-benchmark \
     --max-tokens 8192 \
     --timeout 300 \
     --workers 1 \
-    --tiers 1 \
     2>&1 | tee "$PROJECT_DIR/slurm_logs/bench_test_${MODEL_NAME}.log"
 
 EXIT_CODE=$?
