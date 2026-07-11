@@ -61,6 +61,11 @@ export HF_HOME
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
+# Redirect ALL cache to scratch (HOME quota is exhausted)
+export XDG_CACHE_HOME="$PROJECT_DIR/.cache/xdg"
+export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
+mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR"
+
 RESULTS_BASE="$PROJECT_DIR/benchmark_results/jureca_tier1"
 RESULTS_DIR="$RESULTS_BASE/${MODEL_NAME}"
 VLLM_PORT=8000
