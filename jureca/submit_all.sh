@@ -86,12 +86,12 @@ else
     warn "Not on jrlogin — are you on JURECA?"
 fi
 
-# Check venv
-VENV_DIR="$HOME/.venv-ttbench"
-if [ -f "$VENV_DIR/bin/activate" ]; then
+# Check venv (in project dir on scratch, per updated setup.sh)
+if [ -f "$PROJECT_DIR/.venv-ttbench/bin/activate" ]; then
+    VENV_DIR="$PROJECT_DIR/.venv-ttbench"
     ok "Virtual environment found at $VENV_DIR"
 else
-    fail "Virtual environment not found — run jureca/setup.sh first"
+    fail "Virtual environment not found at $PROJECT_DIR/.venv-ttbench — run jureca/setup.sh first"
     exit 1
 fi
 
