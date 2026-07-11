@@ -92,6 +92,7 @@ python -m vllm.entrypoints.openai.api_server \
     --gpu-memory-utilization 0.90 \
     --max-model-len 32768 \
     --dtype auto \
+    ${VLLM_ARGS:-} \
     $TP_FLAG \
     > "$PROJECT_DIR/slurm_logs/vllm_${MODEL_NAME}.log" 2>&1 &
 

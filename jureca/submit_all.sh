@@ -53,24 +53,17 @@ fail()  { echo -e "  ${RED}✘${NC} $1"; }
 # ── Model roster ─────────────────────────────────────────────────────────────
 # Format: "MODEL_ID|short_name|GPU_count"
 # GPU count guidelines for H100 80GB:
-#   7-8B models  → 1 GPU
-#   14-16B MoE   → 1 GPU
-#   32B models   → 1 GPU
-#   70B models   → 2 GPUs (tensor parallel)
-#   123B+ MoE    → 4 GPUs
+#   Dense 7-31B  → 1 GPU
+#   MoE <50B tot → 1 GPU
+#   Dense 70B    → 2 GPUs (tensor parallel)
 
 MODELS=(
-    # Lightweight (1 GPU each) — good baselines
+    # 1 GPU each — all fit comfortably on H100 80GB
     "Qwen/Qwen2.5-Coder-7B-Instruct|qwen2.5-coder-7b|1"
-    "meta-llama/Llama-3.1-8B-Instruct|llama-3.1-8b|1"
     "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct|deepseek-coder-v2-lite|1"
-
-    # Mid-size (1 GPU each) — strong syntehsis
-    "Qwen/Qwen2.5-Coder-32B-Instruct|qwen2.5-coder-32b|1"
-    "mistralai/Mistral-Large-Instruct-2411|mistral-large-2411|1"
-
-    # Large (2 GPUs) — strongest open models
-    "meta-llama/Llama-3.1-70B-Instruct|llama-3.1-70b|2"
+    "google/gemma-4-26B-A4B-it|gemma-4-26b-a4b|1"
+    "Qwen/Qwen3.6-35B-A3B|qwen3.6-35b-a3b|1"
+    "google/gemma-4-31B|gemma-4-31b|1"
 )
 
 # ── Tier selection ────────────────────────────────────────────────────────────
