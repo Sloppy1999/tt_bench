@@ -119,12 +119,8 @@ banner "HuggingFace cache"
 export HF_HOME="${HF_HOME:-$PROJECT_DIR/.cache/huggingface}"
 echo "  Cache directory: $HF_HOME"
 
-source "$VENV_DIR/bin/activate"
-
-if command -v huggingface-cli &>/dev/null; then
-    CACHED_COUNT=$(huggingface-cli scan-cache --dir "$HF_HOME" 2>/dev/null | grep -c "^models--" || echo "0")
-    ok "Cache contains ~${CACHED_COUNT} model(s)"
-fi
+CACHED_COUNT=$(ls -1d "$HF_HOME/hub/models--"* 2>/dev/null | wc -l)
+ok "Cache contains ${CACHED_COUNT} model(s)"
 
 # ── Submit jobs ──────────────────────────────────────────────────────────────
 banner "Submitting Slurm jobs (Tier $TIERS)"

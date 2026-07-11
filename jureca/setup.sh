@@ -30,6 +30,15 @@ VENV_DIR="$PROJECT_DIR/.venv-ttbench"
 export PIP_CACHE_DIR="$PROJECT_DIR/.cache/pip"
 export UV_CACHE_DIR="$PROJECT_DIR/.cache/uv"
 
+# Redirect ALL caches to scratch — HOME quota is tiny on JURECA
+export XDG_CACHE_HOME="$PROJECT_DIR/.cache/xdg"
+export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
+export FLASHINFER_WORKSPACE_DIR="$PROJECT_DIR/.cache/flashinfer"
+export TMPDIR="$PROJECT_DIR/tmp"
+mkdir -p "$PIP_CACHE_DIR" "$UV_CACHE_DIR" \
+         "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR" \
+         "$TMPDIR"
+
 # ---------------------------------------------------------------------------
 # 1. Install uv (isolated user install — no system packages needed)
 # ---------------------------------------------------------------------------

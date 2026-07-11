@@ -67,6 +67,9 @@ export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
 export FLASHINFER_WORKSPACE_DIR="$PROJECT_DIR/.cache/flashinfer"
 mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR"
 
+# ── Load CUDA module (required by flashinfer JIT compilation) ─────────────────
+module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true
+
 RESULTS_BASE="$PROJECT_DIR/benchmark_results/jureca_tier1"
 RESULTS_DIR="$RESULTS_BASE/${MODEL_NAME}"
 VLLM_PORT=8000
