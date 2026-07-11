@@ -105,6 +105,7 @@ fi
 
 python -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_ID" \
+    --served-model-name "$MODEL_ID" \
     --port "$VLLM_PORT" \
     --gpu-memory-utilization 0.90 \
     --max-model-len 32768 \
