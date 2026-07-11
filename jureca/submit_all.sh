@@ -114,7 +114,7 @@ fi
 # Ensure slurm log directory exists
 mkdir -p "$PROJECT_DIR/slurm_logs"
 
-# ── Model cache check (optional, non-blocking) ───────────────────────────────
+# ── Model cache check (informational only, non-blocking) ─────────────────────
 banner "HuggingFace cache"
 export HF_HOME="${HF_HOME:-$PROJECT_DIR/.cache/huggingface}"
 echo "  Cache directory: $HF_HOME"
@@ -122,17 +122,8 @@ echo "  Cache directory: $HF_HOME"
 source "$VENV_DIR/bin/activate"
 
 if command -v huggingface-cli &>/dev/null; then
-    for entry in "${MODELS[@]}"; do
-        IFS='|' read -r model_id _ _ <<< "$entry"
-        MODEL_DIR="$HF_HOME/hub/models--$(echo "$model_id" | tr '/' '--')"
-        if [ -d "$MODEL_DIR" ]; then
-            ok "Cached: $model_id"
-        else
-            warn "Not cached: $model_id (will download on compute node — may use job time)"
-        fi
-    done
-else
-    warn "huggingface-cli not found — models will download on compute nodes"
+    CACHED_COUNT=$(huggingface-cli scan-cache --dir "$HF_HOME" 2>/dev/null | grep -c "^models--" || echo "0")
+    ok "Cache contains ~${CACHED_COUNT} model(s)"
 fi
 
 # ── Submit jobs ──────────────────────────────────────────────────────────────
