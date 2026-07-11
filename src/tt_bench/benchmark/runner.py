@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
 import time
 from collections import Counter
@@ -995,14 +996,21 @@ class TuringTumbleBenchmark:
         workers = getattr(self, "_workers", 1)
 
         # ── sequential path (default) ──────────────────────────────────
+        save_per_task = getattr(self, "_save_per_task", False)
+
         if workers <= 1:
             for task_path in challenge_files:
                 if "understanding" in task_types:
                     results = self.run_understanding_task(task_path)
                     self.results.extend(results)
+                    if save_per_task:
+                        for r in results:
+                            self._save_task_result(r)
                 if "agentic_synthesis" in task_types:
                     result = self.run_agentic_task(task_path)
                     self.results.append(result)
+                    if save_per_task:
+                        self._save_task_result(result)
         else:
             # ── parallel path ──────────────────────────────────────────
             logger.info(f"Using {workers} parallel workers")
@@ -1019,6 +1027,9 @@ class TuringTumbleBenchmark:
                     try:
                         chunk = fut.result()
                         self.results.extend(chunk)
+                        if save_per_task:
+                            for r in chunk:
+                                self._save_task_result(r)
                         logger.info(
                             "Completed %s → %d result(s)", tp.name, len(chunk),
                         )
@@ -1063,6 +1074,45 @@ class TuringTumbleBenchmark:
             task_results=self.results,
         )
 
+    @staticmethod
+    def _result_to_dict(r: "TaskResult") -> Dict[str, Any]:
+        """Serialize a single TaskResult to the JSON shape used in reports."""
+        return {
+            "task_id": r.task_id,
+            "task_type": r.task_type,
+            "success": r.success,
+            "component_score": r.component_score,
+            "llm_response": r.llm_response,
+            "predicted": r.predicted,
+            "expected": r.expected,
+            "metrics": r.metrics,
+            "error": r.error,
+            "latency_ms": r.latency_ms,
+            "tokens_used": r.tokens_used,
+            "logprobs": r.logprobs,
+        }
+
+    def _save_task_result(self, result: "TaskResult") -> None:
+        """Persist one task result immediately, as it is evaluated.
+
+        Writes ``<output_dir>/per_task/<task_id>__<task_type>.json`` so a
+        crash or Slurm time-out mid-run does not discard already-completed
+        challenges — important for the large ``scaled`` set, where the
+        aggregate report is only written after every task finishes.
+        """
+        per_task_dir = self.output_dir / "per_task"
+        try:
+            per_task_dir.mkdir(parents=True, exist_ok=True)
+            safe_id = re.sub(
+                r"[^A-Za-z0-9._-]", "_", f"{result.task_id}__{result.task_type}"
+            )
+            with open(per_task_dir / f"{safe_id}.json", "w") as f:
+                json.dump(self._result_to_dict(result), f, indent=2)
+        except Exception as exc:  # never let a save failure abort the run
+            logger.warning(
+                "Could not save per-task result for %s: %s", result.task_id, exc
+            )
+
     def save_report(self, report: BenchmarkReport, filename: Optional[str] = None):
         """Save benchmark report to JSON."""
         if filename is None:
@@ -1071,24 +1121,7 @@ class TuringTumbleBenchmark:
         output_path = self.output_dir / filename
 
         # Convert results to serializable format
-        results_data = []
-        for r in report.task_results:
-            results_data.append(
-                {
-                    "task_id": r.task_id,
-                    "task_type": r.task_type,
-                    "success": r.success,
-                    "component_score": r.component_score,
-                    "llm_response": r.llm_response,
-                    "predicted": r.predicted,
-                    "expected": r.expected,
-                    "metrics": r.metrics,
-                    "error": r.error,
-                    "latency_ms": r.latency_ms,
-                    "tokens_used": r.tokens_used,
-                    "logprobs": r.logprobs,
-                }
-            )
+        results_data = [self._result_to_dict(r) for r in report.task_results]
 
         # Build per-tier summary with rates
         per_tier_json = {}
@@ -1229,6 +1262,9 @@ def main():
         compute_complexity=args.compute_complexity,
     )
     benchmark._workers = args.workers if args.workers > 1 else 1
+    # When saving is requested, also persist each challenge's result as it is
+    # evaluated (output_dir/per_task/) so a time-out doesn't lose finished work.
+    benchmark._save_per_task = args.save_report
 
     # Run benchmark
     task_types = args.task_type if args.task_type else ["understanding", "agentic_synthesis"]
