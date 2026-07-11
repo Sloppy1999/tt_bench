@@ -16,8 +16,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=128G
 #SBATCH --time=01:00:00
-#SBATCH --output=slurm_logs/tt-test-%j.out
-#SBATCH --error=slurm_logs/tt-test-%j.err
+#SBATCH --output=/p/scratch/westai0070/peral1/tt_bench/slurm_logs/tt-test-%j.out
+#SBATCH --error=/p/scratch/westai0070/peral1/tt_bench/slurm_logs/tt-test-%j.err
 #SBATCH --export=ALL
 
 set -euo pipefail
@@ -30,7 +30,7 @@ fail()  { echo -e "  ${RED}✘${NC} $1"; }
 # ── Config ───────────────────────────────────────────────────────────────────
 MODEL_ID="${MODEL_ID:-Qwen/Qwen2.5-Coder-7B-Instruct}"
 MODEL_NAME="${MODEL_NAME:-test-qwen2.5-7b}"
-PROJECT_DIR="${PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+PROJECT_DIR="${PROJECT_DIR:-/p/scratch/westai0070/peral1/tt_bench}"
 CHALLENGE="tt-official-ch01-1comp"
 VLLM_PORT=8000
 MAX_WAIT=600
@@ -43,7 +43,9 @@ export HF_HOME HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 export XDG_CACHE_HOME="$PROJECT_DIR/.cache/xdg"
 export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
 export FLASHINFER_WORKSPACE_DIR="$PROJECT_DIR/.cache/flashinfer"
-mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR"
+export TRITON_CACHE_DIR="$PROJECT_DIR/.cache/triton"
+export TMPDIR="$PROJECT_DIR/tmp"
+mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR" "$TRITON_CACHE_DIR" "$TMPDIR"
 
 module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true
 
