@@ -51,7 +51,7 @@ MODELS=(
     "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct|deepseek-coder-v2-lite|1"
     "google/gemma-4-26B-A4B-it|gemma-4-26b-a4b|1"
     "Qwen/Qwen3.6-35B-A3B|qwen3.6-35b-a3b|1"
-    "google/gemma-4-31B|gemma-4-31b|1"
+    # google/gemma-4-31B removed: base model, no chat template (vLLM 400s).
 )
 
 # Optional CLI filter: keep only roster entries whose id or short name matches
