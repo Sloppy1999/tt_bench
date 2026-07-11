@@ -102,11 +102,13 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 export XDG_CACHE_HOME="$PROJECT_DIR/.cache/xdg"
 export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
-export FLASHINFER_WORKSPACE_DIR="$PROJECT_DIR/.cache/flashinfer"
 export TRITON_CACHE_DIR="$PROJECT_DIR/.cache/triton"
 export TORCHINDUCTOR_CACHE_DIR="$PROJECT_DIR/.cache/torchinductor"
-mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR" \
-         "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR"
+# flashinfer reads FLASHINFER_WORKSPACE_BASE (NOT *_DIR) and appends
+# /.cache/flashinfer; default base is $HOME → quota crash. Point it at scratch.
+export FLASHINFER_WORKSPACE_BASE="$PROJECT_DIR"
+mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$TRITON_CACHE_DIR" \
+         "$TORCHINDUCTOR_CACHE_DIR" "$PROJECT_DIR/.cache/flashinfer"
 
 module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true
 

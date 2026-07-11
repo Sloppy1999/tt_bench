@@ -61,17 +61,21 @@ export HF_HOME
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
-# Redirect ALL cache to scratch (HOME quota is exhausted).
-# Triton and Torch Inductor ignore XDG_CACHE_HOME and default to ~/.triton and
-# a HOME/tmp path — torch.compile (enabled on H100) hits them during model
-# init, so they must be redirected explicitly or the job dies on HOME quota.
+# Redirect ALL cache to scratch (HOME quota is exhausted). Each tool uses its
+# OWN variable and ignores XDG_CACHE_HOME:
+#   - Triton / Torch Inductor default to ~/.triton and a HOME path.
+#   - flashinfer builds its cache as <FLASHINFER_WORKSPACE_BASE>/.cache/flashinfer,
+#     defaulting the base to $HOME. The correct knob is FLASHINFER_WORKSPACE_BASE
+#     (NOT FLASHINFER_WORKSPACE_DIR, which flashinfer never reads) — getting it
+#     wrong crashes engine init with "Disk quota exceeded: ~/.cache/flashinfer".
 export XDG_CACHE_HOME="$PROJECT_DIR/.cache/xdg"
 export VLLM_CACHE_DIR="$PROJECT_DIR/.cache/vllm"
-export FLASHINFER_WORKSPACE_DIR="$PROJECT_DIR/.cache/flashinfer"
 export TRITON_CACHE_DIR="$PROJECT_DIR/.cache/triton"
 export TORCHINDUCTOR_CACHE_DIR="$PROJECT_DIR/.cache/torchinductor"
-mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$FLASHINFER_WORKSPACE_DIR" \
-         "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR"
+export FLASHINFER_WORKSPACE_BASE="$PROJECT_DIR"   # → $PROJECT_DIR/.cache/flashinfer
+export VLLM_USE_FLASHINFER_SAMPLER=0              # skip the flashinfer sampler import path
+mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$TRITON_CACHE_DIR" \
+         "$TORCHINDUCTOR_CACHE_DIR" "$PROJECT_DIR/.cache/flashinfer"
 
 # ── Load CUDA module (required by flashinfer JIT compilation) ─────────────────
 module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true
@@ -153,6 +157,12 @@ banner "Waiting for vLLM server to be ready"
 MAX_WAIT=600  # 10 minutes for model loading
 WAITED=0
 while ! curl -s --max-time 2 "http://localhost:${VLLM_PORT}/v1/models" > /dev/null 2>&1; do
+    # Fail fast if the server process already died (don't poll a corpse for 10 min).
+    if ! kill -0 "$VLLM_PID" 2>/dev/null; then
+        fail "vLLM process ($VLLM_PID) exited before becoming ready — last log lines:"
+        tail -n 25 "$PROJECT_DIR/slurm_logs/vllm_${MODEL_NAME}.log" 2>/dev/null | sed 's/^/    /'
+        exit 1
+    fi
     sleep 10
     WAITED=$((WAITED + 10))
     if [ $WAITED -ge $MAX_WAIT ]; then
