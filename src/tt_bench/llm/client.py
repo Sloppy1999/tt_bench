@@ -1771,6 +1771,411 @@ class LMStudioClient(LLMClient):
         )
 
 
+class CloudClient(LLMClient):
+    """Cloud API client for OpenAI-compatible endpoints (AcademicCloud).
+
+    Uses the same /v1/chat/completions format as OpenAI with Bearer auth.
+    No model-id rewriting — cloud model IDs pass through as-is.
+    """
+
+    # Rate limits: 2 req/s, 15 req/min (AcademicCloud via Kong gateway).
+    # 15 req/min ≈ 4 s/req, but 429s still happen — 6 s gives safe margin.
+    _MIN_INTERVAL: float = 6.0
+
+    def __init__(self, config: LLMConfig):
+        super().__init__(config)
+        self.api_key = config.api_key or os.environ.get("CLOUD_API_KEY")
+        self.base_url = config.base_url or "https://chat-ai.academiccloud.de"
+        self._last_request: float = 0.0
+
+        if not self.api_key:
+            raise ValueError(
+                "Cloud API key required. Set CLOUD_API_KEY in your environment "
+                "or .env file, or pass api_key."
+            )
+
+    def _wait_for_rate_limit(self) -> None:
+        """Sleep if needed to stay within API rate limits (2 req/s, 15 req/min)."""
+        now = time.time()
+        elapsed = now - self._last_request
+        wait = max(self._MIN_INTERVAL - elapsed, 0)
+        if wait > 0:
+            logger.debug("Rate limit: waiting %.1fs", wait)
+            time.sleep(wait)
+        self._last_request = time.time()
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        **kwargs,
+    ) -> LLMResponse:
+        model = self.config.model
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload: Dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+            "temperature": kwargs.get("temperature", self.config.temperature),
+        }
+
+        if self.config.capture_logprobs:
+            payload["logprobs"] = True
+            payload["top_logprobs"] = 5
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        self._wait_for_rate_limit()
+        start_time = time.time()
+
+        for attempt in range(3):
+            try:
+                response = requests.post(
+                    f"{self.base_url}/v1/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=self.config.timeout,
+                )
+            except (
+                requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+            ) as e:
+                if attempt < 2:
+                    wait = 2 ** attempt
+                    logger.warning(
+                        "Cloud API %s (attempt %d/3), retrying in %ds…",
+                        type(e).__name__, attempt + 1, wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                raise
+
+            if response.status_code == 200:
+                break  # success — exit retry loop
+
+            if 500 <= response.status_code < 600 or response.status_code == 429:
+                if attempt < 2:
+                    wait = 2 ** attempt + 4
+                    logger.warning(
+                        "Cloud API 5xx (attempt %d/3, status=%d), retrying in %ds…",
+                        attempt + 1, response.status_code, wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                logger.error(
+                    "Cloud API error after 3 retries: %s - %s",
+                    response.status_code, response.text,
+                )
+                response.raise_for_status()
+            else:
+                logger.error(
+                    "Cloud API error: %s - %s", response.status_code, response.text
+                )
+                response.raise_for_status()
+
+        data = response.json()
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        choice = data["choices"][0]
+        msg = choice["message"]
+        content = msg.get("content", "")
+
+        logprobs_list: Optional[List[Dict[str, Any]]] = None
+        if self.config.capture_logprobs:
+            logprobs_data = choice.get("logprobs")
+            if logprobs_data and isinstance(logprobs_data, dict):
+                logprobs_list = logprobs_data.get("content")
+
+        return LLMResponse(
+            content=content,
+            model=data["model"],
+            usage=data.get("usage", {}),
+            finish_reason=choice.get("finish_reason", ""),
+            latency_ms=latency_ms,
+            raw_response=data,
+            logprobs=logprobs_list,
+        )
+
+    def generate_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict[str, Any]],
+        tool_executor,
+        system_prompt: Optional[str] = None,
+        max_turns: int = 10,
+        **kwargs,
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
+        model = self.config.model
+
+        messages: List[Dict[str, Any]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        tool_calls_made: List[ToolCall] = []
+        tool_results: List[ToolResult] = []
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
+        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
+
+        max_tokens_val = kwargs.get("max_tokens")
+        if max_tokens_val is None:
+            max_tokens_val = 32768
+
+        tried_required_fallback = False
+
+        for turn in range(max_turns):
+            payload: Dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "tools": tools,
+                "max_tokens": max_tokens_val,
+            }
+            if tried_required_fallback:
+                payload["tool_choice"] = "required"
+
+            if self.config.capture_logprobs:
+                payload["logprobs"] = True
+                payload["top_logprobs"] = 5
+
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+
+            start_time = time.time()
+
+            try:
+                self._wait_for_rate_limit()
+                for attempt in range(4):  # +1 for the tool_choice fallback
+                    try:
+                        response = requests.post(
+                            f"{self.base_url}/v1/chat/completions",
+                            json=payload,
+                            headers=headers,
+                            timeout=self.config.timeout,
+                        )
+                    except (
+                        requests.exceptions.Timeout,
+                        requests.exceptions.ConnectionError,
+                    ) as retry_err:
+                        if attempt < 2:
+                            wait = 2 ** attempt
+                            logger.warning(
+                                "Cloud API %s (attempt %d/3), retrying in %ds…",
+                                type(retry_err).__name__,
+                                attempt + 1,
+                                wait,
+                            )
+                            time.sleep(wait)
+                            continue
+                        raise
+
+                    if response.status_code == 200:
+                        break  # success
+
+                    # vLLM servers without --enable-auto-tool-choice reject
+                    # implicit tool_choice="auto".  Fall back to "required".
+                    if (
+                        response.status_code == 400
+                        and "enable-auto-tool-choice" in response.text
+                        and not tried_required_fallback
+                    ):
+                        logger.warning(
+                            "Cloud API: tool_choice=auto unsupported by server, "
+                            "retrying with tool_choice=required…"
+                        )
+                        payload["tool_choice"] = "required"
+                        tried_required_fallback = True
+                        continue  # retry same turn with required
+
+                    if 500 <= response.status_code < 600 or response.status_code == 429:
+                        if attempt < 2:
+                            wait = 2 ** attempt + 4  # extra wait for rate-limit recovery
+                            logger.warning(
+                                "Cloud API %d (attempt %d/3), retrying in %ds…",
+                                response.status_code, attempt + 1, wait,
+                            )
+                            time.sleep(wait)
+                            continue
+                        logger.error(
+                            "Cloud API error after 3 retries: %s - %s",
+                            response.status_code, response.text,
+                        )
+                    else:
+                        logger.error(
+                            "Cloud API error: %s - %s",
+                            response.status_code,
+                            response.text,
+                        )
+
+                if response.status_code != 200:
+                    return (
+                        None,
+                        f"API error: {response.text}",
+                        tool_calls_made,
+                        tool_results,
+                        {},
+                        turn_logprobs if turn_logprobs else None,
+                    )
+
+                data = response.json()
+                latency_ms = int((time.time() - start_time) * 1000)
+
+                usage = data.get("usage", {})
+                total_prompt_tokens += usage.get("prompt_tokens", 0)
+                total_completion_tokens += usage.get("completion_tokens", 0)
+
+                if self.config.capture_logprobs:
+                    choice_lp = data["choices"][0]
+                    lp_data = choice_lp.get("logprobs")
+                    if lp_data and isinstance(lp_data, dict):
+                        turn_logprobs.append(lp_data.get("content"))
+                    else:
+                        turn_logprobs.append(None)
+                else:
+                    turn_logprobs.append(None)
+
+            except Exception as e:
+                logger.exception("Cloud API exception: %s", e)
+                return (
+                    None,
+                    f"Exception: {str(e)}",
+                    tool_calls_made,
+                    tool_results,
+                    {
+                        "prompt_tokens": total_prompt_tokens,
+                        "completion_tokens": total_completion_tokens,
+                    },
+                    turn_logprobs if turn_logprobs else None,
+                )
+
+            choice = data["choices"][0]
+            msg = choice["message"]
+            finish_reason = choice.get("finish_reason", "")
+
+            if finish_reason == "length":
+                logger.warning(
+                    "Cloud API turn %d: response truncated (finish_reason=length). "
+                    "max_tokens=%d may be too low.",
+                    turn,
+                    max_tokens_val,
+                )
+
+            if msg.get("tool_calls"):
+                messages.append(msg)
+
+                for tc in msg["tool_calls"]:
+                    tool_call_id = tc.get("id", "")
+                    tool_call = ToolCall(
+                        name=tc["function"]["name"],
+                        arguments=json.loads(tc["function"]["arguments"]),
+                        tool_call_id=tool_call_id,
+                        turn_index=turn,
+                    )
+                    tool_calls_made.append(tool_call)
+
+                    try:
+                        result = tool_executor.execute(
+                            tool_call.name, tool_call.arguments
+                        )
+                        tool_result = ToolResult(
+                            tool_name=tool_call.name,
+                            result=result,
+                            tool_call_id=tool_call.tool_call_id,
+                            turn_index=turn,
+                        )
+                    except Exception as e:
+                        tool_result = ToolResult(
+                            tool_name=tool_call.name,
+                            result=None,
+                            error=str(e),
+                            tool_call_id=tool_call.tool_call_id,
+                            turn_index=turn,
+                        )
+                    tool_results.append(tool_result)
+
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.tool_call_id,
+                            "content": (
+                                json.dumps(tool_result.result)
+                                if tool_result.result
+                                else tool_result.error
+                            ),
+                        }
+                    )
+
+                if (
+                    hasattr(tool_executor, "is_solution_found")
+                    and tool_executor.is_solution_found()
+                ):
+                    logger.info(
+                        "Cloud API turn %d: valid solution detected — "
+                        "terminating agentic loop early.",
+                        turn,
+                    )
+                    return (
+                        {"content": "", "solution_found": True},
+                        "",
+                        tool_calls_made,
+                        tool_results,
+                        {
+                            "prompt_tokens": total_prompt_tokens,
+                            "completion_tokens": total_completion_tokens,
+                        },
+                        turn_logprobs if turn_logprobs else None,
+                    )
+            else:
+                content = msg.get("content", "").strip()
+                error_msg = ""
+
+                if not content and finish_reason == "length":
+                    error_msg = (
+                        f"Response truncated: max_tokens={max_tokens_val} "
+                        f"exhausted before content could be generated."
+                    )
+                    logger.warning("Cloud API turn %d: %s", turn, error_msg)
+
+                try:
+                    final_result = json.loads(content) if content else {"final_answer": ""}
+                except json.JSONDecodeError:
+                    final_result = {"final_answer": content} if content else {"final_answer": ""}
+
+                return (
+                    final_result,
+                    error_msg,
+                    tool_calls_made,
+                    tool_results,
+                    {
+                        "prompt_tokens": total_prompt_tokens,
+                        "completion_tokens": total_completion_tokens,
+                    },
+                    turn_logprobs if turn_logprobs else None,
+                )
+
+        return (
+            None,
+            f"Max turns ({max_turns}) reached",
+            tool_calls_made,
+            tool_results,
+            {
+                "prompt_tokens": total_prompt_tokens,
+                "completion_tokens": total_completion_tokens,
+            },
+            turn_logprobs if turn_logprobs else None,
+        )
+
+
 class MockClient(LLMClient):
     """Mock client for testing."""
 
@@ -1817,6 +2222,7 @@ def create_llm_client(config: LLMConfig) -> LLMClient:
         "ollama": OllamaClient,
         "lmstudio": LMStudioClient,
         "deepseek": DeepSeekClient,
+        "cloud": CloudClient,
         "mock": MockClient,
     }
 

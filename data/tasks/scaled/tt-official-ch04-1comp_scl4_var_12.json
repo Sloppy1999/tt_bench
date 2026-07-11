@@ -1,0 +1,98 @@
+{
+  "task_id": "tt-official-ch04-1comp_scl4_var_12",
+  "challenge_number": 4,
+  "tier": 1,
+  "title": "Fusion (1 Component)",
+  "objective": "Release one red ball and then all of the blue balls using a shorter path.",
+  "board": {
+    "width": 11,
+    "height": 5,
+    "fixed_components": [
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 2
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 5
+      },
+      "right": {
+        "x": 8,
+        "y": 5
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 0,
+    "ramp_left": 1,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 3
+      }
+    ],
+    "explanation": "Scaled variant \u2014 4 total components, 1 to place.",
+    "verified": false,
+    "position_verified": false,
+    "final_marble_state": [
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

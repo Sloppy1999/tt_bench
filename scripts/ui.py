@@ -23,13 +23,10 @@ from copy import deepcopy
 import matplotlib
 matplotlib.use("QtAgg")
 
-# -- project root on path so simulator imports work ---------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_PROJECT_ROOT))
-sys.path.insert(0, str(_PROJECT_ROOT / "simulator"))
 
 # -- board renderer imports ---------------------------------------------------
-from board_renderer import (
+from tt_bench.simulator.renderer import (
     COLOURS, BOARD_W, BOARD_H, CELL,
     MARGIN_SIDES, MARGIN_TOP, MARGIN_BOTTOM, FIG_W, FIG_H,
     _ax_coord, draw_peg_grid, draw_board_frame, draw_component,

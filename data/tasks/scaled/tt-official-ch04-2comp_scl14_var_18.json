@@ -1,0 +1,148 @@
+{
+  "task_id": "tt-official-ch04-2comp_scl14_var_18",
+  "challenge_number": 4,
+  "tier": 1,
+  "title": "Fusion (1 Component)",
+  "objective": "Release one red ball and then all of the blue balls using a shorter path.",
+  "board": {
+    "width": 11,
+    "height": 15,
+    "fixed_components": [
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 1
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 15
+      },
+      "right": {
+        "x": 8,
+        "y": 15
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 2,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 12
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 13
+      }
+    ],
+    "explanation": "Scaled variant \u2014 14 total components, 2 to place.",
+    "verified": false,
+    "position_verified": false,
+    "final_marble_state": [
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

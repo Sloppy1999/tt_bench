@@ -770,7 +770,7 @@ class TuringTumbleBenchmark:
                 task_id=task_id,
                 task_type="agentic_synthesis",
                 success=is_valid,
-                llm_response=json.dumps(final_result) if final_result else "",
+                llm_response=json.dumps(final_result) if final_result is not None else "",
                 predicted={
                     "final_solution": solution_used,
                     "tool_calls": [
@@ -1132,7 +1132,7 @@ def main():
 
     # LLM options
     parser.add_argument(
-        "--provider", default="mock", choices=["openai", "anthropic", "ollama", "lmstudio", "deepseek", "mock"]
+        "--provider", default="mock", choices=["openai", "anthropic", "ollama", "lmstudio", "deepseek", "cloud", "mock"]
     )
     parser.add_argument("--model", default="gpt-4")
     parser.add_argument("--api-key", type=str, help="API key (or set env var)")

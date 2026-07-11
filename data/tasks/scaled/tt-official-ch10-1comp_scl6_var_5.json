@@ -1,0 +1,122 @@
+{
+  "task_id": "tt-official-ch10-1comp_scl6_var_5",
+  "challenge_number": 6,
+  "tier": 2,
+  "title": "Entropy (1 Component)",
+  "objective": "Make the pattern blue, red, blue, red, blue, red... using a shorter path.",
+  "board": {
+    "width": 11,
+    "height": 7,
+    "fixed_components": [
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 0
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "y": -1,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "y": -1,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 7
+      },
+      "right": {
+        "x": 8,
+        "y": 7
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 1,
+    "ramp_left": 0,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 5
+      }
+    ],
+    "explanation": "Scaled variant \u2014 6 total components, 1 to place.",
+    "verified": false,
+    "position_verified": false,
+    "final_marble_state": [
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red"
+  ],
+  "expected_output": {
+    "description": "Where each marble ends up after execution",
+    "format": "left_catcher, right_catcher counts"
+  }
+}

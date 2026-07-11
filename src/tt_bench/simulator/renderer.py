@@ -32,14 +32,21 @@ from tt_bench.simulator import Board, Component, Side, build_gear_connections
 # ---------------------------------------------------------------------------
 # Load component assets
 # ---------------------------------------------------------------------------
-ASSETS_DIR = Path(__file__).parent.parent / "assets" / "components"
+# Resolve assets from the project root.  In dev (pip install -e) the source
+# lives under src/tt_bench/simulator/, so we walk up to find assets/ at the
+# repo root.  When packaged as a wheel, assets would be installed alongside the
+# package in site-packages/tt_bench/assets/.
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]            # src/tt_bench/simulator → repo root
+ASSETS_DIR = _PROJECT_ROOT / "assets" / "components"
+if not ASSETS_DIR.is_dir():
+    ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets" / "components"
 
 COMPONENT_IMAGES = {}
 if ASSETS_DIR.exists():
     for img_file in ASSETS_DIR.glob("*.png"):
         COMPONENT_IMAGES[img_file.stem] = imread(str(img_file))
 else:
-    print(f"Warning: Assets directory not found: {ASSETS_DIR}")
+    print(f"Warning: Assets directory not found. Tried: {Path(__file__).resolve().parents[3] / 'assets' / 'components'}, {Path(__file__).resolve().parent.parent / 'assets' / 'components'}")
 
 # ---------------------------------------------------------------------------
 # Colour palette

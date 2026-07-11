@@ -2,8 +2,9 @@
 # =============================================================================
 # Tier 1 Agentic Synthesis Comparison Experiment
 # =============================================================================
-# Compares deepseek-v4-pro, gemma-4-e4b (LMStudio), and qwen3.6-27b (LMStudio)
-# across three challenge directories (official, 1comp, 2comp).
+# Compares deepseek-v4-pro, 3 AcademicCloud models (qwen3-coder, devstral-2,
+# deepseek-r1-70b), plus local LMStudio models across three challenge
+# directories (official, 1comp, 2comp).
 #
 # Usage:
 #   chmod +x scripts/run_tier1_comparison.sh
@@ -11,6 +12,7 @@
 #
 # Prerequisites:
 #   - DEEPSEEK_API_KEY env var set
+#   - CLOUD_API_KEY env var set (AcademicCloud)
 #   - LMStudio running at http://localhost:1234 with both models loaded
 #   - uv installed
 # =============================================================================
@@ -71,8 +73,13 @@ fi
 ok "LMStudio models: $(echo "$MODEL_LIST" | tr '\n' ' ')"
 
 # ── Run configuration ───────────────────────────────────────────────────────
-# Build run list: deepseek + each local model
-RUNS=("deepseek|deepseek-v4-pro|deepseek-v4-pro")
+# Build run list: deepseek + cloud models + each local model
+RUNS=(
+    "deepseek|deepseek-v4-pro|deepseek-v4-pro"
+    "cloud|qwen3-coder-30b-a3b-instruct|qwen3-coder-30b"
+    "cloud|devstral-2-123b-instruct-2512|devstral-2-123b"
+    "cloud|deepseek-r1-distill-llama-70b|deepseek-r1-70b"
+)
 while IFS= read -r m; do
     [ -z "$m" ] && continue
     RUNS+=("lmstudio|${m}|${m//\//_}")

@@ -17,8 +17,6 @@ import os
 import io
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "simulator"))
-
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -27,8 +25,8 @@ from matplotlib.patches import FancyBboxPatch, Rectangle
 import matplotlib.font_manager as fm
 import numpy as np
 
-from board_renderer import render_board
-from board_renderer import COLOURS as BR_COLOURS
+from tt_bench.simulator.renderer import render_board
+from tt_bench.simulator.renderer import COLOURS as BR_COLOURS
 
 
 # ═══════════════════════════════════════════════════════════════════════

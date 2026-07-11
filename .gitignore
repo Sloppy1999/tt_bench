@@ -49,3 +49,4 @@ openspec/
 generate_table_fig.py
 regenerate_table.py
 generate_challenge_inventory_viz.py
+.omo/
