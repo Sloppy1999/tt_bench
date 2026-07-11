@@ -113,6 +113,15 @@ module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true
 # shellcheck disable=SC1090
 source "$VENV_DIR/bin/activate"
 
+# Pre-Ampere GPUs (e.g. the login node's Quadro RTX 8000, compute 7.5) can't
+# use FlashInfer's sampler — vLLM starts but then hangs at generation. Disable
+# it automatically so the smoke test works on the login node as well as H100.
+GPU_CC="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 | tr -d ' ')"
+if [ -n "$GPU_CC" ] && awk "BEGIN{exit !($GPU_CC < 8.0)}" 2>/dev/null; then
+    warn "GPU compute capability $GPU_CC < 8.0 (pre-Ampere) — disabling FlashInfer sampler"
+    export VLLM_USE_FLASHINFER_SAMPLER=0
+fi
+
 VLLM_PORT=8000
 SMOKE_DIR="$PROJECT_DIR/benchmark_results/smoke_test"
 LOG_DIR="$PROJECT_DIR/slurm_logs"
