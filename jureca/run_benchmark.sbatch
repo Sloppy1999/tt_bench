@@ -23,7 +23,7 @@
 #SBATCH --cpus-per-task=16
 # --gres=gpu:N is passed on the sbatch command line (see submit_all.sh)
 #SBATCH --mem=128G
-#SBATCH --time=08:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=slurm_logs/%x-%j-%a.out
 #SBATCH --error=slurm_logs/%x-%j-%a.err
 #SBATCH --export=ALL
@@ -221,6 +221,14 @@ CHALLENGE_SETS=(
     # sets complete and save first even if the job hits its --time wall here.
     "data/tasks/scaled|tt-official-ch*.json|scaled"
 )
+# Include scaled set (variants + insight + unsolvable, ~1013 tasks) only when
+# RUN_SCALED is set (e.g. RUN_SCALED=1 sbatch ...). Scaled takes ~8-12h alone.
+if [ "${RUN_SCALED:-}" = "1" ]; then
+    CHALLENGE_SETS+=(
+        "data/tasks/challenges_1comp|**/tt-official-ch*.json|scaled_1comp"
+        "data/tasks/challenges_2comp|**/tt-official-ch*.json|scaled_2comp"
+    )
+fi
 
 # --max-tokens caps output per turn and must stay below --max-model-len (now
 # 131072). 32768 gives verbose turns room without truncating, while leaving
@@ -290,7 +298,7 @@ json.dump({
     'tiers': '${TIERS}',
     'gpus': ${GPU_COUNT},
     'results_dir': '${RESULTS_DIR}',
-    'completed': $( [ $TOTAL_SUCCESS -eq ${#CHALLENGE_SETS[@]} ] && echo true || echo false ),
+    'completed': $( [ $TOTAL_SUCCESS -eq ${#CHALLENGE_SETS[@]} ] && echo True || echo False ),
 }, open('${MANIFEST}', 'w'), indent=2)
 "
 
