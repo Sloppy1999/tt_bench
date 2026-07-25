@@ -506,6 +506,7 @@ class OpenAIClient(LLMClient):
                 "model": model,
                 "messages": messages,
                 "tools": tools,
+                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
             }
 
             if is_gpt5:
