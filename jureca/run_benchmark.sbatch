@@ -146,6 +146,10 @@ if [ -z "${TOOL_PARSER:-}" ]; then
     case "$MODEL_ID" in
         *Qwen2.5*|*Qwen2.5-Coder*)  TOOL_PARSER="hermes" ;;
         *Qwen3*|*Qwen3.6*|*Qwen3-Coder*)  TOOL_PARSER="qwen3_coder" ;;
+        # gpt-oss emits the harmony response format, not hermes-style JSON. The
+        # `hermes` fallback below would silently yield tool_calls: [] on every
+        # turn — a 0% score with no HTTP error to explain it.
+        *gpt-oss*|*gpt_oss*)        TOOL_PARSER="openai" ;;
         *gemma-4*|*Gemma-4*)        TOOL_PARSER="gemma4" ;;
         *functiongemma*)            TOOL_PARSER="functiongemma" ;;
         *DeepSeek-Coder-V2*)        TOOL_PARSER="deepseek_v3" ;;  # experimental
