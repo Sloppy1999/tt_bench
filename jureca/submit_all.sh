@@ -89,6 +89,8 @@ TIERS="1"
 RUN_SCALED=""
 DRY_RUN=0
 SELECTED=()
+MAX_TURNS=""        # empty → run_benchmark.sbatch's default of 25
+SETS=""             # empty → all challenge sets
 
 usage() {
     cat <<EOF
@@ -101,6 +103,10 @@ Options:
   -l, --list       Print the roster and exit
   -n, --dry-run    Print the sbatch commands without submitting
   -t, --tiers T    Tier filter (default: "$TIERS")
+      --turns N    Agent turn budget (default: 25). Results for N != 25 land in
+                   <set>_tN/ so a sweep cannot overwrite itself.
+      --sets LIST  Challenge sets to run, comma-separated (default: all).
+                   Labels: official, 1comp, 2comp
   -s, --scaled     Also run the scaled sets (~1013 extra tasks, 8-12h alone)
   -h, --help       This message
 
@@ -108,6 +114,11 @@ Examples:
   bash jureca/submit_all.sh                      # everything
   bash jureca/submit_all.sh gemma-4-31b-it       # just one
   bash jureca/submit_all.sh -n -t "1 2"          # dry run, tiers 1 and 2
+
+  # Turn-budget sweep on the 1-component boards:
+  for n in 25 50 100; do
+    bash jureca/submit_all.sh --sets 1comp --turns \$n gemma-4-31b-it
+  done
 EOF
 }
 
@@ -127,6 +138,8 @@ while [ $# -gt 0 ]; do
         -n|--dry-run) DRY_RUN=1; shift ;;
         -s|--scaled)  RUN_SCALED=1; shift ;;
         -t|--tiers)   TIERS="${2:?--tiers needs a value, e.g. -t '1 2'}"; shift 2 ;;
+        --turns)      MAX_TURNS="${2:?--turns needs a number, e.g. --turns 50}"; shift 2 ;;
+        --sets)       SETS="${2:?--sets needs a list, e.g. --sets 1comp}"; shift 2 ;;
         -h|--help)    usage; exit 0 ;;
         -*)           fail "Unknown option: $1"; echo ""; usage; exit 1 ;;
         *)            SELECTED+=("$1"); shift ;;
@@ -228,7 +241,7 @@ CACHED_COUNT=$( { ls -1d "$HF_HOME/hub/models--"* 2>/dev/null || true; } | wc -l
 ok "Cache contains ${CACHED_COUNT} model(s)"
 
 # ── Submit jobs ──────────────────────────────────────────────────────────────
-banner "Submitting Slurm jobs (Tier $TIERS)"
+banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:-all})"
 
 if [ -n "$RUN_SCALED" ]; then
     warn "RUN_SCALED=1 — each job also runs the ~1013-task scaled sets."
@@ -252,6 +265,10 @@ for entry in "${MODELS[@]}"; do
     EXPORTS="ALL,MODEL_ID=$model_id,MODEL_NAME=$model_name,GPU_COUNT=$gpu_count"
     EXPORTS="$EXPORTS,TIERS=$TIERS,PROJECT_DIR=$PROJECT_DIR"
     EXPORTS="$EXPORTS,RUN_SCALED=${RUN_SCALED:-0}"
+    # Same reasoning: pin these on every submission so a stale MAX_TURNS or SETS
+    # in the submitting shell cannot ride in via --export=ALL and silently change
+    # what the experiment measures.
+    EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS:-}"
 
     if [ "$DRY_RUN" -eq 1 ]; then
         echo "    sbatch --gres=gpu:${gpu_count} \\"

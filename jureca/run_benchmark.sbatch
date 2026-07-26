@@ -256,6 +256,11 @@ banner "Running TT-Bench Tier $TIERS against $MODEL_NAME"
 
 cd "$PROJECT_DIR"
 
+# Turn budget. Exposed as an env var so a sensitivity sweep (25/50/100) can be
+# run without editing the script — 10 of 11 official tier-1 tasks hit the 25-turn
+# ceiling, so this limit is an ACTIVE experimental variable, not a safety margin.
+MAX_TURNS="${MAX_TURNS:-25}"
+
 CHALLENGE_SETS=(
     "data/tasks/official/challenges/json|tt-official-ch*.json|official"
     "data/tasks/challenges_1comp|tt-official-ch*.json|1comp"
@@ -276,6 +281,32 @@ if [ "${RUN_SCALED:-}" = "1" ]; then
     warn "RUN_SCALED=1: ~1013 extra tasks queued. 12h of --time may not be enough."
 fi
 
+# Optional set filter: SETS="1comp" or SETS="official,1comp" runs only those
+# labels. Empty (the default) runs everything selected above. Fail on an unknown
+# label instead of running nothing — a typo must not look like a clean result.
+if [ -n "${SETS:-}" ]; then
+    WANTED="${SETS//,/ }"
+    FILTERED_SETS=()
+    for want in $WANTED; do
+        hit=""
+        for cs in "${CHALLENGE_SETS[@]}"; do
+            IFS='|' read -r _d _p label <<< "$cs"
+            [ "$label" = "$want" ] && hit="$cs" && break
+        done
+        if [ -z "$hit" ]; then
+            fail "SETS names '$want', which is not an available set label."
+            printf '    available:'; for cs in "${CHALLENGE_SETS[@]}"; do
+                IFS='|' read -r _d _p label <<< "$cs"; printf ' %s' "$label"; done; echo ""
+            exit 1
+        fi
+        FILTERED_SETS+=("$hit")
+    done
+    CHALLENGE_SETS=("${FILTERED_SETS[@]}")
+    ok "Set filter: $WANTED"
+fi
+
+echo "  Max turns: $MAX_TURNS"
+
 # --max-tokens caps output per turn and must stay below --max-model-len (now
 # 131072). 32768 gives verbose turns room without truncating, while leaving
 # ~98k of context for the growing agentic transcript.
@@ -285,7 +316,7 @@ ARGS_COMMON="--provider vllm \
              --api-key none \
              --task-type agentic_synthesis \
              --save-report \
-             --max-turns 25 \
+             --max-turns $MAX_TURNS \
              --max-tokens 32768 \
              --timeout 600 \
              --workers 8 \
@@ -297,12 +328,18 @@ TOTAL_FAILED=0
 for cset in "${CHALLENGE_SETS[@]}"; do
     IFS='|' read -r challenges_dir pattern cset_label <<< "$cset"
 
-    OUT_DIR="$RESULTS_DIR/${cset_label}"
+    # A turn-budget sweep writes several runs of the SAME set. Keep them in
+    # separate directories or the reports pile up in one folder, distinguishable
+    # only by timestamp, and any aggregation silently averages across budgets.
+    # The default (25) keeps the historical layout so existing results still map.
+    OUT_LABEL="$cset_label"
+    [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${cset_label}_t${MAX_TURNS}"
+    OUT_DIR="$RESULTS_DIR/${OUT_LABEL}"
     mkdir -p "$OUT_DIR"
 
-    banner "  Set: $cset_label (pattern: $pattern, tiers: $TIERS)"
+    banner "  Set: $cset_label (pattern: $pattern, tiers: $TIERS, turns: $MAX_TURNS)"
 
-    BENCH_LOG="$PROJECT_DIR/slurm_logs/bench_${MODEL_NAME}_${cset_label}_${JOB_TAG}.log"
+    BENCH_LOG="$PROJECT_DIR/slurm_logs/bench_${MODEL_NAME}_${OUT_LABEL}_${JOB_TAG}.log"
 
     # `set +e` only clears errexit — pipefail stays on (see `set -euo pipefail`
     # at the top), so EXIT_CODE is tt-benchmark's status and not tee's. Without
@@ -342,7 +379,10 @@ echo "  Results:   $RESULTS_DIR"
 echo ""
 
 # Save a job manifest for aggregation
-MANIFEST="$RESULTS_BASE/manifest_${MODEL_NAME}.json"
+# Same reasoning as OUT_LABEL: a sweep must not overwrite its own manifest.
+MANIFEST_SUFFIX=""
+[ "$MAX_TURNS" != "25" ] && MANIFEST_SUFFIX="_t${MAX_TURNS}"
+MANIFEST="$RESULTS_BASE/manifest_${MODEL_NAME}${MANIFEST_SUFFIX}.json"
 "$VENV_PY" -c "
 import json
 json.dump({
@@ -355,6 +395,8 @@ json.dump({
     'max_model_len': ${MAX_MODEL_LEN},
     'yarn_factor': ${FACTOR:-None},
     'tool_parser': '${TOOL_PARSER}',
+    'max_turns': ${MAX_TURNS},
+    'sets': '${SETS:-all}',
     'run_scaled': '${RUN_SCALED:-0}',
     'results_dir': '${RESULTS_DIR}',
     'completed': $( [ $TOTAL_SUCCESS -eq ${#CHALLENGE_SETS[@]} ] && echo True || echo False ),
