@@ -84,11 +84,21 @@ export TRITON_CACHE_DIR="$PROJECT_DIR/.cache/triton"
 export TORCHINDUCTOR_CACHE_DIR="$PROJECT_DIR/.cache/torchinductor"
 export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-$PROJECT_DIR/.cache/uv-python}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$PROJECT_DIR/.cache/uv}"
+#   - gpt-oss tokenises with the tiktoken/harmony encoding, which is FETCHED OVER
+#     THE NETWORK on first use rather than read from the HF snapshot. Compute
+#     nodes have no route out, so every request came back
+#     500 "error downloading or loading vocab file". Point the cache at scratch
+#     and populate it from the login node first (submit_all.sh pre-flight checks
+#     that it is non-empty before queueing gpt-oss). Both names are set because
+#     the Python and Rust sides of harmony read different ones — verify which
+#     directory actually fills up rather than trusting either name.
+export TIKTOKEN_CACHE_DIR="${TIKTOKEN_CACHE_DIR:-$PROJECT_DIR/.cache/tiktoken}"
+export TIKTOKEN_RS_CACHE_DIR="${TIKTOKEN_RS_CACHE_DIR:-$TIKTOKEN_CACHE_DIR}"
 export FLASHINFER_WORKSPACE_BASE="$PROJECT_DIR"   # → $PROJECT_DIR/.cache/flashinfer
 export VLLM_USE_FLASHINFER_SAMPLER=0              # skip the flashinfer sampler import path
 mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$TRITON_CACHE_DIR" \
          "$TORCHINDUCTOR_CACHE_DIR" "$PROJECT_DIR/.cache/flashinfer" \
-         "$UV_PYTHON_INSTALL_DIR" "$UV_CACHE_DIR"
+         "$UV_PYTHON_INSTALL_DIR" "$UV_CACHE_DIR" "$TIKTOKEN_CACHE_DIR"
 
 # ── Load CUDA module (required by flashinfer JIT compilation) ─────────────────
 module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true

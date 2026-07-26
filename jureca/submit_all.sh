@@ -84,22 +84,10 @@ MODELS=(
     # 35B dense-equivalent weights (~70GB in bf16) do NOT fit one H100 alongside
     # a 131072-token KV cache. Was listed at 1 GPU, which cannot have worked.
     "Qwen/Qwen3.6-35B-A3B|qwen3.6-35b-a3b|4"
-    #
-    # DISABLED — openai/gpt-oss-120b (job 15469374, 2026-07-26)
-    #
-    # vLLM loads and serves, but every /v1/chat/completions returns
-    #   500 "error downloading or loading vocab file"
-    # so all 21 tasks record 0 turns and the run measures nothing.
-    #
-    # Cause: gpt-oss tokenises with the tiktoken o200k_harmony encoding, which is
-    # fetched over the network at request time rather than shipped in the HF
-    # snapshot. Compute nodes have no internet, so the fetch can never succeed.
-    #
-    # Fix: find the encoding's cache variable (TIKTOKEN_CACHE_DIR is the likely
-    # one), populate it on the login node, and export it in run_benchmark.sbatch
-    # beside the other cache redirections. Same hunt as FLASHINFER_WORKSPACE_BASE.
-    # Re-enable once a request succeeds from a compute node.
-    # "openai/gpt-oss-120b|gpt-oss-120b|4"
+    # gpt-oss ships in MXFP4 (~63GB) so it would fit one H100, but dc-hwai bills
+    # whole nodes regardless — the extra GPUs are free KV-cache headroom.
+    # Needs its own --tool-call-parser: it emits the harmony format, not hermes.
+    "openai/gpt-oss-120b|gpt-oss-120b|4"
 )
 
 # ── Defaults (override via flags) ────────────────────────────────────────────
@@ -125,12 +113,13 @@ Options:
       --turns N    Agent turn budget (default: 25). Results for N != 25 land in
                    <set>_tN/ so a sweep cannot overwrite itself.
       --sets LIST  Challenge sets to run, comma-separated (default: all).
-                   Labels: official, 1comp, 2comp, and with --scaled also
+                   Labels: official, 1comp, 2comp, and with -s also
                    scaled, scaled_1comp, scaled_2comp
-      --time T     Slurm walltime, e.g. --time 24:00:00. Overrides the 12h in
-                   run_benchmark.sbatch. A TIMEOUT loses every set that had not
-                   finished writing, so raise it before running the big sets.
-  -s, --scaled     Also run the scaled sets (~1013 tasks each)
+      --time D     Slurm walltime, overriding the script's 12h default.
+                   -s needs far more than 12h; check the partition ceiling with
+                   scontrol show partition dc-hwai | grep MaxTime
+  -s, --scaled     Also run the scaled sets. That is ~2900 tier-1 tasks on top
+                   of the 21 small ones — hours per model, not minutes.
   -h, --help       This message
 
 Examples:
@@ -163,7 +152,7 @@ while [ $# -gt 0 ]; do
         -t|--tiers)   TIERS="${2:?--tiers needs a value, e.g. -t '1 2'}"; shift 2 ;;
         --turns)      MAX_TURNS="${2:?--turns needs a number, e.g. --turns 50}"; shift 2 ;;
         --sets)       SETS="${2:?--sets needs a list, e.g. --sets 1comp}"; shift 2 ;;
-        --time)       WALLTIME="${2:?--time needs a value, e.g. --time 24:00:00}"; shift 2 ;;
+        --time)       WALLTIME="${2:?--time needs a Slurm duration, e.g. --time 24:00:00}"; shift 2 ;;
         -h|--help)    usage; exit 0 ;;
         -*)           fail "Unknown option: $1"; echo ""; usage; exit 1 ;;
         *)            SELECTED+=("$1"); shift ;;
@@ -289,6 +278,28 @@ for entry in "${MODELS[@]}"; do
         continue
     fi
 
+    # gpt-oss tokenises with the tiktoken/harmony encoding, fetched over the
+    # network on first use instead of read from the snapshot. Compute nodes have
+    # no route out, so an unpopulated cache means every request returns
+    # 500 "error downloading or loading vocab file" — and the run completes with
+    # exit 0, zero turns and a 0% score that looks like a measurement.
+    case "$model_id" in
+        *gpt-oss*|*gpt_oss*)
+            TK="${TIKTOKEN_CACHE_DIR:-$PROJECT_DIR/.cache/tiktoken}"
+            if [ -z "$( { ls -A "$TK" 2>/dev/null || true; } )" ]; then
+                fail "$model_name: harmony/tiktoken vocab not cached in $TK"
+                echo "        Compute nodes cannot download it. Populate it here first:"
+                echo "        export TIKTOKEN_CACHE_DIR=$TK && mkdir -p \"\$TIKTOKEN_CACHE_DIR\""
+                echo "        python -c 'from openai_harmony import load_harmony_encoding,HarmonyEncodingName as N; load_harmony_encoding(N.HARMONY_GPT_OSS)'"
+                echo "        Then check the directory is NON-EMPTY. If it stays empty the env"
+                echo "        var name is wrong — find the one harmony actually reads."
+                READY_FAIL=1
+                continue
+            fi
+            ok "$model_name: harmony vocab cached ($(ls -A "$TK" | wc -l | tr -d ' ') file(s))"
+            ;;
+    esac
+
     if [ -f "${snap}chat_template.jinja" ] \
        || grep -q 'chat_template' "${snap}tokenizer_config.json" 2>/dev/null; then
         ok "$model_name: cached, chat template present"
@@ -307,20 +318,12 @@ if [ "$READY_FAIL" -eq 1 ]; then
 fi
 
 # ── Submit jobs ──────────────────────────────────────────────────────────────
-banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:-all})"
+banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:-all}, time ${WALLTIME:-12:00:00})"
 
 if [ -n "$RUN_SCALED" ]; then
-    warn "RUN_SCALED=1 — adds scaled, scaled_1comp and scaled_2comp (~1013 tasks each)."
-    if [ -z "$WALLTIME" ]; then
-        # A TIMEOUT kills the job mid-set: everything not yet written to
-        # benchmark_results is lost, and the queue wait is spent for nothing.
-        warn "No --time given, so the 12h in run_benchmark.sbatch applies."
-        warn "The 2026-07-11 runs took ~2h for one 1013-task set, so three of"
-        warn "them plus model load is 6h+ — and slower models can double that."
-        warn "Consider: --time 24:00:00"
-    fi
+    warn "RUN_SCALED=1 — each job also runs the ~1013-task scaled sets."
+    warn "That is 8-12h on its own; 12h of --time may not be enough."
 fi
-[ -n "$WALLTIME" ] && ok "Walltime override: $WALLTIME"
 [ "$DRY_RUN" -eq 1 ] && warn "DRY RUN — nothing will be submitted"
 
 SUBMITTED_JOBS=()
@@ -344,10 +347,8 @@ for entry in "${MODELS[@]}"; do
     # what the experiment measures.
     EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS:-}"
 
-    # Guarded expansion: under `set -u` a bare "${ARR[@]}" on an empty array is
-    # an unbound-variable error in bash < 4.4.
-    TIME_FLAG=()
-    [ -n "$WALLTIME" ] && TIME_FLAG=(--time "$WALLTIME")
+    TIME_ARGS=()
+    [ -n "$WALLTIME" ] && TIME_ARGS=(--time "$WALLTIME")
 
     if [ "$DRY_RUN" -eq 1 ]; then
         echo "    sbatch --gres=gpu:${gpu_count} \\"
@@ -359,7 +360,7 @@ for entry in "${MODELS[@]}"; do
 
     JOB_ID=$(sbatch \
         --gres="gpu:${gpu_count}" \
-        ${TIME_FLAG[@]+"${TIME_FLAG[@]}"} \
+        ${TIME_ARGS[@]+"${TIME_ARGS[@]}"} \
         --export="$EXPORTS" \
         --parsable \
         "$SBATCH_SCRIPT")
