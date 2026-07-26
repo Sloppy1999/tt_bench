@@ -245,11 +245,13 @@ for entry in "${MODELS[@]}"; do
     echo "  Submitting: $model_name ($model_id) — $gpu_count GPU(s)"
 
     # Every var run_benchmark.sbatch validates with ${VAR:?} is passed here.
-    # RUN_SCALED is only exported when asked for, so an unset one cannot leak in
-    # from the submitting shell and quietly add ~1013 tasks per job.
+    # RUN_SCALED is set EXPLICITLY on every submission, never just when asked for:
+    # --export=ALL copies the whole submitting environment into the job, so a
+    # leftover `export RUN_SCALED=1` from an earlier shell would otherwise ride
+    # along and silently add ~1013 tasks per job. Later assignments win over ALL.
     EXPORTS="ALL,MODEL_ID=$model_id,MODEL_NAME=$model_name,GPU_COUNT=$gpu_count"
     EXPORTS="$EXPORTS,TIERS=$TIERS,PROJECT_DIR=$PROJECT_DIR"
-    [ -n "$RUN_SCALED" ] && EXPORTS="$EXPORTS,RUN_SCALED=1"
+    EXPORTS="$EXPORTS,RUN_SCALED=${RUN_SCALED:-0}"
 
     if [ "$DRY_RUN" -eq 1 ]; then
         echo "    sbatch --gres=gpu:${gpu_count} \\"
