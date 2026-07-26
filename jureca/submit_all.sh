@@ -77,11 +77,17 @@ MODELS=(
     "Qwen/Qwen2.5-Coder-7B-Instruct|qwen2.5-coder-7b|1"
     "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct|deepseek-coder-v2-lite|1"
     "google/gemma-4-26B-A4B-it|gemma-4-26b-a4b|1"
-    "Qwen/Qwen3.6-35B-A3B|qwen3.6-35b-a3b|1"
     # google/gemma-4-31B (base) is deliberately absent: no chat template, 400 on
     # every request. Its instruct sibling is the one to benchmark. Native context
     # is 262144, so no YaRN scaling is applied at TARGET_CTX=131072.
     "google/gemma-4-31B-it|gemma-4-31b-it|4"
+    # 35B dense-equivalent weights (~70GB in bf16) do NOT fit one H100 alongside
+    # a 131072-token KV cache. Was listed at 1 GPU, which cannot have worked.
+    "Qwen/Qwen3.6-35B-A3B|qwen3.6-35b-a3b|4"
+    # gpt-oss ships in MXFP4 (~63GB) so it would fit one H100, but dc-hwai bills
+    # whole nodes regardless — the extra GPUs are free KV-cache headroom.
+    # Needs its own --tool-call-parser: it emits the harmony format, not hermes.
+    "openai/gpt-oss-120b|gpt-oss-120b|4"
 )
 
 # ── Defaults (override via flags) ────────────────────────────────────────────
@@ -230,7 +236,7 @@ fi
 # Ensure slurm log directory exists
 mkdir -p "$PROJECT_DIR/slurm_logs"
 
-# ── Model cache check (informational only, non-blocking) ─────────────────────
+# ── Model cache check ────────────────────────────────────────────────────────
 banner "HuggingFace cache"
 export HF_HOME="${HF_HOME:-$PROJECT_DIR/.cache/huggingface}"
 echo "  Cache directory: $HF_HOME"
@@ -239,6 +245,48 @@ echo "  Cache directory: $HF_HOME"
 # submission when the cache is empty.
 CACHED_COUNT=$( { ls -1d "$HF_HOME/hub/models--"* 2>/dev/null || true; } | wc -l)
 ok "Cache contains ${CACHED_COUNT} model(s)"
+
+# ── Model readiness (blocking) ───────────────────────────────────────────────
+# Two failures that each cost a full queue wait to discover, checked here for free:
+#
+#   1. Not cached. run_benchmark.sbatch exports HF_HUB_OFFLINE=1 because compute
+#      nodes have no internet, so a missing model cannot be fetched at run time.
+#
+#   2. No chat template. A base (non-instruct) checkpoint ships none, and vLLM
+#      then answers every /v1/chat/completions with a 400: the run scores 0%
+#      without generating a single token, and nothing in the Slurm log says why.
+#      google/gemma-4-31B burned a 12-hour allocation on exactly this.
+banner "Model readiness"
+READY_FAIL=0
+for entry in "${MODELS[@]}"; do
+    IFS='|' read -r model_id model_name _gc <<< "$entry"
+    repo="models--${model_id//\//--}"
+    snap=$( { ls -d "$HF_HOME/hub/$repo/snapshots/"*/ 2>/dev/null || true; } | head -n1)
+
+    if [ -z "$snap" ]; then
+        fail "$model_name: not cached under $HF_HOME/hub/$repo"
+        echo "        Pre-download on the login node (compute nodes are offline):"
+        echo "        HF_HOME=$HF_HOME hf download $model_id"
+        READY_FAIL=1
+        continue
+    fi
+
+    if [ -f "${snap}chat_template.jinja" ] \
+       || grep -q 'chat_template' "${snap}tokenizer_config.json" 2>/dev/null; then
+        ok "$model_name: cached, chat template present"
+    else
+        fail "$model_name: cached but NO chat template — this looks like a base checkpoint"
+        echo "        vLLM will reject every chat request with a 400. Use the"
+        echo "        instruction-tuned variant instead (-it, -Instruct)."
+        READY_FAIL=1
+    fi
+done
+
+if [ "$READY_FAIL" -eq 1 ]; then
+    echo ""
+    fail "Refusing to submit: fix the models flagged above first."
+    exit 1
+fi
 
 # ── Submit jobs ──────────────────────────────────────────────────────────────
 banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:-all})"
