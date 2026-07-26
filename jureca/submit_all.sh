@@ -99,6 +99,14 @@ MAX_TURNS=""        # empty → run_benchmark.sbatch's default of 25
 SETS=""             # empty → all challenge sets
 WALLTIME=""         # empty → the #SBATCH --time in run_benchmark.sbatch (12h)
 
+# Slurm mail notification. Passed on the sbatch command line rather than as a
+# #SBATCH directive: those are comments parsed before any shell exists, so
+# `#SBATCH --mail-user=$ADDR` would store the literal string, not the address.
+# Kept out of the script and read from the environment because this repository
+# is public — put `export TT_BENCH_MAIL=you@example.com` in your ~/.bashrc.
+MAIL_USER="${TT_BENCH_MAIL:-}"
+MAIL_TYPE="${TT_BENCH_MAIL_TYPE:-END,FAIL}"
+
 usage() {
     cat <<EOF
 Usage: bash jureca/submit_all.sh [OPTIONS] [SHORT_NAME ...]
@@ -118,6 +126,10 @@ Options:
       --time D     Slurm walltime, overriding the script's 12h default.
                    -s needs far more than 12h; check the partition ceiling with
                    scontrol show partition dc-hwai | grep MaxTime
+      --mail A     Email address for Slurm job notifications. Defaults to
+                   \$TT_BENCH_MAIL — set that in ~/.bashrc and forget the flag.
+      --mail-type T  When to notify (default: "$MAIL_TYPE"). Slurm accepts
+                   BEGIN, END, FAIL, TIME_LIMIT, ALL, NONE.
   -s, --scaled     Also run the scaled sets. That is ~2900 tier-1 tasks on top
                    of the 21 small ones — hours per model, not minutes.
   -h, --help       This message
@@ -153,6 +165,8 @@ while [ $# -gt 0 ]; do
         --turns)      MAX_TURNS="${2:?--turns needs a number, e.g. --turns 50}"; shift 2 ;;
         --sets)       SETS="${2:?--sets needs a list, e.g. --sets 1comp}"; shift 2 ;;
         --time)       WALLTIME="${2:?--time needs a Slurm duration, e.g. --time 24:00:00}"; shift 2 ;;
+        --mail)       MAIL_USER="${2:?--mail needs an address}"; shift 2 ;;
+        --mail-type)  MAIL_TYPE="${2:?--mail-type needs a value, e.g. BEGIN,END,FAIL}"; shift 2 ;;
         -h|--help)    usage; exit 0 ;;
         -*)           fail "Unknown option: $1"; echo ""; usage; exit 1 ;;
         *)            SELECTED+=("$1"); shift ;;
@@ -320,6 +334,12 @@ fi
 # ── Submit jobs ──────────────────────────────────────────────────────────────
 banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:-all}, time ${WALLTIME:-12:00:00})"
 
+if [ -n "$MAIL_USER" ]; then
+    ok "Notifications: $MAIL_TYPE → $MAIL_USER"
+else
+    warn "No notifications: set TT_BENCH_MAIL or pass --mail to get one on END/FAIL"
+fi
+
 if [ -n "$RUN_SCALED" ]; then
     warn "RUN_SCALED=1 — each job also runs the ~1013-task scaled sets."
     warn "That is 8-12h on its own; 12h of --time may not be enough."
@@ -350,9 +370,17 @@ for entry in "${MODELS[@]}"; do
     TIME_ARGS=()
     [ -n "$WALLTIME" ] && TIME_ARGS=(--time "$WALLTIME")
 
+    # A per-job name so `squeue` is readable: six identical "tt-vllm" rows tell
+    # you nothing, and the notification mail carries the job name too.
+    NAME_ARGS=(--job-name "tt-$model_name")
+
+    MAIL_ARGS=()
+    [ -n "$MAIL_USER" ] && MAIL_ARGS=(--mail-type "$MAIL_TYPE" --mail-user "$MAIL_USER")
+
     if [ "$DRY_RUN" -eq 1 ]; then
-        echo "    sbatch --gres=gpu:${gpu_count} \\"
+        echo "    sbatch --gres=gpu:${gpu_count} --job-name tt-$model_name \\"
         [ -n "$WALLTIME" ] && echo "           --time $WALLTIME \\"
+        [ -n "$MAIL_USER" ] && echo "           --mail-type $MAIL_TYPE --mail-user $MAIL_USER \\"
         echo "           --export=$EXPORTS \\"
         echo "           --parsable $SBATCH_SCRIPT"
         continue
@@ -360,7 +388,9 @@ for entry in "${MODELS[@]}"; do
 
     JOB_ID=$(sbatch \
         --gres="gpu:${gpu_count}" \
+        "${NAME_ARGS[@]}" \
         ${TIME_ARGS[@]+"${TIME_ARGS[@]}"} \
+        ${MAIL_ARGS[@]+"${MAIL_ARGS[@]}"} \
         --export="$EXPORTS" \
         --parsable \
         "$SBATCH_SCRIPT")
