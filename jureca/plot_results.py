@@ -517,6 +517,13 @@ def main() -> None:
     ap.add_argument("--out", default="figures", help="output directory (default: %(default)s)")
     ap.add_argument("--dark", action="store_true", help="render for a dark surface")
     ap.add_argument(
+        "--models",
+        default="",
+        help="comma-separated models to include (default: all). Use it to keep a "
+        "comparison chart consistent while a job is still running — a model with "
+        "only some of the plotted sets leaves a gap in its bar group.",
+    )
+    ap.add_argument(
         "--sets",
         default="",
         help="comma-separated sets to plot, in order (default: whichever of "
@@ -538,6 +545,25 @@ def main() -> None:
     data = collect(Path(args.results_dir), wanted)
     if not data:
         sys.exit("No usable reports found.")
+
+    if args.models:
+        want_models = [m.strip() for m in args.models.split(",") if m.strip()]
+        if unknown := [m for m in want_models if m not in data]:
+            sys.exit(
+                f"Unknown or unusable model(s): {', '.join(unknown)}.\n"
+                f"Available for these sets: {', '.join(sorted(data))}"
+            )
+        data = {m: data[m] for m in want_models}
+
+    # Name the models that are missing some of the plotted sets. Their bar group
+    # will have a hole in it, and a hole is easy to misread as a very low score.
+    for model, per_set in data.items():
+        if gaps := [s for s in wanted if s not in per_set]:
+            print(
+                f"  ! {model} has no data for {', '.join(gaps)} — that slot will be "
+                f"blank, not zero (a job still running, most likely)",
+                file=sys.stderr,
+            )
 
     # Plot only the sets that actually have data, keeping the requested order —
     # an empty bar group for a set nobody ran reads as a zero score.
