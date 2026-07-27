@@ -182,6 +182,17 @@ def collect(results_dir: Path, wanted: list[str]) -> dict[str, dict[str, dict]]:
             keep[base] = row
         if keep:
             out[model] = keep
+        elif rows:
+            # The model HAS results, just not for the requested sets — usually a
+            # job that has not reached the scaled sets yet. Say so: a model that
+            # vanishes from a comparison chart without a word is indistinguishable
+            # from one that was never run.
+            have = ", ".join(sorted(SET_BUDGET_RE.sub("", r["set"]) for r in rows))
+            print(
+                f"  ! {model} has no data for the requested sets — omitted from the "
+                f"figures entirely. It does have: {have}",
+                file=sys.stderr,
+            )
     return out
 
 
