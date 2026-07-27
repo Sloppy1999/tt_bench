@@ -94,15 +94,34 @@ def load_all_results(results_path: str | None = None):
     return tasks
 
 
-def plot_tier1_analysis(tasks: list, outdir: Path):
+# Preferred display order; anything else present is appended alphabetically.
+CAT_ORDER = ["official", "1comp", "2comp", "scaled", "scaled_1comp", "scaled_2comp"]
+# Validated categorical palette, same slots and order as jureca/plot_results.py so
+# a category keeps its colour across every figure in the bundle.
+CAT_PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]
+
+
+def categories_present(tasks: list) -> list:
+    """The sets actually in the data, in a stable order.
+
+    This used to be a hardcoded ["official", "1comp", "2comp"], so the ~1800
+    tasks of scaled_1comp and scaled_2comp were loaded and then silently dropped
+    at plot time — the figures showed the 21 small-set tasks and looked complete.
+    """
+    seen = {t["category"] for t in tasks}
+    return [c for c in CAT_ORDER if c in seen] + sorted(seen - set(CAT_ORDER))
+
+
+def plot_tier1_analysis(tasks: list, outdir: Path, model_label: str = ""):
     if not tasks:
         return
-    
+
     n_total = len(tasks)
     n_success = sum(1 for t in tasks if t["success"])
-    
-    cats = ["official", "1comp", "2comp"]
-    cat_colors_scatter = {"official": "#1f77b4", "1comp": "#2ca02c", "2comp": "#ff7f0e"}
+
+    cats = categories_present(tasks)
+    cat_colors_scatter = {c: CAT_PALETTE[i % len(CAT_PALETTE)] for i, c in enumerate(cats)}
+    label = model_label or "unknown model"
     
     # ═══════════════════════════════════════════════════════════
     # IMAGE 1: Board heatmap — success rate per cell
@@ -115,7 +134,14 @@ def plot_tier1_analysis(tasks: list, outdir: Path):
     ax_heat.set_facecolor(COLOURS["bg"])
     
     draw_peg_grid(ax_heat)
-    draw_board_frame(ax_heat, title="Success Rate by Component Position", subtitle=f"qwen3-coder-30b-a3b | {n_total} tasks | {n_success/n_total*100:.0f}% overall")
+    draw_board_frame(
+        ax_heat,
+        title="Success Rate by Component Position",
+        # The model name used to be hardcoded here, so every model's heatmap
+        # was labelled with one unrelated model. Sets are listed too, because
+        # which sets went into a figure is part of what it means.
+        subtitle=f"{label} | {n_total} tasks | {n_success/n_total*100:.0f}% overall | sets: {', '.join(cats)}",
+    )
     draw_hopper(ax_heat, 2, "B", 8, "blue", -1)
     draw_hopper(ax_heat, 8, "R", 8, "red", -1)
     draw_catcher(ax_heat, 2, "blue")
@@ -191,7 +217,7 @@ def plot_tier1_analysis(tasks: list, outdir: Path):
     ax_bar.set_xticks(x)
     ax_bar.set_xticklabels([c.upper() for c in cats], fontsize=12)
     ax_bar.set_ylabel("Success Rate", fontsize=12)
-    ax_bar.set_title("Success Rate by Category & Zone — qwen3-coder-30b-a3b", fontsize=14, fontweight="bold")
+    ax_bar.set_title(f"Success Rate by Category & Zone — {label}", fontsize=14, fontweight="bold")
     ax_bar.set_ylim(0, 1.1)
     ax_bar.legend(fontsize=10, ncol=3, loc="upper right")
     ax_bar.grid(axis="y", alpha=0.3)
@@ -214,7 +240,7 @@ def plot_tier1_analysis(tasks: list, outdir: Path):
     
     ax_scatter.set_xlabel("Tool Calls", fontsize=12)
     ax_scatter.set_ylabel("Success (1=yes, 0=no)", fontsize=12)
-    ax_scatter.set_title("Tool Calls vs Success — qwen3-coder-30b-a3b", fontsize=14, fontweight="bold")
+    ax_scatter.set_title(f"Tool Calls vs Success — {label}", fontsize=14, fontweight="bold")
     ax_scatter.set_yticks([0, 1])
     ax_scatter.set_yticklabels(["Fail", "Success"])
     ax_scatter.legend(fontsize=10, loc="upper left")
@@ -279,7 +305,7 @@ def plot_tier1_analysis(tasks: list, outdir: Path):
         if row == len(rows):
             cell.set_text_props(fontweight="bold")
     
-    ax_table.set_title("Tier 1 Experiment — qwen3-coder-30b-a3b-instruct", fontsize=14, fontweight="bold", pad=15)
+    ax_table.set_title(f"Tier 1 Experiment — {label}", fontsize=14, fontweight="bold", pad=15)
     fig4.savefig(outdir / "tier1_04_table.png", dpi=200, facecolor="white", bbox_inches="tight")
     plt.close(fig4)
     print("  ✓ tier1_04_table.png")
@@ -287,10 +313,10 @@ def plot_tier1_analysis(tasks: list, outdir: Path):
     return outdir / "tier1_01_heatmap.png"
 
 
-def print_summary(tasks: list):
-    cats = ["official", "1comp", "2comp", "scaled"]
+def print_summary(tasks: list, model_label: str = ""):
+    cats = categories_present(tasks)
     print(f"\n{'='*70}")
-    print(f"  TIER 1 EXPERIMENT SUMMARY — qwen3-coder-30b-a3b-instruct")
+    print(f"  TIER 1 EXPERIMENT SUMMARY — {model_label or 'unknown model'}")
     print(f"{'='*70}")
     print(f"  Total tasks: {len(tasks)}")
     print(f"  Successful:  {sum(1 for t in tasks if t['success'])} ({sum(1 for t in tasks if t['success'])/len(tasks)*100:.1f}%)")
@@ -333,8 +359,8 @@ def main():
     tasks = load_all_results(args.results_dir)
     print(f"  → {len(tasks)} tasks loaded")
     
-    plot_tier1_analysis(tasks, outdir)
-    print_summary(tasks)
+    plot_tier1_analysis(tasks, outdir, args.model_label or '')
+    print_summary(tasks, args.model_label or '')
 
 
 if __name__ == "__main__":
