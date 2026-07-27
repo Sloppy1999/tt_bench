@@ -71,12 +71,19 @@ THEMES = {
     },
 }
 
-# Difficulty order: 1 component, 2 components, then the official mix (1-9).
-SET_ORDER = ["1comp", "2comp", "official"]
+# Difficulty order: 1 component, 2 components, then the mixed sets. The scaled_*
+# variants are the same difficulty tiers at ~1000 tasks instead of 5 — at n=5 a
+# single task moves the rate by 20 points, which is the noise floor that made two
+# identical runs of the same model differ by 20 points. Prefer them for anything
+# quantitative; the small sets are useful for a fast smoke check, not for a claim.
+SET_ORDER = ["1comp", "2comp", "official", "scaled_1comp", "scaled_2comp", "scaled"]
 SET_LABELS = {
     "1comp": "1comp\n1 component",
     "2comp": "2comp\n2 components",
     "official": "official\n1–9 components",
+    "scaled_1comp": "scaled_1comp\n1 component",
+    "scaled_2comp": "scaled_2comp\n2 components",
+    "scaled": "scaled\nvariants + unsolvable",
 }
 
 # Short, readable names for the normalised error families.
@@ -155,7 +162,7 @@ def is_measurement(row: dict) -> bool:
     return bool(turns) and any(t > 0 for t in turns)
 
 
-def collect(results_dir: Path) -> dict[str, dict[str, dict]]:
+def collect(results_dir: Path, wanted: list[str]) -> dict[str, dict[str, dict]]:
     """{model: {set_label: row}} for base sets only, invalid runs dropped."""
     by_model = discover(results_dir, None, None)
     out: dict[str, dict[str, dict]] = {}
@@ -163,7 +170,7 @@ def collect(results_dir: Path) -> dict[str, dict[str, dict]]:
         keep: dict[str, dict] = {}
         for row in rows:
             base = SET_BUDGET_RE.sub("", row["set"])
-            if base not in SET_ORDER or row["set"] != base:
+            if base not in wanted or row["set"] != base:
                 continue  # skip sweep variants; they belong in their own figure
             if not is_measurement(row):
                 print(
@@ -179,7 +186,7 @@ def collect(results_dir: Path) -> dict[str, dict[str, dict]]:
 
 
 # ── Figure 1: success rate by challenge set ──────────────────────────────────
-def fig_success_by_set(data: dict, t: dict, out: Path) -> None:
+def fig_success_by_set(data: dict, t: dict, out: Path, sets: list[str]) -> None:
     models = list(data)
     if len(models) > len(t["series"]):
         print(
@@ -199,7 +206,7 @@ def fig_success_by_set(data: dict, t: dict, out: Path) -> None:
 
     for si, model in enumerate(models):
         color = t["series"][si]
-        for xi, cset in enumerate(SET_ORDER):
+        for xi, cset in enumerate(sets):
             row = data[model].get(cset)
             if row is None:
                 continue
@@ -221,12 +228,18 @@ def fig_success_by_set(data: dict, t: dict, out: Path) -> None:
                 color=t["ink_secondary"] if rate > 0 else t["muted"],
             )
 
-    ax.set_xticks(range(len(SET_ORDER)))
-    ax.set_xticklabels([SET_LABELS[s] for s in SET_ORDER], fontsize=9, color=t["ink_secondary"])
+    # Put n on the axis. A rate from 5 tasks and a rate from 1000 are not the
+    # same measurement, and the reader cannot tell them apart otherwise.
+    ticks = []
+    for cs in sets:
+        n = max((data[m][cs]["total"] for m in models if cs in data[m]), default=0)
+        ticks.append(f"{SET_LABELS.get(cs, cs)}\nn={n}")
+    ax.set_xticks(range(len(sets)))
+    ax.set_xticklabels(ticks, fontsize=8.5, color=t["ink_secondary"])
     ax.set_ylabel("Tasks solved (%)", fontsize=9)
     ax.set_ylim(0, 100)
     ax.set_yticks([0, 25, 50, 75, 100])
-    ax.set_xlim(-0.55, len(SET_ORDER) - 0.45)
+    ax.set_xlim(-0.55, len(sets) - 0.45)
     strip_chrome(ax, t, ygrid=True)
 
     handles = [
@@ -243,9 +256,10 @@ def fig_success_by_set(data: dict, t: dict, out: Path) -> None:
         borderaxespad=0.2,
     )
     # The claim holds only if no model does BETTER on the harder set.
-    collapses = all(
-        (data[m].get("1comp") or {}).get("success_rate_pct", 0)
-        >= (data[m].get("official") or {}).get("success_rate_pct", 0)
+    first, last = (sets[0], sets[-1]) if len(sets) > 1 else ("", "")
+    collapses = bool(first) and all(
+        (data[m].get(first) or {}).get("success_rate_pct", 0)
+        >= (data[m].get(last) or {}).get("success_rate_pct", 0)
         for m in models
     )
     ax.set_title(
@@ -262,14 +276,14 @@ def fig_success_by_set(data: dict, t: dict, out: Path) -> None:
 
 
 # ── Figure 2: turn distribution by outcome ───────────────────────────────────
-def fig_turn_distribution(data: dict, t: dict, out: Path) -> None:
+def fig_turn_distribution(data: dict, t: dict, out: Path, sets: list[str]) -> None:
     models = list(data)
     rows: list[tuple[str, list[int], list[int], int]] = []
     for model in models:
         ok: list[int] = []
         bad: list[int] = []
         budget = 25
-        for cset in SET_ORDER:
+        for cset in sets:
             row = data[model].get(cset)
             if row is None:
                 continue
@@ -367,7 +381,7 @@ def fig_turn_distribution(data: dict, t: dict, out: Path) -> None:
 
 
 # ── Figure 3: what the failures were ─────────────────────────────────────────
-def fig_failure_families(data: dict, t: dict, out: Path) -> None:
+def fig_failure_families(data: dict, t: dict, out: Path, sets: list[str]) -> None:
     per_model: dict[str, dict[str, int]] = {}
     for model, sets in data.items():
         agg: dict[str, int] = {}
@@ -471,16 +485,16 @@ def save(fig, out: Path, stem: str) -> None:
     plt.close(fig)
 
 
-def write_table(data: dict, out: Path) -> None:
+def write_table(data: dict, out: Path, sets: list[str]) -> None:
     """The table view the accessibility pass requires: identity never colour-alone."""
     out.mkdir(parents=True, exist_ok=True)
     path = out / "success_by_set.csv"
     with path.open("w") as fh:
-        fh.write("model," + ",".join(SET_ORDER) + "\n")
-        for model, sets in data.items():
+        fh.write("model," + ",".join(sets) + "\n")
+        for model, per_set in data.items():
             cells = []
-            for cset in SET_ORDER:
-                row = sets.get(cset)
+            for cset in sets:
+                row = per_set.get(cset)
                 cells.append(f"{row['success_rate_pct']:.1f}" if row else "")
             fh.write(f"{model}," + ",".join(cells) + "\n")
     print(f"  wrote {path}")
@@ -491,20 +505,48 @@ def main() -> None:
     ap.add_argument("--results-dir", default="benchmark_results/jureca_tier1")
     ap.add_argument("--out", default="figures", help="output directory (default: %(default)s)")
     ap.add_argument("--dark", action="store_true", help="render for a dark surface")
+    ap.add_argument(
+        "--sets",
+        default="",
+        help="comma-separated sets to plot, in order (default: whichever of "
+        f"{','.join(SET_ORDER)} are present). Prefer the scaled_* variants for "
+        "anything quantitative — they carry ~1000 tasks against 5.",
+    )
     args = ap.parse_args()
 
     t = THEMES["dark" if args.dark else "light"]
     apply_theme(t)
 
-    data = collect(Path(args.results_dir))
+    if args.sets:
+        wanted = [s.strip() for s in args.sets.split(",") if s.strip()]
+        if unknown := [s for s in wanted if s not in SET_ORDER]:
+            sys.exit(f"Unknown set(s): {', '.join(unknown)}. Known: {', '.join(SET_ORDER)}")
+    else:
+        wanted = list(SET_ORDER)
+
+    data = collect(Path(args.results_dir), wanted)
     if not data:
         sys.exit("No usable reports found.")
 
+    # Plot only the sets that actually have data, keeping the requested order —
+    # an empty bar group for a set nobody ran reads as a zero score.
+    sets = [s for s in wanted if any(s in per_set for per_set in data.values())]
+    if not sets:
+        sys.exit("No reports for the requested sets.")
+    if missing := [s for s in wanted if s not in sets]:
+        print(f"  ! no data for {', '.join(missing)}; omitting from the figures", file=sys.stderr)
+    if len(sets) > 4:
+        print(
+            f"  ! plotting {len(sets)} sets x {len(data)} models — that is a busy chart. "
+            f"Consider --sets scaled_1comp,scaled_2comp,scaled for the presentation.",
+            file=sys.stderr,
+        )
+
     out = Path(args.out)
-    fig_success_by_set(data, t, out)
-    fig_turn_distribution(data, t, out)
-    fig_failure_families(data, t, out)
-    write_table(data, out)
+    fig_success_by_set(data, t, out, sets)
+    fig_turn_distribution(data, t, out, sets)
+    fig_failure_families(data, t, out, sets)
+    write_table(data, out, sets)
 
 
 if __name__ == "__main__":
