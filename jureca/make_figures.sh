@@ -169,7 +169,7 @@ banner "Done"
 COUNT=$(find "$BUNDLE" -type f \( -name '*.png' -o -name '*.svg' -o -name '*.csv' \) | wc -l | tr -d ' ')
 echo ""
 echo "  $COUNT file(s) in $BUNDLE"
-find "$BUNDLE" -type d -mindepth 1 | sort | while read -r d; do
+find "$BUNDLE" -mindepth 1 -type d | sort | while read -r d; do
     n=$(find "$d" -maxdepth 1 -type f | wc -l | tr -d ' ')
     printf "    %-40s %s file(s)\n" "${d#$BUNDLE/}" "$n"
 done

@@ -279,19 +279,26 @@ def plot_tier1_analysis(tasks: list, outdir: Path, model_label: str = ""):
                 f"{np.mean([t['tool_calls'] for t in tasks]):.1f}"])
     
     col_labels = ["Category / Zone", "Tasks", "Success", "Rate", "Avg Calls"]
-    cell_colors = []
-    for row in rows:
-        if row[0] == "TOTAL":
-            cell_colors.append(["#e0e0e0"] * 5)
-        elif row[0].startswith("  └"):
-            cell_colors.append(["#fafafa"] * 5)
-        elif row[0] == "OFFICIAL":
-            cell_colors.append(["#d4e6f1"] * 5)
-        elif row[0] == "1COMP":
-            cell_colors.append(["#d5f5e3"] * 5)
-        elif row[0] == "2COMP":
-            cell_colors.append(["#fdebd0"] * 5)
-    
+
+    # One tint per row, as a comprehension OVER rows so the two lists cannot
+    # diverge in length. This was an if/elif chain naming OFFICIAL/1COMP/2COMP
+    # with no else: once the category list stopped being hardcoded, SCALED rows
+    # matched nothing and appended nothing, and matplotlib failed much later with
+    # "'cellColours' must have N rows" — an error that names neither the category
+    # nor the loop that dropped it. A default tint plus a comprehension makes the
+    # failure structurally impossible rather than merely handled.
+    ROW_TINTS = {"OFFICIAL": "#d4e6f1", "1COMP": "#d5f5e3", "2COMP": "#fdebd0"}
+
+    def row_tint(label: str) -> str:
+        if label == "TOTAL":
+            return "#e0e0e0"
+        if label.startswith("  └"):
+            return "#fafafa"
+        return ROW_TINTS.get(label, "#ececec")
+
+    cell_colors = [[row_tint(r[0])] * len(col_labels) for r in rows]
+
+
     table = ax_table.table(cellText=rows, colLabels=col_labels, cellColours=cell_colors,
                           loc="center", cellLoc="center")
     table.auto_set_font_size(False)
