@@ -72,9 +72,17 @@ fail()  { echo -e "  ${RED}✘${NC} $1"; }
 #   Dense 26-35B    → 4 GPUs (31B ≈ 62GB of weights; 1 GPU leaves ~10GB of KV
 #                     cache at 0.90 util, which will not hold 131072 tokens)
 #   MoE <50B total  → 1 GPU (only active params are resident per forward pass)
+#
+# Weight size is not the only input: a model whose NATIVE context is below
+# TARGET_CTX=131072 gets YaRN-extended, and its KV cache grows by the same
+# factor. qwen2.5-coder-7b (native 32768, factor 4) on 1 GPU had almost no room
+# for concurrent sequences, so --workers 8 serialised and the job hit TIMEOUT
+# after ~11.5h without finishing one scaled set — while a 26B MoE finished all
+# three in three hours. Give YaRN-extended models the whole node too.
 
 MODELS=(
-    "Qwen/Qwen2.5-Coder-7B-Instruct|qwen2.5-coder-7b|1"
+    # YaRN factor 4 (native 32768) — needs the KV headroom, see the note above.
+    "Qwen/Qwen2.5-Coder-7B-Instruct|qwen2.5-coder-7b|4"
     "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct|deepseek-coder-v2-lite|1"
     "google/gemma-4-26B-A4B-it|gemma-4-26b-a4b|1"
     # google/gemma-4-31B (base) is deliberately absent: no chat template, 400 on
