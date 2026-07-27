@@ -33,11 +33,22 @@ from tt_bench.simulator.renderer import COLOURS as BR_COLOURS
 #  Config
 # ═══════════════════════════════════════════════════════════════════════
 
-CHALLENGE_PATH = (
-    Path(__file__).resolve().parent.parent
-    / "tasks/official/challenges/json/tt-official-ch01.json"
+REPO = Path(__file__).resolve().parent.parent
+
+# Challenges moved under data/ ; the old path raised FileNotFoundError. Both are
+# accepted so the script keeps working against an older checkout.
+CHALLENGE_PATH = next(
+    (
+        p
+        for p in (
+            REPO / "data/tasks/official/challenges/json/tt-official-ch01.json",
+            REPO / "tasks/official/challenges/json/tt-official-ch01.json",
+        )
+        if p.exists()
+    ),
+    REPO / "data/tasks/official/challenges/json/tt-official-ch01.json",
 )
-OUTPUT_PATH = Path(__file__).resolve().parent.parent / "board_three_panel.png"
+OUTPUT_PATH = REPO / "board_three_panel.png"
 
 DPI = 250                          # high-DPI for projection / print
 FIG_WIDTH_IN  = 20.0               # slide-friendly wide aspect
