@@ -37,9 +37,23 @@ def load_all_results(results_path: str | None = None):
             return []
         latest = runs[-1]
     print(f"Loading from: {latest}")
-    
-    tasks = []
+
+    # ONE report per set directory: the newest. Re-running a set leaves every
+    # previous benchmark_<timestamp>.json beside the new one, and this used to
+    # rglob all of them into a single pool — so a model re-run three times had
+    # each task counted three times, with old and current runs averaged
+    # together. That is how the figures ended up stale while the raw data on
+    # disk was current. Filenames are ISO timestamps, so sorting picks the
+    # latest, and this now matches jureca/inspect_results.py exactly.
+    by_set: dict[Path, Path] = {}
     for rp in sorted(latest.rglob("benchmark_*.json")):
+        by_set[rp.parent] = rp  # later timestamp overwrites earlier
+    superseded = len(list(latest.rglob("benchmark_*.json"))) - len(by_set)
+    if superseded:
+        print(f"  (ignoring {superseded} superseded report(s) from earlier runs)")
+
+    tasks = []
+    for rp in sorted(by_set.values()):
         # Determine set from parent directory name
         set_name = rp.parent.name  # official, 1comp, 1comp_var, 2comp, 2comp_var, scaled
         with open(rp) as f:
