@@ -41,8 +41,12 @@ class TuringTumbleToolExecutor:
         *,
         fixed_positions: Optional[set] = None,
         target_sequence: Optional[List[str]] = None,
+        expose_inventory: bool = False,
     ):
         self.board = board
+        # Ablation switch: report the remaining inventory from get_board_state.
+        # Off by default — see the note in get_board_state.
+        self.expose_inventory: bool = expose_inventory
         self.placed_components: List[Dict[str, Any]] = []
         self.available_parts: Dict[str, int] = dict(available_parts) if available_parts else {}
         # Tracks how many of each type have been placed (for inventory enforcement).
@@ -395,11 +399,30 @@ class TuringTumbleToolExecutor:
             for comp in payload["components"]:
                 comp["source"] = "user" if (comp["x"], comp["y"]) in user_positions else "fixed"
 
-            return {
+            result = {
                 "success": True,
                 "placed_count": len(payload["components"]),
                 **payload,
             }
+
+            # ABLATION (opt-in): expose the REMAINING inventory.
+            #
+            # By default the agent is told its inventory once, in the initial
+            # prompt, and never again — the prompt is rendered before the loop
+            # starts and this tool does not report parts. It must therefore
+            # track its own consumption across up to 25 turns from memory, so
+            # the benchmark measures working memory over a resource constraint
+            # alongside planning. Enabling this separates the two: if scores
+            # rise, the failures were bookkeeping rather than reasoning.
+            #
+            # Off by default so results stay comparable with earlier runs.
+            if self.expose_inventory:
+                result["available_parts_remaining"] = {
+                    part: allowed - self._used_parts.get(part, 0)
+                    for part, allowed in self.available_parts.items()
+                }
+
+            return result
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -443,6 +466,7 @@ def create_executor_from_task(
     available_parts: Optional[Dict[str, int]] = None,
     *,
     target_sequence: Optional[List[str]] = None,
+    expose_inventory: bool = False,
 ) -> TuringTumbleToolExecutor:
     """Create a tool executor from task configuration.
 
@@ -496,6 +520,7 @@ def create_executor_from_task(
         available_parts=available_parts,
         fixed_positions=fixed_positions,
         target_sequence=target_sequence,
+        expose_inventory=expose_inventory,
     )
 
 
