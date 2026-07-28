@@ -103,8 +103,14 @@ class TuringTumbleBenchmark:
         max_turns: int = 25,
         max_tokens: int = 32768,
         compute_complexity: bool = False,
+        declare_zero_parts: bool = False,
+        observable_inventory: bool = False,
     ):
         self.llm = llm_client
+        # Ablation switches, both off by default so results stay comparable with
+        # earlier runs. See --declare-zero-parts and --observable-inventory.
+        self.declare_zero_parts = declare_zero_parts
+        self.observable_inventory = observable_inventory
         self.challenges_dir = challenges_dir
         self.output_dir = output_dir
         self.print_board = print_board
@@ -311,8 +317,19 @@ class TuringTumbleBenchmark:
         return json.dumps(board.to_llm_dict(), indent=2)
 
     @staticmethod
-    def _format_available_parts(avail: Dict[str, int]) -> str:
-        lines = [f"  - {part}: {count}" for part, count in avail.items() if count > 0]
+    def _format_available_parts(avail: Dict[str, int], declare_zero: bool = False) -> str:
+        """Render the inventory for the prompt.
+
+        ABLATION (opt-in via declare_zero): by default types with a count of 0
+        are omitted, so the agent must infer unavailability from ABSENCE. Language
+        models handle explicit negation far better than omission, and the most
+        common rejected action observed is placing a type whose count is zero.
+        Listing them explicitly separates "did not know" from "knew and ignored".
+        """
+        if declare_zero:
+            lines = [f"  - {part}: {count}" for part, count in avail.items()]
+        else:
+            lines = [f"  - {part}: {count}" for part, count in avail.items() if count > 0]
         return "\n".join(lines) if lines else "  (none)"
 
     def _print_board(
@@ -354,7 +371,9 @@ class TuringTumbleBenchmark:
         board = self._board_for_prompt(task_info, include_solution=False)
         return AGENTIC_PROMPT_TEMPLATE.format(
             board_json=self._format_board_json(board),
-            available_parts=self._format_available_parts(task_info["available_parts"]),
+            available_parts=self._format_available_parts(
+                task_info["available_parts"], getattr(self, "declare_zero_parts", False)
+            ),
             target_behavior=task_info["objective"],
             COMPONENT_RULES=COMPONENT_RULES,
         )
@@ -712,6 +731,7 @@ class TuringTumbleBenchmark:
                 target_sequence=self._normalize_input_sequence(
                     task_info.get("input_sequence", ["blue"])
                 ),
+                expose_inventory=getattr(self, "observable_inventory", False),
             )
 
             # Build prompt
@@ -785,7 +805,18 @@ class TuringTumbleBenchmark:
                 metrics={
                     "valid": float(is_valid),
                     "tool_calls_count": len(tool_calls),
-                    "turns": len(tool_calls),
+                    # `turns` was len(tool_calls), which is not turns. A model
+                    # emitting several tool calls in one assistant message inflates
+                    # it past max_turns — DeepSeek recorded 444 against a budget of
+                    # 25, while models emitting one call per turn happened to match
+                    # and made the field look correct. turn_logprobs carries one
+                    # entry per API call (see client.py "turn_logprobs is a list of
+                    # per-turn logprob lists"), i.e. one per agent-loop iteration,
+                    # and every client populates it. Fall back to the old value
+                    # rather than reporting 0, because 0 turns is the signature the
+                    # analysis tooling uses for "this run generated nothing".
+                    "turns": len(turn_logprobs) if turn_logprobs else len(tool_calls),
+                    "turns_source": "api_calls" if turn_logprobs else "tool_calls",
                     "component_score": comp_score,
                     "component_correct": comp_correct,
                     "component_placed": comp_placed,
@@ -1170,6 +1201,33 @@ def main():
     parser.add_argument("--model", default="gpt-4")
     parser.add_argument("--api-key", type=str, help="API key (or set env var)")
     parser.add_argument("--base-url", type=str, help="API base URL")
+    parser.add_argument(
+        "--declare-zero-parts",
+        action="store_true",
+        help="ABLATION: list part types with count 0 in the prompt instead of "
+        "omitting them, so unavailability is stated rather than implied.",
+    )
+    parser.add_argument(
+        "--observable-inventory",
+        action="store_true",
+        help="ABLATION: report the REMAINING inventory from get_board_state. By "
+        "default it is declared once in the initial prompt and never again, so the "
+        "agent must track consumption from memory across up to 25 turns.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.0,
+        help=(
+            "Sampling temperature (default: 0.0, greedy). LLMConfig defaults to 0.7 "
+            "and this flag did not exist, so every benchmark run sampled "
+            "stochastically: one model re-run with an identical configuration "
+            "scored 80/60/0%% and then 100/80/9%%. Greedy decoding removes that "
+            "source of variance. Note that vLLM with continuous batching is still "
+            "not bit-deterministic — batch composition changes reduction order — so "
+            "repeated runs remain advisable for a headline number."
+        ),
+    )
 
     # Benchmark options
     parser.add_argument(
@@ -1244,6 +1302,7 @@ def main():
     llm_config = llm_client_.LLMConfig(
         provider=args.provider,
         model=args.model,
+        temperature=args.temperature,
         api_key=args.api_key,
         base_url=args.base_url,
         timeout=args.timeout,
@@ -1257,6 +1316,8 @@ def main():
         challenges_dir=args.challenges_dir,
         output_dir=args.output_dir,
         print_board=args.print_board,
+        declare_zero_parts=args.declare_zero_parts,
+        observable_inventory=args.observable_inventory,
         max_turns=args.max_turns,
         max_tokens=args.max_tokens,
         compute_complexity=args.compute_complexity,

@@ -86,6 +86,8 @@ def summarise(report_path: Path, set_label: str) -> dict:
     fail_turns: list[int] = []
     comp_correct = comp_placed = comp_gt = 0
     error_families: dict[str, int] = {}
+    turn_errors: dict[str, int] = {}
+    turn_error_tasks: dict[str, int] = {}
     tokens: list[int] = []
     latencies: list[int] = []
 
@@ -99,9 +101,23 @@ def summarise(report_path: Path, set_label: str) -> dict:
         comp_placed += met.get("component_placed") or 0
         comp_gt += met.get("component_gt") or 0
 
-        # The top-level `error` is the outcome; empty means the task passed.
+        # The top-level `error` is the OUTCOME: why the task was scored a failure.
         if fam := normalise_error(task.get("error") or ""):
             error_families[fam] = error_families.get(fam, 0) + 1
+
+        # Per-tool-call errors are a different thing entirely: rejected actions
+        # the agent recovered from. Inventory violations live here, not in the
+        # outcome — counting raw error strings across a whole report conflates
+        # the two and overstates them as a terminal cause. Tracked per task as
+        # well as per occurrence, because "300 violations" spread over 5 tasks
+        # and over 300 tasks are very different claims.
+        seen_here: set[str] = set()
+        for step in (task.get("predicted") or {}).get("transcript") or []:
+            if sfam := normalise_error(step.get("error") or ""):
+                turn_errors[sfam] = turn_errors.get(sfam, 0) + 1
+                seen_here.add(sfam)
+        for sfam in seen_here:
+            turn_error_tasks[sfam] = turn_error_tasks.get(sfam, 0) + 1
 
         if isinstance(task.get("tokens_used"), int):
             tokens.append(task["tokens_used"])
@@ -130,6 +146,9 @@ def summarise(report_path: Path, set_label: str) -> dict:
         "component_placed": comp_placed,
         "component_gt": comp_gt,
         "error_families": dict(sorted(error_families.items(), key=lambda kv: -kv[1])),
+        # Rejected actions during the episode, not the reason the task failed.
+        "turn_errors": dict(sorted(turn_errors.items(), key=lambda kv: -kv[1])),
+        "turn_error_tasks": dict(sorted(turn_error_tasks.items(), key=lambda kv: -kv[1])),
         "tokens_total": sum(tokens),
         "latency_ms_median": int(statistics.median(latencies)) if latencies else None,
     }
@@ -163,7 +182,7 @@ def fmt_turns(turns: list[int]) -> str:
     return f"{turns[0]}/{int(statistics.median(turns))}/{turns[-1]}"
 
 
-def render(by_model: dict[str, list[dict]], show_errors: bool) -> None:
+def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors: bool = False) -> None:
     if not by_model:
         print("No reports found. Has a job finished writing to benchmark_results/?")
         return
@@ -212,9 +231,24 @@ def render(by_model: dict[str, list[dict]], show_errors: bool) -> None:
             for r in rows:
                 if not r["error_families"]:
                     continue
-                print(f"\n{model} / {r['set']} — failure families:")
+                print(f"\n{model} / {r['set']} — terminal failure families:")
                 for fam, count in r["error_families"].items():
                     print(f"  {count:>3}x  {fam}")
+
+    if show_turn_errors:
+        print("\n" + "=" * 78)
+        print("REJECTED ACTIONS DURING EPISODES — not the reason any task failed.")
+        print("'tasks' is how many tasks hit the family at least once, out of n.")
+        print("=" * 78)
+        for model, rows in by_model.items():
+            for r in rows:
+                if not r["turn_errors"]:
+                    continue
+                print(f"\n{model} / {r['set']}  (n={r['total']}):")
+                for fam, count in r["turn_errors"].items():
+                    tasks = r["turn_error_tasks"].get(fam, 0)
+                    pct = 100.0 * tasks / r["total"] if r["total"] else 0
+                    print(f"  {count:>5}x over {tasks:>4} task(s) ({pct:4.1f}%)  {fam}")
 
 
 def main() -> None:
@@ -226,7 +260,14 @@ def main() -> None:
     )
     ap.add_argument("--model", help="only this model directory")
     ap.add_argument("--set", dest="set_label", help="only this set label, ignoring any _tN suffix")
-    ap.add_argument("--errors", action="store_true", help="also list failure families per model/set")
+    ap.add_argument("--errors", action="store_true", help="also list terminal failure families per model/set")
+    ap.add_argument(
+        "--turn-errors",
+        action="store_true",
+        help="list actions the executor rejected mid-episode (inventory violations, "
+        "out-of-bounds placements). These are recovered-from events, NOT the reason "
+        "a task was scored a failure — reporting them as failure causes overstates them.",
+    )
     ap.add_argument("--json", action="store_true", help="emit the summary as JSON instead of a table")
     args = ap.parse_args()
 
@@ -236,7 +277,7 @@ def main() -> None:
         json.dump(by_model, sys.stdout, indent=2)
         print()
     else:
-        render(by_model, args.errors)
+        render(by_model, args.errors, args.turn_errors)
 
 
 if __name__ == "__main__":
