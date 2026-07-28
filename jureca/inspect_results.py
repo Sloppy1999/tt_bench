@@ -169,8 +169,9 @@ def render(by_model: dict[str, list[dict]], show_errors: bool) -> None:
         return
 
     head = (
-        f"{'model':<24} {'set':<14} {'budget':>6} {'n':>3} {'ok':>3} {'rate':>7} "
-        f"{'turns ok':>12} {'turns fail':>12} {'ceil':>5} {'comp':>10}"
+        f"{'model':<24} {'set':<14} {'budget':>6} {'n':>5} {'ok':>4} {'rate':>7} "
+        f"{'turns ok':>12} {'turns fail':>12} {'ceil':>5} {'comp':>10} "
+        f"{'tok/task':>9} {'lat_med':>8}"
     )
     print(head)
     print("-" * len(head))
@@ -178,22 +179,33 @@ def render(by_model: dict[str, list[dict]], show_errors: bool) -> None:
     for model, rows in by_model.items():
         for i, r in enumerate(rows):
             comp = f"{r['component_correct']}/{r['component_gt']}"
+            # Throughput, because nobody was watching it: qwen2.5-coder-7b spent
+            # 11.5h on a set two other models finished in ~2h, and the only signal
+            # was the eventual TIMEOUT. Tokens per task and median latency make
+            # that visible in the first minutes of a run instead of the 12th hour.
+            tok = r["tokens_total"] // r["total"] if r["total"] else 0
+            lat = r["latency_ms_median"]
             print(
                 f"{model if i == 0 else '':<24} "
                 f"{SET_BUDGET_RE.sub('', r['set']):<14} "
                 f"{r['budget']:>6} "
-                f"{r['total']:>3} {r['successful']:>3} "
+                f"{r['total']:>5} {r['successful']:>4} "
                 f"{r['success_rate_pct']:>6.1f}% "
                 f"{fmt_turns(r['turns_ok']):>12} "
                 f"{fmt_turns(r['turns_fail']):>12} "
                 f"{r['fail_at_ceiling']:>5} "
-                f"{comp:>10}"
+                f"{comp:>10} "
+                f"{tok:>9,} "
+                f"{(f'{lat / 1000:.1f}s' if lat else '-'):>8}"
             )
         print()
 
     print("turns columns are min/median/max. 'ceil' counts failures sitting on the")
     print("turn budget — those ran out of turns rather than converging on a wrong answer.")
     print("'comp' is components placed correctly / required by ground truth.")
+    print("'tok/task' is mean tokens per task and 'lat_med' the median task latency —")
+    print("watch these early: a model generating 5x the tokens of another will not")
+    print("finish a 1000-task set in the same walltime, and TIMEOUT is a late signal.")
 
     if show_errors:
         for model, rows in by_model.items():
