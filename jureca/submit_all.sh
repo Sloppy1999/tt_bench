@@ -106,6 +106,7 @@ SELECTED=()
 MAX_TURNS=""        # empty → run_benchmark.sbatch's default of 25
 SETS=""             # empty → all challenge sets
 WALLTIME=""         # empty → the #SBATCH --time in run_benchmark.sbatch (12h)
+TEMPERATURE=""      # empty → run_benchmark.sbatch default of 0.0 (greedy)
 
 # Slurm mail notification. Passed on the sbatch command line rather than as a
 # #SBATCH directive: those are comments parsed before any shell exists, so
@@ -173,6 +174,7 @@ while [ $# -gt 0 ]; do
         --turns)      MAX_TURNS="${2:?--turns needs a number, e.g. --turns 50}"; shift 2 ;;
         --sets)       SETS="${2:?--sets needs a list, e.g. --sets 1comp}"; shift 2 ;;
         --time)       WALLTIME="${2:?--time needs a Slurm duration, e.g. --time 24:00:00}"; shift 2 ;;
+        --temperature) TEMPERATURE="${2:?--temperature needs a value, e.g. --temperature 0.7}"; shift 2 ;;
         --mail)       MAIL_USER="${2:?--mail needs an address}"; shift 2 ;;
         --mail-type)  MAIL_TYPE="${2:?--mail-type needs a value, e.g. BEGIN,END,FAIL}"; shift 2 ;;
         -h|--help)    usage; exit 0 ;;
@@ -374,6 +376,7 @@ for entry in "${MODELS[@]}"; do
     # in the submitting shell cannot ride in via --export=ALL and silently change
     # what the experiment measures.
     EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS:-}"
+    EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0}"
 
     TIME_ARGS=()
     [ -n "$WALLTIME" ] && TIME_ARGS=(--time "$WALLTIME")
