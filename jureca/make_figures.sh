@@ -36,6 +36,16 @@ RESULTS="${RESULTS_DIR:-benchmark_results/jureca_tier1}"
 # identical runs of one model differ by 20. Presentation figures use the big ones.
 PLOT_SETS="${PLOT_SETS:-scaled_1comp,scaled_2comp,scaled}"
 
+# Models to leave out of the comparison figures. Not "broken" — these produced
+# results that are not comparable with the rest, so averaging them into the same
+# chart would be the mistake. qwen2.5-coder-7b is the only model whose native
+# context (32768) is below TARGET_CTX, so it alone ran YaRN-extended; it also
+# completed only one scaled set, at a median 0.8s per task against 11-216s for
+# everything else. See docs/results_analysis.md section 7.1.
+# Per-model heatmaps are still generated for excluded models — those never
+# compare across models, so there is nothing to contaminate.
+EXCLUDE_MODELS="${EXCLUDE_MODELS:-qwen2.5-coder-7b}"
+
 FAILED=()
 run_step() {
     local label="$1"; shift
@@ -80,6 +90,7 @@ mkdir -p "$BUNDLE"/{comparison,comparison-dark,heatmaps,benchmark}
 ok "Bundle: $BUNDLE"
 ok "Results: $RESULTS"
 ok "Sets: $PLOT_SETS"
+[ -n "$EXCLUDE_MODELS" ] && warn "Excluded from comparisons: $EXCLUDE_MODELS"
 
 # ── Which models are worth plotting ──────────────────────────────────────────
 # A report whose tasks all record zero turns never generated a token: a base
@@ -131,10 +142,12 @@ fi
 banner "Comparison figures"
 run_step "success / turns / failures (light)" \
     "${PY_CMD[@]}" jureca/plot_results.py \
-        --results-dir "$RESULTS" --sets "$PLOT_SETS" --out "$BUNDLE/comparison"
+        --results-dir "$RESULTS" --sets "$PLOT_SETS" --exclude "$EXCLUDE_MODELS" \
+        --out "$BUNDLE/comparison"
 run_step "success / turns / failures (dark)" \
     "${PY_CMD[@]}" jureca/plot_results.py \
-        --results-dir "$RESULTS" --sets "$PLOT_SETS" --dark --out "$BUNDLE/comparison-dark"
+        --results-dir "$RESULTS" --sets "$PLOT_SETS" --exclude "$EXCLUDE_MODELS" --dark \
+        --out "$BUNDLE/comparison-dark"
 
 # ── 2. Per-model board heatmaps ──────────────────────────────────────────────
 # One model per invocation, deliberately. analyze_tier1_experiment.py collects
