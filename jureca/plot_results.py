@@ -513,7 +513,7 @@ def fig_success_by_zone(data: dict, t: dict, out: Path, sets: list[str]) -> None
     """
     models = list(data)[: len(t["series"])]
     zone_names = [z[0] for z in ZONES]
-    fig, axes = plt.subplots(1, len(sets), figsize=(4.6 * len(sets), 4.4), sharey=True)
+    fig, axes = plt.subplots(1, len(sets), figsize=(4.6 * len(sets), 4.7), sharey=True)
     if len(sets) == 1:
         axes = [axes]
 
@@ -537,9 +537,33 @@ def fig_success_by_zone(data: dict, t: dict, out: Path, sets: list[str]) -> None
                 color=t["series"][si], markeredgecolor=t["surface"], markeredgewidth=1.0,
                 label=model, zorder=3,
             )
+        # n per band is a property of the DATA, not of the model: the bands come
+        # from the ground-truth solution and every model runs the same tasks, so
+        # one label per band is correct. If two models disagree, one of them ran a
+        # different subset — surface that rather than silently showing either.
+        ticks = []
+        for zname in zone_names:
+            counts = {
+                (data[m][cset].get("zone_total") or {}).get(zname, 0)
+                for m in models
+                if cset in data[m]
+            }
+            counts.discard(0)
+            short = zname.split(" (")[0]
+            if not counts:
+                ticks.append(short)
+            elif len(counts) == 1:
+                ticks.append(f"{short}\nn={counts.pop()}")
+            else:
+                lo, hi = min(counts), max(counts)
+                print(
+                    f"  ! {cset}/{short}: models disagree on the task count "
+                    f"({lo}-{hi}) — one ran a different subset",
+                    file=sys.stderr,
+                )
+                ticks.append(f"{short}\nn={lo}\u2013{hi}")
         ax.set_xticks(range(len(zone_names)))
-        ax.set_xticklabels([z.split(" (")[0] for z in zone_names], fontsize=8.5,
-                           color=t["ink_secondary"])
+        ax.set_xticklabels(ticks, fontsize=8.5, color=t["ink_secondary"])
         ax.set_title(SET_LABELS.get(cset, cset).split("\n")[0], fontsize=10,
                      loc="left", color=t["ink_secondary"], pad=8)
         ax.set_ylim(0, 100)
