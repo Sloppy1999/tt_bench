@@ -94,6 +94,15 @@ def load_all_results(results_path: str | None = None):
     return tasks
 
 
+# The band definition lives in jureca/inspect_results.py and is imported, not
+# copied: three figures here plus the cross-model figures in jureca/plot_results.py
+# consume it, and when it was duplicated two copies stopped at y=9 while a third
+# went to y>=10.
+sys.path.insert(0, str(REPO / "jureca"))
+from inspect_results import ZONES  # noqa: E402
+
+ZONE_COLOURS = ["#e74c3c", "#f39c12", "#2ecc71", "#2a78d6"]
+
 # Preferred display order; anything else present is appended alphabetically.
 CAT_ORDER = ["official", "1comp", "2comp", "scaled", "scaled_1comp", "scaled_2comp"]
 # Validated categorical palette, same slots and order as jureca/plot_results.py so
@@ -186,14 +195,14 @@ def plot_tier1_analysis(tasks: list, outdir: Path, model_label: str = ""):
     # ═══════════════════════════════════════════════════════════
     fig2, ax_bar = plt.subplots(figsize=(12, 6), facecolor="white")
     
-    zones_order = ["Top (y=0-3)", "Mid (y=4-6)", "Bot (y=7-9)"]
-    zone_colors = ["#e74c3c", "#f39c12", "#2ecc71"]
+    zones_order = [z[0] for z in ZONES]
+    zone_colors = ZONE_COLOURS
     
     matrix = {}
     for cat in cats:
         cat_tasks = [t for t in tasks if t["category"] == cat]
         matrix[cat] = {}
-        for zone_name, y_lo, y_hi in [("Top (y=0-3)", 0, 3), ("Mid (y=4-6)", 4, 6), ("Bot (y=7-9)", 7, 9)]:
+        for zone_name, y_lo, y_hi in ZONES:
             zone_tasks = [t for t in cat_tasks if any(y_lo <= y <= y_hi for (_, y) in t["positions"])]
             if zone_tasks:
                 matrix[cat][zone_name] = {
@@ -252,9 +261,16 @@ def plot_tier1_analysis(tasks: list, outdir: Path, model_label: str = ""):
     # ═══════════════════════════════════════════════════════════
     # IMAGE 4: Summary table
     # ═══════════════════════════════════════════════════════════
-    fig4, ax_table = plt.subplots(figsize=(14, 5), facecolor="white")
-    ax_table.axis("off")
-    
+    # Height computed from the row count, not fixed. It was figsize=(14, 5)
+    # regardless of how many rows the data produced, and table.scale then stretched
+    # the table ~80% beyond its own axes — bbox_inches="tight" rescued that at some
+    # row counts and clipped the bottom rows at others, which is how SCALED_2COMP
+    # (the last category) disappeared off the end. Sizing the canvas to the content
+    # removes the guesswork: the table always fits.
+    #
+    # The figure is created AFTER the rows are built, further down, so its height
+    # can be derived from len(rows).
+
     rows = []
     for cat in cats:
         ct = [t for t in tasks if t["category"] == cat]
@@ -263,7 +279,7 @@ def plot_tier1_analysis(tasks: list, outdir: Path, model_label: str = ""):
         avg_score = np.mean([t["component_score"] or 0 for t in ct])
         avg_calls = np.mean([t["tool_calls"] for t in ct])
         # By zone
-        for zone_name, ylo, yhi in [("Top (y=0-3)", 0, 3), ("Mid (y=4-6)", 4, 6), ("Bot (y=7-9)", 7, 9)]:
+        for zone_name, ylo, yhi in ZONES:
             zt = [t for t in ct if any(ylo <= y <= yhi for (_, y) in t["positions"])]
             if zt:
                 zsucc = sum(1 for t in zt if t["success"])
@@ -279,6 +295,14 @@ def plot_tier1_analysis(tasks: list, outdir: Path, model_label: str = ""):
                 f"{np.mean([t['tool_calls'] for t in tasks]):.1f}"])
     
     col_labels = ["Category / Zone", "Tasks", "Success", "Rate", "Avg Calls"]
+
+    # One row of header plus one per data row, at ~0.34 in each under the scale
+    # applied below, plus a little breathing room. With the old fixed
+    # figsize=(14, 5) the last category simply fell off the bottom.
+    fig4, ax_table = plt.subplots(
+        figsize=(14, 0.34 * (len(rows) + 1) + 0.6), facecolor="white"
+    )
+    ax_table.axis("off")
 
     # One tint per row, as a comprehension OVER rows so the two lists cannot
     # diverge in length. This was an if/elif chain naming OFFICIAL/1COMP/2COMP
@@ -303,7 +327,7 @@ def plot_tier1_analysis(tasks: list, outdir: Path, model_label: str = ""):
                           loc="center", cellLoc="center")
     table.auto_set_font_size(False)
     table.set_fontsize(10)
-    table.scale(1.2, 1.8)
+    table.scale(1.0, 1.5)
     for (row, col), cell in table.get_celld().items():
         if row == 0:
             cell.set_text_props(fontweight="bold")
@@ -340,8 +364,7 @@ def print_summary(tasks: list, model_label: str = ""):
         avg_score = np.mean([t["component_score"] or 0 for t in ct])
         
         # By zone
-        for zone_name, ylo, yhi in [("Top y=0-3", 0, 3), ("Mid y=4-6", 4, 6),
-                                       ("Bot y=7-9", 7, 9), ("Deep y≥10", 10, 99)]:
+        for zone_name, ylo, yhi in ZONES:
             zt = [t for t in ct if any(ylo <= y <= yhi for (_, y) in t["positions"])]
             if zt:
                 zsucc = sum(1 for t in zt if t["success"])
