@@ -38,6 +38,21 @@ from pathlib import Path
 SET_BUDGET_RE = re.compile(r"_t(\d+)$")
 DEFAULT_BUDGET = 25
 
+# Board rows grouped into bands, shared with scripts/analyze_tier1_experiment.py
+# so the per-model and cross-model figures cannot disagree. Two of the three
+# consumers used to stop at y=9 while a third went to y>=10; the scaled sets are
+# 13x13 and 15x15, so tasks with components below row 9 fell into no band.
+#
+# A task counts towards every band it has a ground-truth component in, so the
+# bands deliberately do NOT sum to the task total — a two-component solution
+# spanning Top and Deep appears in both.
+ZONES = [
+    ("Top (y=0-3)", 0, 3),
+    ("Mid (y=4-6)", 4, 6),
+    ("Bot (y=7-9)", 7, 9),
+    ("Deep (y>=10)", 10, 99),
+]
+
 # Ordering for the common sets; anything unrecognised is appended alphabetically.
 SET_ORDER = ["official", "1comp", "2comp", "scaled", "scaled_1comp", "scaled_2comp"]
 
@@ -90,6 +105,8 @@ def summarise(report_path: Path, set_label: str) -> dict:
     turn_error_tasks: dict[str, int] = {}
     tokens: list[int] = []
     latencies: list[int] = []
+    zone_ok = {z[0]: 0 for z in ZONES}
+    zone_total = {z[0]: 0 for z in ZONES}
 
     for task in results:
         met = task.get("metrics") or {}
@@ -118,6 +135,16 @@ def summarise(report_path: Path, set_label: str) -> dict:
                 seen_here.add(sfam)
         for sfam in seen_here:
             turn_error_tasks[sfam] = turn_error_tasks.get(sfam, 0) + 1
+
+        # Which board bands this task's ground-truth solution touches.
+        ys = [c.get("y") for c in
+              ((task.get("expected") or {}).get("solution") or {}).get("placed_components") or []]
+        ys = [y for y in ys if isinstance(y, int)]
+        for name, lo, hi in ZONES:
+            if any(lo <= y <= hi for y in ys):
+                zone_total[name] += 1
+                if task.get("success"):
+                    zone_ok[name] += 1
 
         if isinstance(task.get("tokens_used"), int):
             tokens.append(task["tokens_used"])
@@ -149,6 +176,8 @@ def summarise(report_path: Path, set_label: str) -> dict:
         # Rejected actions during the episode, not the reason the task failed.
         "turn_errors": dict(sorted(turn_errors.items(), key=lambda kv: -kv[1])),
         "turn_error_tasks": dict(sorted(turn_error_tasks.items(), key=lambda kv: -kv[1])),
+        "zone_ok": zone_ok,
+        "zone_total": zone_total,
         "tokens_total": sum(tokens),
         "latency_ms_median": int(statistics.median(latencies)) if latencies else None,
     }

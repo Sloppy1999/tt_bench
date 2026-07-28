@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render presentation figures from TT-Bench benchmark reports.
 
-Produces three SVG+PNG figures under figures/:
+Produces four SVG+PNG figures under figures/:
 
   1. success_by_set  — success rate per challenge set, one bar group per model.
      The headline: capability collapses as the number of components required
@@ -10,6 +10,10 @@ Produces three SVG+PNG figures under figures/:
      turn budget marked. Shows the bimodality: successes finish early, failures
      sit on the ceiling.
   3. failure_families — what the failures actually were, per model.
+  4. success_by_zone — success rate against board band, one line per model, one
+     panel per set. Answers whether a weakness belongs to a region of the board
+     or to the model: the per-model equivalent in
+     scripts/analyze_tier1_experiment.py cannot show that.
 
 Data loading and error-family normalisation are imported from inspect_results.py
 so the figures and the table cannot disagree — one source of truth for both.
@@ -40,7 +44,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-from inspect_results import SET_BUDGET_RE, discover  # noqa: E402
+from inspect_results import SET_BUDGET_RE, ZONES, discover  # noqa: E402
 
 # ── Theme ────────────────────────────────────────────────────────────────────
 # Both modes are selected, not flipped: the dark column is the same hues stepped
@@ -491,6 +495,72 @@ def fig_failure_families(data: dict, t: dict, out: Path, sets: list[str]) -> Non
     save(fig, out, "failure_families")
 
 
+# ── Figure 4: success by board band, across models ───────────────────────────
+def fig_success_by_zone(data: dict, t: dict, out: Path, sets: list[str]) -> None:
+    """One panel per set; success rate against board band, one line per model.
+
+    The per-model equivalent (scripts/analyze_tier1_experiment.py, figure 2) puts
+    zones as series and categories on the x-axis, which answers "where on the
+    board is this model weak". This inverts it to answer the cross-model question:
+    is the weakness a property of the region or of the model?
+
+    Lines rather than 4x5 grouped bars: the bands are an ordered spatial axis, so
+    a slope carries the pattern that twenty bars would bury. Small multiples keep
+    each panel to five series, which is the categorical soft cap.
+
+    Bands overlap by construction — a task counts towards every band its
+    ground-truth solution touches — so panel n values exceed the set size.
+    """
+    models = list(data)[: len(t["series"])]
+    zone_names = [z[0] for z in ZONES]
+    fig, axes = plt.subplots(1, len(sets), figsize=(4.6 * len(sets), 4.4), sharey=True)
+    if len(sets) == 1:
+        axes = [axes]
+
+    plotted_any = False
+    for ax, cset in zip(axes, sets):
+        for si, model in enumerate(models):
+            row = data[model].get(cset)
+            if row is None:
+                continue
+            xs, ys = [], []
+            for zi, zname in enumerate(zone_names):
+                tot = (row.get("zone_total") or {}).get(zname, 0)
+                if tot:
+                    xs.append(zi)
+                    ys.append(100.0 * (row.get("zone_ok") or {}).get(zname, 0) / tot)
+            if not xs:
+                continue
+            plotted_any = True
+            ax.plot(
+                xs, ys, marker="o", markersize=6.5, linewidth=2,
+                color=t["series"][si], markeredgecolor=t["surface"], markeredgewidth=1.0,
+                label=model, zorder=3,
+            )
+        ax.set_xticks(range(len(zone_names)))
+        ax.set_xticklabels([z.split(" (")[0] for z in zone_names], fontsize=8.5,
+                           color=t["ink_secondary"])
+        ax.set_title(SET_LABELS.get(cset, cset).split("\n")[0], fontsize=10,
+                     loc="left", color=t["ink_secondary"], pad=8)
+        ax.set_ylim(0, 100)
+        ax.set_xlim(-0.35, len(zone_names) - 0.65)
+        strip_chrome(ax, t, ygrid=True)
+
+    if not plotted_any:
+        print("  ! no per-band data available; skipping the zone figure", file=sys.stderr)
+        plt.close(fig)
+        return
+
+    axes[0].set_ylabel("Tasks solved (%)", fontsize=9)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncols=min(len(models), 3),
+               frameon=False, fontsize=8.5, labelcolor=t["ink_secondary"],
+               bbox_to_anchor=(0.5, -0.06))
+    fig.suptitle("Success rate by board band, per challenge set", fontsize=12.5,
+                 x=0.02, ha="left", y=1.0)
+    save(fig, out, "success_by_zone")
+
+
 def save(fig, out: Path, stem: str) -> None:
     out.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
@@ -608,6 +678,7 @@ def main() -> None:
     fig_success_by_set(data, t, out, sets)
     fig_turn_distribution(data, t, out, sets)
     fig_failure_families(data, t, out, sets)
+    fig_success_by_zone(data, t, out, sets)
     write_table(data, out, sets)
 
 
