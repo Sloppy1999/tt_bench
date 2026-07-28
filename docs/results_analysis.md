@@ -174,22 +174,41 @@ than gpt-oss, consistent with short, quickly-abandoned attempts.
 
 ## 7. Excluded runs
 
-Two runs are reported as excluded rather than as scores of zero, because neither
-measured model capability:
+Three runs are reported as excluded rather than as scores, because none of them
+measured model capability under conditions comparable to §2.
 
 | Run | Observed | Cause |
 |---|---|---|
 | `google/gemma-4-31B` | 0 % across 21 tasks, **0 turns**, 0 tokens | Base (non-instruct) checkpoint ships no chat template; vLLM answered every request with HTTP 400. |
 | `openai/gpt-oss-120b` (first attempt) | 0 % across 21 tasks, **0 turns** | The tiktoken/harmony vocabulary is fetched over the network at request time; compute nodes have no route out, so every request returned HTTP 500. Fixed by pre-populating the cache on the login node; the model then completed all sets and appears in §2. |
+| `Qwen/Qwen2.5-Coder-7B-Instruct` | 7.2 % on `scaled_1comp`, **0.8 s median per task** | Three independent disqualifiers, below. |
 
-Both share a signature worth naming: **an exit status of 0, a complete-looking
-report, and zero generated tokens.** The analysis tooling now drops any report
-whose tasks all record zero turns rather than plotting it as a 0 % score.
+The first two share a signature worth naming: **an exit status of 0, a
+complete-looking report, and zero generated tokens.** The analysis tooling now
+drops any report whose tasks all record zero turns rather than plotting it as a
+0 % score.
 
-`Qwen/Qwen2.5-Coder-7B-Instruct` reached `TIMEOUT` after 12 h without completing
-any scaled set and is absent from §2. It is the only model whose native context
-(32 768) falls below the 131 072 target, so it ran with YaRN at factor 4; it is
-therefore not directly comparable to the other five even once re-run.
+### 7.1 Why `Qwen2.5-Coder-7B-Instruct` is excluded
+
+Three reasons, each sufficient on its own:
+
+1. **Not comparable.** It is the only model whose native context (32 768) falls
+   below the 131 072 target, so it alone ran with YaRN at factor 4 — evaluated
+   outside its training regime while the other five ran natively. A rate obtained
+   under a different effective context does not belong in the same column.
+2. **Incomplete.** It reached `TIMEOUT` after 12 h on the first attempt without
+   finishing a single scaled set, and the re-run completed only `scaled_1comp`.
+   There is no `scaled_2comp` or `scaled` figure for it at any temperature.
+3. **The one measurement it produced is not credible.** A median latency of
+   **0.8 s per task** against 11–216 s for every other model, with 395 of 401
+   failures being an incomplete path, describes a model that is not attempting the
+   task rather than one attempting and failing. Reporting 7.2 % as a capability
+   estimate would be reporting a malfunction.
+
+Excluding it costs little: the model was the smallest in the roster and the
+remaining five span 16 B to 120 B across dense and MoE architectures. It should
+be re-run at its native 32 768 context before any number is quoted, which would
+also remove disqualifier 1 — but that is a different experiment, not this one.
 
 ---
 

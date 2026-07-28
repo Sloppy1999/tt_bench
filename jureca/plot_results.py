@@ -83,7 +83,12 @@ SET_LABELS = {
     "official": "official\n1–9 components",
     "scaled_1comp": "scaled_1comp\n1 component",
     "scaled_2comp": "scaled_2comp\n2 components",
-    "scaled": "scaled\nvariants + unsolvable",
+    # NOT "variants + unsolvable" as the job script's comment claimed: all 2121
+    # task files carry a solution with placed_components, and the filenames
+    # (..._sz13, ..._sz15) identify them as the official challenges re-rendered on
+    # larger boards. There is no unsolvable subset and therefore no ceiling below
+    # 100% — an axis label asserting otherwise would misstate the result.
+    "scaled": "scaled\nlarger boards (13×13, 15×15)",
 }
 
 # Short, readable names for the normalised error families.
@@ -524,6 +529,13 @@ def main() -> None:
         "only some of the plotted sets leaves a gap in its bar group.",
     )
     ap.add_argument(
+        "--exclude",
+        default="",
+        help="comma-separated models to leave out. Use for runs that are not "
+        "comparable rather than not present — e.g. a model evaluated with a "
+        "different effective context, whose rate does not belong in the same chart.",
+    )
+    ap.add_argument(
         "--sets",
         default="",
         help="comma-separated sets to plot, in order (default: whichever of "
@@ -545,6 +557,19 @@ def main() -> None:
     data = collect(Path(args.results_dir), wanted)
     if not data:
         sys.exit("No usable reports found.")
+
+    if args.exclude:
+        drop = [m.strip() for m in args.exclude.split(",") if m.strip()]
+        if unknown := [m for m in drop if m not in data]:
+            print(
+                f"  ! --exclude names {', '.join(unknown)}, which is not in the data anyway",
+                file=sys.stderr,
+            )
+        for m in drop:
+            if data.pop(m, None) is not None:
+                print(f"  ! excluding {m} by request", file=sys.stderr)
+        if not data:
+            sys.exit("Every model was excluded.")
 
     if args.models:
         want_models = [m.strip() for m in args.models.split(",") if m.strip()]
