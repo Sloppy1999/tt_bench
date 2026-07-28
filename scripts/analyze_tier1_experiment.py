@@ -312,7 +312,10 @@ def plot_tier1_analysis(tasks: list, outdir: Path, model_label: str = ""):
         if row == len(rows):
             cell.set_text_props(fontweight="bold")
     
-    ax_table.set_title(f"Tier 1 Experiment — {label}", fontsize=14, fontweight="bold", pad=15)
+    # No title on this figure. table.scale(1.2, 1.8) makes the table taller than
+    # its own axes, so a title anchored to the axes edge landed in the middle of
+    # the rows. The model is identified by the containing directory
+    # (heatmaps/<model>/) and by the three sibling figures, which do carry titles.
     fig4.savefig(outdir / "tier1_04_table.png", dpi=200, facecolor="white", bbox_inches="tight")
     plt.close(fig4)
     print("  ✓ tier1_04_table.png")
