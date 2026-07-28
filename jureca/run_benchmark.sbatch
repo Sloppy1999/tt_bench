@@ -275,6 +275,12 @@ cd "$PROJECT_DIR"
 # ceiling, so this limit is an ACTIVE experimental variable, not a safety margin.
 MAX_TURNS="${MAX_TURNS:-25}"
 
+# Greedy by default. LLMConfig defaults to 0.7 and the CLI never set it, so every
+# earlier run sampled stochastically — one model re-run with an identical
+# configuration scored 80/60/0% and then 100/80/9%. Results for TEMPERATURE != 0
+# land in a suffixed directory so a sampling sweep cannot overwrite the baseline.
+TEMPERATURE="${TEMPERATURE:-0.0}"
+
 CHALLENGE_SETS=(
     "data/tasks/official/challenges/json|tt-official-ch*.json|official"
     "data/tasks/challenges_1comp|tt-official-ch*.json|1comp"
@@ -320,6 +326,7 @@ if [ -n "${SETS:-}" ]; then
 fi
 
 echo "  Max turns: $MAX_TURNS"
+echo "  Temperature: $TEMPERATURE"
 
 # --max-tokens caps output per turn and must stay below --max-model-len (now
 # 131072). 32768 gives verbose turns room without truncating, while leaving
@@ -331,6 +338,7 @@ ARGS_COMMON="--provider vllm \
              --task-type agentic_synthesis \
              --save-report \
              --max-turns $MAX_TURNS \
+             --temperature $TEMPERATURE \
              --max-tokens 32768 \
              --timeout 600 \
              --workers 8 \
@@ -348,6 +356,7 @@ for cset in "${CHALLENGE_SETS[@]}"; do
     # The default (25) keeps the historical layout so existing results still map.
     OUT_LABEL="$cset_label"
     [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${cset_label}_t${MAX_TURNS}"
+    [ "$TEMPERATURE" != "0.0" ] && OUT_LABEL="${OUT_LABEL}_T${TEMPERATURE}"
     OUT_DIR="$RESULTS_DIR/${OUT_LABEL}"
     mkdir -p "$OUT_DIR"
 
@@ -410,6 +419,7 @@ json.dump({
     'yarn_factor': ${FACTOR:-None},
     'tool_parser': '${TOOL_PARSER}',
     'max_turns': ${MAX_TURNS},
+    'temperature': ${TEMPERATURE},
     'sets': '${SETS:-all}',
     'run_scaled': '${RUN_SCALED:-0}',
     'results_dir': '${RESULTS_DIR}',
