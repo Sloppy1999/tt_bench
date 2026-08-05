@@ -291,10 +291,24 @@ TEMPERATURE="${TEMPERATURE:-0.0}"
 # deterministic, so repetitions measure vLLM's continuous-batching
 # non-determinism — real, but an order of magnitude smaller than sampling
 # variance and not what a "5 samples" study is usually after.
+# SAMPLE runs ONE repetition (one job per repetition). SAMPLES runs N of them
+# inside this job, which loads the model once instead of N times.
+#
+# Batching pays off exactly where a pass is short relative to model load: ~30% for
+# a model that finishes scaled_1comp in 15 minutes after a 9-minute load, ~3% for
+# one that takes 4.6 hours. It also multiplies the job's walltime by N, so a long
+# model turns five 4.8h jobs into one 23h job that schedules worse and loses all
+# five repetitions to a single failure. Batch the fast models; split the slow one.
 SAMPLE="${SAMPLE:-}"
+SAMPLES="${SAMPLES:-}"
 SEED="${SEED:-}"
-if [ -n "$SAMPLE" ] && [ -z "$SEED" ]; then
-    SEED=$((1000 + SAMPLE))
+if [ -n "$SAMPLES" ]; then
+    SAMPLE_INDICES=()
+    for _i in $(seq 1 "$SAMPLES"); do SAMPLE_INDICES+=("$_i"); done
+elif [ -n "$SAMPLE" ]; then
+    SAMPLE_INDICES=("$SAMPLE")
+else
+    SAMPLE_INDICES=("")
 fi
 
 CHALLENGE_SETS=(
@@ -361,7 +375,6 @@ ARGS_COMMON="--provider vllm \
              --save-report \
              --max-turns $MAX_TURNS \
              --temperature $TEMPERATURE \
-             ${SEED:+--seed $SEED} \
              --max-tokens 32768 \
              --timeout 600 \
              --workers 8 \
@@ -370,45 +383,56 @@ ARGS_COMMON="--provider vllm \
 TOTAL_SUCCESS=0
 TOTAL_FAILED=0
 
-for cset in "${CHALLENGE_SETS[@]}"; do
-    IFS='|' read -r challenges_dir pattern cset_label <<< "$cset"
+for SAMPLE in "${SAMPLE_INDICES[@]}"; do
+  if [ -n "$SAMPLE" ]; then
+    SEED=$((1000 + SAMPLE))
+    banner "Repetition $SAMPLE (seed $SEED)"
+  fi
 
-    # A turn-budget sweep writes several runs of the SAME set. Keep them in
-    # separate directories or the reports pile up in one folder, distinguishable
-    # only by timestamp, and any aggregation silently averages across budgets.
-    # The default (25) keeps the historical layout so existing results still map.
-    OUT_LABEL="$cset_label"
-    [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${cset_label}_t${MAX_TURNS}"
-    [ "$TEMPERATURE" != "0.0" ] && OUT_LABEL="${OUT_LABEL}_T${TEMPERATURE}"
-    [ -n "$SAMPLE" ] && OUT_LABEL="${OUT_LABEL}_s${SAMPLE}"
-    OUT_DIR="$RESULTS_DIR/${OUT_LABEL}"
-    mkdir -p "$OUT_DIR"
+  for cset in "${CHALLENGE_SETS[@]}"; do
+      IFS='|' read -r challenges_dir pattern cset_label <<< "$cset"
 
-    banner "  Set: $cset_label (pattern: $pattern, tiers: $TIERS, turns: $MAX_TURNS)"
+      # A turn-budget sweep writes several runs of the SAME set. Keep them in
+      # separate directories or the reports pile up in one folder, distinguishable
+      # only by timestamp, and any aggregation silently averages across budgets.
+      # The default (25) keeps the historical layout so existing results still map.
+      OUT_LABEL="$cset_label"
+      [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${cset_label}_t${MAX_TURNS}"
+      [ "$TEMPERATURE" != "0.0" ] && OUT_LABEL="${OUT_LABEL}_T${TEMPERATURE}"
+      [ -n "$SAMPLE" ] && OUT_LABEL="${OUT_LABEL}_s${SAMPLE}"
+      OUT_DIR="$RESULTS_DIR/${OUT_LABEL}"
+      mkdir -p "$OUT_DIR"
 
-    BENCH_LOG="$PROJECT_DIR/slurm_logs/bench_${MODEL_NAME}_${OUT_LABEL}_${JOB_TAG}.log"
+      banner "  Set: $cset_label (pattern: $pattern, tiers: $TIERS, turns: $MAX_TURNS)"
 
-    # `set +e` only clears errexit — pipefail stays on (see `set -euo pipefail`
-    # at the top), so EXIT_CODE is tt-benchmark's status and not tee's. Without
-    # pipefail this would always read 0 and every set would count as a success.
-    set +e
-    uv run tt-benchmark \
-        --challenges-dir "$challenges_dir" \
-        --pattern "$pattern" \
-        --output-dir "$OUT_DIR" \
-        $ARGS_COMMON 2>&1 | tee "$BENCH_LOG"
-    EXIT_CODE=$?
-    set -e
+      BENCH_LOG="$PROJECT_DIR/slurm_logs/bench_${MODEL_NAME}_${OUT_LABEL}_${JOB_TAG}.log"
 
-    if [ $EXIT_CODE -eq 0 ]; then
-        # The harness exiting 0 means it RAN, not that the model solved anything.
-        # Surface the score here so a 0% run is never mistaken for a good one.
-        ok "$cset_label complete — $(grep -m1 'Success Rate:' "$BENCH_LOG" 2>/dev/null || echo 'Success Rate: n/a')"
-        TOTAL_SUCCESS=$((TOTAL_SUCCESS + 1))
-    else
-        fail "$cset_label failed (exit code $EXIT_CODE) — see $BENCH_LOG"
-        TOTAL_FAILED=$((TOTAL_FAILED + 1))
-    fi
+      # `set +e` only clears errexit — pipefail stays on (see `set -euo pipefail`
+      # at the top), so EXIT_CODE is tt-benchmark's status and not tee's. Without
+      # pipefail this would always read 0 and every set would count as a success.
+      set +e
+      # --seed is passed here, not in ARGS_COMMON: that string is built once
+      # before the repetition loop, so a seed placed there would freeze at its
+      # pre-loop value and every repetition would run unseeded.
+      uv run tt-benchmark \
+          ${SEED:+--seed $SEED} \
+          --challenges-dir "$challenges_dir" \
+          --pattern "$pattern" \
+          --output-dir "$OUT_DIR" \
+          $ARGS_COMMON 2>&1 | tee "$BENCH_LOG"
+      EXIT_CODE=$?
+      set -e
+
+      if [ $EXIT_CODE -eq 0 ]; then
+          # The harness exiting 0 means it RAN, not that the model solved anything.
+          # Surface the score here so a 0% run is never mistaken for a good one.
+          ok "$cset_label complete — $(grep -m1 'Success Rate:' "$BENCH_LOG" 2>/dev/null || echo 'Success Rate: n/a')"
+          TOTAL_SUCCESS=$((TOTAL_SUCCESS + 1))
+      else
+          fail "$cset_label failed (exit code $EXIT_CODE) — see $BENCH_LOG"
+          TOTAL_FAILED=$((TOTAL_FAILED + 1))
+      fi
+  done
 done
 
 # ── Stop vLLM ────────────────────────────────────────────────────────────────
@@ -445,8 +469,8 @@ json.dump({
     'tool_parser': '${TOOL_PARSER}',
     'max_turns': ${MAX_TURNS},
     'temperature': ${TEMPERATURE},
-    'sample': '${SAMPLE:-}',
-    'seed': '${SEED:-}',
+    'samples': '${SAMPLES:-${SAMPLE:-}}',
+    'seeds': '$( [ -n "${SAMPLES:-}" ] && echo "1001-$((1000 + SAMPLES))" || echo "${SEED:-}" )',
     'sets': '${SETS:-all}',
     'run_scaled': '${RUN_SCALED:-0}',
     'results_dir': '${RESULTS_DIR}',

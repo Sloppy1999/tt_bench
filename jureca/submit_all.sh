@@ -108,6 +108,7 @@ SETS=""             # empty → all challenge sets
 WALLTIME=""         # empty → the #SBATCH --time in run_benchmark.sbatch (12h)
 TEMPERATURE=""      # empty → run_benchmark.sbatch default of 0.0 (greedy)
 SAMPLES=""          # empty → a single run; N submits N repetitions per model
+BATCH_SAMPLES=0     # 1 → all repetitions inside ONE job (model loads once)
 
 # Slurm mail notification. Passed on the sbatch command line rather than as a
 # #SBATCH directive: those are comments parsed before any shell exists, so
@@ -142,6 +143,12 @@ Options:
                    --temperature > 0: greedy decoding is deterministic, so
                    repetitions at temperature 0 measure vLLM batching noise.
                    Cost multiplies by N — check the arithmetic before running.
+      --batch      Run the repetitions inside ONE job per model instead of N.
+                   The model then loads once rather than N times, worth ~30% for
+                   a model whose pass is short next to its load and ~3% for a slow
+                   one. It also multiplies the job walltime by N, so a long model
+                   schedules worse and loses every repetition to one failure.
+                   Batch the fast models; leave the slow one split.
       --mail A     Email address for Slurm job notifications. Defaults to
                    \$TT_BENCH_MAIL — set that in ~/.bashrc and forget the flag.
       --mail-type T  When to notify (default: "$MAIL_TYPE"). Slurm accepts
@@ -183,6 +190,7 @@ while [ $# -gt 0 ]; do
         --time)       WALLTIME="${2:?--time needs a Slurm duration, e.g. --time 24:00:00}"; shift 2 ;;
         --temperature) TEMPERATURE="${2:?--temperature needs a value, e.g. --temperature 0.7}"; shift 2 ;;
         --samples)    SAMPLES="${2:?--samples needs a count, e.g. --samples 5}"; shift 2 ;;
+        --batch)      BATCH_SAMPLES=1; shift ;;
         --mail)       MAIL_USER="${2:?--mail needs an address}"; shift 2 ;;
         --mail-type)  MAIL_TYPE="${2:?--mail-type needs a value, e.g. BEGIN,END,FAIL}"; shift 2 ;;
         -h|--help)    usage; exit 0 ;;
@@ -353,7 +361,12 @@ fi
 banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:-all}, time ${WALLTIME:-12:00:00})"
 
 if [ -n "$SAMPLES" ]; then
-    ok "Repetitions: $SAMPLES per model (seeds 1001-$((1000 + SAMPLES)))"
+    if [ "$BATCH_SAMPLES" -eq 1 ]; then
+        ok "Repetitions: $SAMPLES per model in ONE job each (seeds 1001-$((1000 + SAMPLES)))"
+        warn "Walltime must cover all $SAMPLES passes, and one failure loses them all."
+    else
+        ok "Repetitions: $SAMPLES per model, one job each (seeds 1001-$((1000 + SAMPLES)))"
+    fi
     if [ -z "$TEMPERATURE" ] || [ "$TEMPERATURE" = "0.0" ]; then
         warn "--samples with greedy decoding: the repetitions will differ only by"
         warn "vLLM batching non-determinism, not by sampling. Pass --temperature 0.7"
@@ -376,7 +389,7 @@ fi
 SUBMITTED_JOBS=()
 
 SAMPLE_LIST=("")
-if [ -n "$SAMPLES" ]; then
+if [ -n "$SAMPLES" ] && [ "$BATCH_SAMPLES" -eq 0 ]; then
     SAMPLE_LIST=()
     for i in $(seq 1 "$SAMPLES"); do SAMPLE_LIST+=("$i"); done
 fi
@@ -405,7 +418,11 @@ for entry in "${MODELS[@]}"; do
     # what the experiment measures.
     EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS:-}"
     EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0}"
-    [ -n "$SAMPLE_N" ] && EXPORTS="$EXPORTS,SAMPLE=$SAMPLE_N"
+    if [ -n "$SAMPLE_N" ]; then
+        EXPORTS="$EXPORTS,SAMPLE=$SAMPLE_N"
+    elif [ -n "$SAMPLES" ]; then
+        EXPORTS="$EXPORTS,SAMPLES=$SAMPLES"   # --batch: the job loops internally
+    fi
 
     TIME_ARGS=()
     [ -n "$WALLTIME" ] && TIME_ARGS=(--time "$WALLTIME")
