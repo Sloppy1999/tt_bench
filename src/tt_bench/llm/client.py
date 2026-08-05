@@ -109,6 +109,11 @@ class LLMConfig:
     max_retries: int = 3
     capture_logprobs: bool = False
     """Request token-level log probabilities from the LLM provider."""
+    seed: Optional[int] = None
+    """Sampling seed forwarded to the provider. Only meaningful with
+    temperature > 0; with greedy decoding the sampler is deterministic and the
+    remaining run-to-run variation comes from vLLM's continuous batching, which
+    a seed does not control."""
 
 
 # ---------------------------------------------------------------------------
@@ -1587,6 +1592,8 @@ class LMStudioClient(LLMClient):
                 "max_tokens": max_tokens_val,
                 "temperature": kwargs.get("temperature", self.config.temperature),
             }
+            if self.config.seed is not None:
+                payload["seed"] = self.config.seed
 
             if self.config.capture_logprobs:
                 payload["logprobs"] = True
@@ -1958,6 +1965,8 @@ class VLLMClient(LLMClient):
                 "max_tokens": max_tokens_val,
                 "temperature": kwargs.get("temperature", self.config.temperature),
             }
+            if self.config.seed is not None:
+                payload["seed"] = self.config.seed
 
             if self.config.capture_logprobs:
                 payload["logprobs"] = True

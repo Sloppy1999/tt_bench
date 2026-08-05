@@ -281,6 +281,22 @@ MAX_TURNS="${MAX_TURNS:-25}"
 # land in a suffixed directory so a sampling sweep cannot overwrite the baseline.
 TEMPERATURE="${TEMPERATURE:-0.0}"
 
+# Repetition index for a variability study. Results land in <set>_sN/ so the
+# repetitions do NOT supersede each other: the analysis tools read the newest
+# report per directory, so five runs into one directory would leave one usable
+# result and four invisible ones. SEED is derived from it and recorded, making
+# each repetition individually reproducible.
+#
+# A seed only bites with TEMPERATURE > 0. Under greedy decoding the sampler is
+# deterministic, so repetitions measure vLLM's continuous-batching
+# non-determinism — real, but an order of magnitude smaller than sampling
+# variance and not what a "5 samples" study is usually after.
+SAMPLE="${SAMPLE:-}"
+SEED="${SEED:-}"
+if [ -n "$SAMPLE" ] && [ -z "$SEED" ]; then
+    SEED=$((1000 + SAMPLE))
+fi
+
 CHALLENGE_SETS=(
     "data/tasks/official/challenges/json|tt-official-ch*.json|official"
     "data/tasks/challenges_1comp|tt-official-ch*.json|1comp"
@@ -327,6 +343,12 @@ fi
 
 echo "  Max turns: $MAX_TURNS"
 echo "  Temperature: $TEMPERATURE"
+[ -n "$SAMPLE" ] && echo "  Sample:      $SAMPLE (seed $SEED)"
+if [ -n "$SAMPLE" ] && [ "$TEMPERATURE" = "0.0" ]; then
+    warn "SAMPLE set with greedy decoding: repetitions will differ only by vLLM"
+    warn "batching non-determinism, not by sampling. Set TEMPERATURE>0 to measure"
+    warn "sampling variability."
+fi
 
 # --max-tokens caps output per turn and must stay below --max-model-len (now
 # 131072). 32768 gives verbose turns room without truncating, while leaving
@@ -339,6 +361,7 @@ ARGS_COMMON="--provider vllm \
              --save-report \
              --max-turns $MAX_TURNS \
              --temperature $TEMPERATURE \
+             ${SEED:+--seed $SEED} \
              --max-tokens 32768 \
              --timeout 600 \
              --workers 8 \
@@ -357,6 +380,7 @@ for cset in "${CHALLENGE_SETS[@]}"; do
     OUT_LABEL="$cset_label"
     [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${cset_label}_t${MAX_TURNS}"
     [ "$TEMPERATURE" != "0.0" ] && OUT_LABEL="${OUT_LABEL}_T${TEMPERATURE}"
+    [ -n "$SAMPLE" ] && OUT_LABEL="${OUT_LABEL}_s${SAMPLE}"
     OUT_DIR="$RESULTS_DIR/${OUT_LABEL}"
     mkdir -p "$OUT_DIR"
 
@@ -405,6 +429,7 @@ echo ""
 # Same reasoning as OUT_LABEL: a sweep must not overwrite its own manifest.
 MANIFEST_SUFFIX=""
 [ "$MAX_TURNS" != "25" ] && MANIFEST_SUFFIX="_t${MAX_TURNS}"
+[ -n "$SAMPLE" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_s${SAMPLE}"
 MANIFEST="$RESULTS_BASE/manifest_${MODEL_NAME}${MANIFEST_SUFFIX}.json"
 "$VENV_PY" -c "
 import json
@@ -420,6 +445,8 @@ json.dump({
     'tool_parser': '${TOOL_PARSER}',
     'max_turns': ${MAX_TURNS},
     'temperature': ${TEMPERATURE},
+    'sample': '${SAMPLE:-}',
+    'seed': '${SEED:-}',
     'sets': '${SETS:-all}',
     'run_scaled': '${RUN_SCALED:-0}',
     'results_dir': '${RESULTS_DIR}',
