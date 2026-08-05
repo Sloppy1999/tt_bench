@@ -42,6 +42,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import to_rgba
 from matplotlib.ticker import MaxNLocator
 
 from inspect_results import SET_BUDGET_RE, ZONES, discover  # noqa: E402
@@ -585,6 +586,90 @@ def fig_success_by_zone(data: dict, t: dict, out: Path, sets: list[str]) -> None
     save(fig, out, "success_by_zone")
 
 
+# ── Figure 5: cross-model summary table ──────────────────────────────────────
+def fig_summary_table(data: dict, t: dict, out: Path, sets: list[str]) -> None:
+    """Model x set, with a per-model TOTAL, as a rendered table.
+
+    The per-model table in scripts/analyze_tier1_experiment.py cannot be compared
+    across models — you would have to open five images side by side. This is the
+    same information with the model as a column, which is the form a results slide
+    needs.
+
+    Rows are tinted by model rather than by category, because the grouping the
+    reader is scanning for is "which model", and the row block is what makes that
+    legible at a glance. Values stay in ink; colour carries identity only.
+    """
+    models = list(data)[: len(t["series"])]
+    header = ["Model", "Category", "Tasks", "Success", "Rate", "Avg Calls"]
+    rows: list[list[str]] = []
+    tints: list[str] = []
+
+    for si, model in enumerate(models):
+        base = t["series"][si]
+        light = to_rgba(base, 0.14)
+        strong = to_rgba(base, 0.30)
+
+        tot_n = tot_ok = tot_calls = 0
+        for cset in sets:
+            row = data[model].get(cset)
+            if row is None:
+                continue
+            n, ok = row["total"], row["successful"]
+            calls = row.get("tool_calls_total", 0)
+            tot_n += n
+            tot_ok += ok
+            tot_calls += calls
+            rows.append([
+                model, cset, f"{n}", f"{ok}/{n}",
+                f"{100.0 * ok / n:.0f}%" if n else "-",
+                f"{calls / n:.1f}" if n else "-",
+            ])
+            tints.append(light)
+
+        if tot_n:
+            # Recomputed from the task counts, not averaged from the rates above:
+            # the sets differ in size by more than 2x, so a mean of percentages
+            # would silently weight a 402-task set like a 1013-task one.
+            rows.append([
+                model, "TOTAL", f"{tot_n}", f"{tot_ok}/{tot_n}",
+                f"{100.0 * tot_ok / tot_n:.0f}%", f"{tot_calls / tot_n:.1f}",
+            ])
+            tints.append(strong)
+
+    if not rows:
+        print("  ! nothing to tabulate; skipping the summary table", file=sys.stderr)
+        return
+
+    # Height from the row count, for the same reason the per-model table needed it:
+    # a fixed canvas silently clips whichever row happens to be last.
+    fig, ax = plt.subplots(figsize=(13, 0.32 * (len(rows) + 1) + 0.5), facecolor=t["surface"])
+    ax.axis("off")
+
+    table = ax.table(
+        cellText=rows,
+        colLabels=header,
+        cellColours=[[tint] * len(header) for tint in tints],
+        colColours=[t["baseline"]] * len(header),
+        loc="center",
+        cellLoc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(9.5)
+    table.scale(1.0, 1.45)
+
+    for (r, c), cell in table.get_celld().items():
+        cell.set_edgecolor(t["surface"])
+        cell.set_linewidth(1.0)
+        if r == 0:
+            cell.set_text_props(weight="bold", color=t["ink"])
+        else:
+            cell.set_text_props(color=t["ink"])
+            if rows[r - 1][1] == "TOTAL":
+                cell.set_text_props(weight="bold", color=t["ink"])
+
+    save(fig, out, "summary_table")
+
+
 def save(fig, out: Path, stem: str) -> None:
     out.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
@@ -703,6 +788,7 @@ def main() -> None:
     fig_turn_distribution(data, t, out, sets)
     fig_failure_families(data, t, out, sets)
     fig_success_by_zone(data, t, out, sets)
+    fig_summary_table(data, t, out, sets)
     write_table(data, out, sets)
 
 
