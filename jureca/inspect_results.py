@@ -108,8 +108,11 @@ def summarise(report_path: Path, set_label: str) -> dict:
     zone_ok = {z[0]: 0 for z in ZONES}
     zone_total = {z[0]: 0 for z in ZONES}
 
+    tool_calls_total = 0
+
     for task in results:
         met = task.get("metrics") or {}
+        tool_calls_total += met.get("tool_calls_count") or 0
         turns = met.get("turns")
         if isinstance(turns, int):
             (ok_turns if task.get("success") else fail_turns).append(turns)
@@ -178,6 +181,7 @@ def summarise(report_path: Path, set_label: str) -> dict:
         "turn_error_tasks": dict(sorted(turn_error_tasks.items(), key=lambda kv: -kv[1])),
         "zone_ok": zone_ok,
         "zone_total": zone_total,
+        "tool_calls_total": tool_calls_total,
         "tokens_total": sum(tokens),
         "latency_ms_median": int(statistics.median(latencies)) if latencies else None,
     }
