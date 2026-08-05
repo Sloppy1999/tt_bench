@@ -33,10 +33,35 @@ import statistics
 import sys
 from pathlib import Path
 
-# Turn budget encoded in a set directory name by run_benchmark.sbatch: a sweep
-# writes "1comp_t50" so runs at different budgets never share a directory.
+# run_benchmark.sbatch encodes the run's configuration in the set directory name
+# so that varying anything cannot overwrite the baseline:
+#   1comp_t50              turn budget 50
+#   scaled_T0.7            temperature 0.7
+#   scaled_2comp_T0.7_s3   temperature 0.7, repetition 3
+# Suffixes are stripped right-to-left in the order they are appended.
+SET_SAMPLE_RE = re.compile(r"_s(\d+)$")
+SET_TEMP_RE = re.compile(r"_T([0-9.]+)$")
 SET_BUDGET_RE = re.compile(r"_t(\d+)$")
 DEFAULT_BUDGET = 25
+DEFAULT_TEMPERATURE = "0.0"
+
+
+def parse_set_label(label: str) -> tuple[str, int, str, int | None]:
+    """Split a set directory name into (base, turn budget, temperature, sample)."""
+    rest = label
+    sample = None
+    if m := SET_SAMPLE_RE.search(rest):
+        sample = int(m.group(1))
+        rest = SET_SAMPLE_RE.sub("", rest)
+    temperature = DEFAULT_TEMPERATURE
+    if m := SET_TEMP_RE.search(rest):
+        temperature = m.group(1)
+        rest = SET_TEMP_RE.sub("", rest)
+    budget = DEFAULT_BUDGET
+    if m := SET_BUDGET_RE.search(rest):
+        budget = int(m.group(1))
+        rest = SET_BUDGET_RE.sub("", rest)
+    return rest, budget, temperature, sample
 
 # Board rows grouped into bands, shared with scripts/analyze_tier1_experiment.py
 # so the per-model and cross-model figures cannot disagree. Two of the three
@@ -74,8 +99,7 @@ def normalise_error(msg: str) -> str:
 
 
 def set_sort_key(label: str) -> tuple[int, int, str]:
-    base = SET_BUDGET_RE.sub("", label)
-    budget = int(m.group(1)) if (m := SET_BUDGET_RE.search(label)) else DEFAULT_BUDGET
+    base, budget, _temp, _sample = parse_set_label(label)
     rank = SET_ORDER.index(base) if base in SET_ORDER else len(SET_ORDER)
     return (rank, budget, label)
 
@@ -95,7 +119,7 @@ def summarise(report_path: Path, set_label: str) -> dict:
         report = json.load(fh)
 
     results = report.get("results") or []
-    budget = int(m.group(1)) if (m := SET_BUDGET_RE.search(set_label)) else DEFAULT_BUDGET
+    base_set, budget, temperature, sample = parse_set_label(set_label)
 
     ok_turns: list[int] = []
     fail_turns: list[int] = []
@@ -159,6 +183,9 @@ def summarise(report_path: Path, set_label: str) -> dict:
 
     return {
         "set": set_label,
+        "base_set": base_set,
+        "temperature": temperature,
+        "sample": sample,
         "budget": budget,
         "report": str(report_path),
         "timestamp": report.get("timestamp"),
@@ -284,6 +311,58 @@ def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors:
                     print(f"  {count:>5}x over {tasks:>4} task(s) ({pct:4.1f}%)  {fam}")
 
 
+def render_variability(by_model: dict[str, list[dict]]) -> None:
+    """Aggregate repetitions of the same configuration into mean +/- sd.
+
+    Groups on (model, base set, turn budget, temperature) so repetitions of one
+    configuration collapse into one row, while a different temperature or turn
+    budget stays a separate row — those are different experiments, not samples of
+    the same one.
+
+    The spread reported is the standard deviation ACROSS RUNS. It answers a
+    different question from the binomial interval on a single run: that one asks
+    how precisely 432 tasks estimate a model's true rate, this one asks how much
+    the whole pipeline moves when nothing is changed. Both belong in a results
+    chapter and neither substitutes for the other.
+    """
+    groups: dict[tuple, list[dict]] = {}
+    for model, rows in by_model.items():
+        for r in rows:
+            if r.get("sample") is None:
+                continue
+            groups.setdefault((model, r["base_set"], r["budget"], r["temperature"]), []).append(r)
+
+    if not groups:
+        print("No repeated runs found. Submit them with:")
+        print("  bash jureca/submit_all.sh --samples 5 --temperature 0.7 ...")
+        print("A run without --samples writes no _sN suffix and cannot be grouped.")
+        return
+
+    head = (
+        f"{'model':<24} {'set':<14} {'T':>5} {'runs':>5} {'n':>6} "
+        f"{'mean':>7} {'sd':>6} {'min':>7} {'max':>7} {'range':>7}"
+    )
+    print(head)
+    print("-" * len(head))
+    for (model, base, budget, temp), rows in sorted(groups.items()):
+        rates = sorted(r["success_rate_pct"] for r in rows)
+        ns = {r["total"] for r in rows}
+        sd = statistics.stdev(rates) if len(rates) > 1 else 0.0
+        n_label = str(ns.pop()) if len(ns) == 1 else "mixed"
+        print(
+            f"{model:<24} {base:<14} {temp:>5} {len(rates):>5} {n_label:>6} "
+            f"{statistics.mean(rates):>6.1f}% {sd:>5.1f} "
+            f"{rates[0]:>6.1f}% {rates[-1]:>6.1f}% {rates[-1] - rates[0]:>6.1f}"
+        )
+        if len(ns) > 0:
+            print(f"  ! {model}/{base}: repetitions cover different task counts",
+                  file=sys.stderr)
+    print()
+    print("sd is the spread ACROSS RUNS of one configuration — how much the pipeline")
+    print("moves when nothing is changed. It is not the binomial interval on a single")
+    print("run, which measures how precisely n tasks estimate the model's true rate.")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument(
@@ -294,6 +373,12 @@ def main() -> None:
     ap.add_argument("--model", help="only this model directory")
     ap.add_argument("--set", dest="set_label", help="only this set label, ignoring any _tN suffix")
     ap.add_argument("--errors", action="store_true", help="also list terminal failure families per model/set")
+    ap.add_argument(
+        "--variability",
+        action="store_true",
+        help="aggregate repeated runs (the _sN directories written by --samples) "
+        "into mean and standard deviation per configuration",
+    )
     ap.add_argument(
         "--turn-errors",
         action="store_true",
@@ -309,6 +394,8 @@ def main() -> None:
     if args.json:
         json.dump(by_model, sys.stdout, indent=2)
         print()
+    elif args.variability:
+        render_variability(by_model)
     else:
         render(by_model, args.errors, args.turn_errors)
 

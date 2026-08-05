@@ -1202,6 +1202,15 @@ def main():
     parser.add_argument("--api-key", type=str, help="API key (or set env var)")
     parser.add_argument("--base-url", type=str, help="API base URL")
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Sampling seed forwarded to the provider. Only meaningful with "
+        "--temperature > 0: greedy decoding is already deterministic, so repeated "
+        "runs at temperature 0 measure vLLM's batching non-determinism rather than "
+        "sampling variability, and a seed does not control that.",
+    )
+    parser.add_argument(
         "--declare-zero-parts",
         action="store_true",
         help="ABLATION: list part types with count 0 in the prompt instead of "
@@ -1303,6 +1312,7 @@ def main():
         provider=args.provider,
         model=args.model,
         temperature=args.temperature,
+        seed=args.seed,
         api_key=args.api_key,
         base_url=args.base_url,
         timeout=args.timeout,

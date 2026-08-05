@@ -107,6 +107,7 @@ MAX_TURNS=""        # empty → run_benchmark.sbatch's default of 25
 SETS=""             # empty → all challenge sets
 WALLTIME=""         # empty → the #SBATCH --time in run_benchmark.sbatch (12h)
 TEMPERATURE=""      # empty → run_benchmark.sbatch default of 0.0 (greedy)
+SAMPLES=""          # empty → a single run; N submits N repetitions per model
 
 # Slurm mail notification. Passed on the sbatch command line rather than as a
 # #SBATCH directive: those are comments parsed before any shell exists, so
@@ -135,6 +136,12 @@ Options:
       --time D     Slurm walltime, overriding the script's 12h default.
                    -s needs far more than 12h; check the partition ceiling with
                    scontrol show partition dc-hwai | grep MaxTime
+      --samples N  Submit N repetitions per model for a variability estimate.
+                   Each lands in <set>_sN/ with seed 1000+N, so repetitions do
+                   not supersede one another. Only meaningful with
+                   --temperature > 0: greedy decoding is deterministic, so
+                   repetitions at temperature 0 measure vLLM batching noise.
+                   Cost multiplies by N — check the arithmetic before running.
       --mail A     Email address for Slurm job notifications. Defaults to
                    \$TT_BENCH_MAIL — set that in ~/.bashrc and forget the flag.
       --mail-type T  When to notify (default: "$MAIL_TYPE"). Slurm accepts
@@ -175,6 +182,7 @@ while [ $# -gt 0 ]; do
         --sets)       SETS="${2:?--sets needs a list, e.g. --sets 1comp}"; shift 2 ;;
         --time)       WALLTIME="${2:?--time needs a Slurm duration, e.g. --time 24:00:00}"; shift 2 ;;
         --temperature) TEMPERATURE="${2:?--temperature needs a value, e.g. --temperature 0.7}"; shift 2 ;;
+        --samples)    SAMPLES="${2:?--samples needs a count, e.g. --samples 5}"; shift 2 ;;
         --mail)       MAIL_USER="${2:?--mail needs an address}"; shift 2 ;;
         --mail-type)  MAIL_TYPE="${2:?--mail-type needs a value, e.g. BEGIN,END,FAIL}"; shift 2 ;;
         -h|--help)    usage; exit 0 ;;
@@ -344,6 +352,15 @@ fi
 # ── Submit jobs ──────────────────────────────────────────────────────────────
 banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:-all}, time ${WALLTIME:-12:00:00})"
 
+if [ -n "$SAMPLES" ]; then
+    ok "Repetitions: $SAMPLES per model (seeds 1001-$((1000 + SAMPLES)))"
+    if [ -z "$TEMPERATURE" ] || [ "$TEMPERATURE" = "0.0" ]; then
+        warn "--samples with greedy decoding: the repetitions will differ only by"
+        warn "vLLM batching non-determinism, not by sampling. Pass --temperature 0.7"
+        warn "to measure sampling variability, or drop --samples."
+    fi
+fi
+
 if [ -n "$MAIL_USER" ]; then
     ok "Notifications: $MAIL_TYPE → $MAIL_USER"
 else
@@ -358,11 +375,22 @@ fi
 
 SUBMITTED_JOBS=()
 
+SAMPLE_LIST=("")
+if [ -n "$SAMPLES" ]; then
+    SAMPLE_LIST=()
+    for i in $(seq 1 "$SAMPLES"); do SAMPLE_LIST+=("$i"); done
+fi
+
 for entry in "${MODELS[@]}"; do
+  for SAMPLE_N in "${SAMPLE_LIST[@]}"; do
     IFS='|' read -r model_id model_name gpu_count <<< "$entry"
 
     echo ""
-    echo "  Submitting: $model_name ($model_id) — $gpu_count GPU(s)"
+    if [ -n "$SAMPLE_N" ]; then
+        echo "  Submitting: $model_name ($model_id) — $gpu_count GPU(s) — sample $SAMPLE_N/$SAMPLES"
+    else
+        echo "  Submitting: $model_name ($model_id) — $gpu_count GPU(s)"
+    fi
 
     # Every var run_benchmark.sbatch validates with ${VAR:?} is passed here.
     # RUN_SCALED is set EXPLICITLY on every submission, never just when asked for:
@@ -377,13 +405,14 @@ for entry in "${MODELS[@]}"; do
     # what the experiment measures.
     EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS:-}"
     EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0}"
+    [ -n "$SAMPLE_N" ] && EXPORTS="$EXPORTS,SAMPLE=$SAMPLE_N"
 
     TIME_ARGS=()
     [ -n "$WALLTIME" ] && TIME_ARGS=(--time "$WALLTIME")
 
     # A per-job name so `squeue` is readable: six identical "tt-vllm" rows tell
     # you nothing, and the notification mail carries the job name too.
-    NAME_ARGS=(--job-name "tt-$model_name")
+    NAME_ARGS=(--job-name "tt-$model_name${SAMPLE_N:+-s$SAMPLE_N}")
 
     MAIL_ARGS=()
     [ -n "$MAIL_USER" ] && MAIL_ARGS=(--mail-type "$MAIL_TYPE" --mail-user "$MAIL_USER")
@@ -408,13 +437,14 @@ for entry in "${MODELS[@]}"; do
 
     if [ -n "$JOB_ID" ]; then
         ok "Submitted as job $JOB_ID"
-        SUBMITTED_JOBS+=("$JOB_ID|$model_name")
+        SUBMITTED_JOBS+=("$JOB_ID|$model_name${SAMPLE_N:+ (s$SAMPLE_N)}")
     else
         fail "Failed to submit $model_name"
     fi
 
     # Brief pause to avoid overwhelming the scheduler
     sleep 1
+  done
 done
 
 if [ "$DRY_RUN" -eq 1 ]; then
