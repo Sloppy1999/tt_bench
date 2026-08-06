@@ -287,10 +287,12 @@ TEMPERATURE="${TEMPERATURE:-0.0}"
 # result and four invisible ones. SEED is derived from it and recorded, making
 # each repetition individually reproducible.
 #
-# A seed only bites with TEMPERATURE > 0. Under greedy decoding the sampler is
-# deterministic, so repetitions measure vLLM's continuous-batching
-# non-determinism — real, but an order of magnitude smaller than sampling
-# variance and not what a "5 samples" study is usually after.
+# A seed only bites with TEMPERATURE > 0: greedy decoding picks the argmax, so the
+# seed changes nothing. Repetitions at temperature 0 are still worth running —
+# they are NOT identical. Measured over five runs of scaled_1comp: sd 0.2-0.6 pp
+# under greedy, against 0.3-0.9 pp at temperature 0.7. The two noise sources are
+# the same order of magnitude, and the greedy floor comes from vLLM's continuous
+# batching reordering floating-point reductions.
 # SAMPLE runs ONE repetition (one job per repetition). SAMPLES runs N of them
 # inside this job, which loads the model once instead of N times.
 #
@@ -359,9 +361,9 @@ echo "  Max turns: $MAX_TURNS"
 echo "  Temperature: $TEMPERATURE"
 [ -n "$SAMPLE" ] && echo "  Sample:      $SAMPLE (seed $SEED)"
 if [ -n "$SAMPLE" ] && [ "$TEMPERATURE" = "0.0" ]; then
-    warn "SAMPLE set with greedy decoding: repetitions will differ only by vLLM"
-    warn "batching non-determinism, not by sampling. Set TEMPERATURE>0 to measure"
-    warn "sampling variability."
+    warn "Greedy repetitions measure vLLM batching non-determinism (measured"
+    warn "sd 0.2-0.6 pp), not sampling. That is a real floor worth reporting, but"
+    warn "run TEMPERATURE=0.7 as a second arm to separate the two."
 fi
 
 # --max-tokens caps output per turn and must stay below --max-model-len (now
