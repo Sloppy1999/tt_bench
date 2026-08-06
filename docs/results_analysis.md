@@ -38,7 +38,17 @@ Three challenge sets form a difficulty axis:
 
 The small `official` / `1comp` / `2comp` sets (11, 5 and 5 tasks) were also run
 but are **not used for any quantitative claim**: at n = 5 a single task moves the
-rate by 20 percentage points. Section 7 documents why that matters.
+rate by 20 percentage points. Section 9 documents why that matters.
+
+`scaled_1comp` was additionally run **five times per model under each of two
+decoding regimes** — greedy (temperature 0) and sampling at temperature 0.7 — with
+seeds 1001-1005. That 2x5 design supplies the run-to-run variance used throughout
+and is analysed in Section 7.
+
+**The three sets are therefore not measured under identical conditions.**
+`scaled_1comp` carries repeated runs at both temperatures; `scaled_2comp` and
+`scaled` are single runs at temperature 0.7. Section 7 shows that this matters for
+one model in particular.
 
 ---
 
@@ -54,6 +64,20 @@ Success rate with 95 % Wilson confidence intervals:
 | gemma-4-26B-A4B-it | 36.8 % [32.4, 41.5] | 21.6 % [17.9, 25.9] | 3.9 % [2.9, 5.3] |
 | DeepSeek-Coder-V2-Lite | 5.8 % [4.0, 8.4] | 0.0 % [0.0, 0.9] | 1.4 % [0.8, 2.3] |
 
+On `scaled_1comp`, where five repetitions per regime are available, those rates
+carry a measured spread rather than an assumed one:
+
+| Model | greedy (mean ± sd) | temperature 0.7 (mean ± sd) |
+|---|---|---|
+| qwen3.6-35B-A3B | 43.6 % ± 0.5 | **45.8 % ± 0.4** |
+| gpt-oss-120b | **43.8 % ± 0.4** | 44.0 % ± 0.3 |
+| gemma-4-31B-it | 40.9 % ± 0.3 | 41.1 % ± 0.9 |
+| gemma-4-26B-A4B-it | 38.7 % ± 0.6 | 37.5 % ± 0.8 |
+| DeepSeek-Coder-V2-Lite | 6.9 % ± 0.2 | 6.6 % ± 0.5 |
+
+(n = 5 repetitions per cell, except DeepSeek under greedy where n = 4: a batched
+job reached its walltime on the fifth pass.)
+
 **The ranking is stable across all three difficulty levels.** Not every gap in it
 is statistically meaningful, however. Two-proportion z-tests on adjacent pairs:
 
@@ -66,9 +90,11 @@ is statistically meaningful, however. Two-proportion z-tests on adjacent pairs:
 
 Three performance tiers are supported by the data:
 
-1. **qwen3.6-35B-A3B and gpt-oss-120b** — statistically indistinguishable at
-   every difficulty level (largest gap 1.7 pp, p ≥ 0.61). They should be reported
-   as tied, not ranked.
+1. **qwen3.6-35B-A3B and gpt-oss-120b** — indistinguishable on these single runs
+   at every difficulty level (largest gap 1.7 pp, p ≥ 0.61). **The repeated design
+   in Section 7 overturns this at temperature 0.7**, where five runs each separate
+   them by 1.8 pp at p < 0.0001. They are tied under greedy decoding and not tied
+   under sampling; a single run of each could not tell the difference.
 2. **gemma-4-31B-it and gemma-4-26B-A4B-it** — consistently below tier 1, and
    separable from each other only on `scaled_2comp`.
 3. **DeepSeek-Coder-V2-Lite** — separated from every other model at p < 0.001 on
@@ -172,7 +198,91 @@ than gpt-oss, consistent with short, quickly-abandoned attempts.
 
 ---
 
-## 7. Excluded runs
+## 7. Decoding temperature and run-to-run variability
+
+Five repetitions per model under each of two decoding regimes, on `scaled_1comp`
+(n = 432), seeds 1001-1005.
+
+### 7.1 Greedy decoding is not reproducible
+
+| Model | sd across 5 greedy runs | sd across 5 runs at 0.7 |
+|---|---|---|
+| DeepSeek-Coder-V2-Lite | 0.2 pp | 0.5 pp |
+| gemma-4-31B-it | 0.3 pp | 0.9 pp |
+| gpt-oss-120b | 0.4 pp | 0.3 pp |
+| qwen3.6-35B-A3B | 0.5 pp | 0.4 pp |
+| gemma-4-26B-A4B-it | 0.6 pp | 0.8 pp |
+| **median** | **0.4 pp** | **0.5 pp** |
+
+Temperature 0 selects the argmax token, so the sampler contributes nothing and
+five identical runs should be identical. They are not: they span 0.2-0.6 pp. The
+residue is vLLM's continuous batching, which varies batch composition between runs
+and therefore the order of floating-point reductions.
+
+Adding stochastic sampling raises the spread only to 0.3-0.9 pp. **The two noise
+sources are the same order of magnitude**, and neither reaches one percentage
+point.
+
+### 7.2 The dominant uncertainty is the task count, not the pipeline
+
+| Source | Magnitude |
+|---|---|
+| Run-to-run sd (measured, 5 repetitions) | ± 0.4 pp |
+| Binomial 95 % interval at n = 432, p ≈ 0.44 | ± 4.7 pp |
+
+The interval from the finite task sample is **an order of magnitude wider** than
+the run-to-run spread. Repeating a configuration therefore buys very little
+precision; adding tasks buys a great deal. This is what licenses the single run
+per cell used for `scaled_2comp` and `scaled` — and it argues against spending
+compute on repetitions elsewhere.
+
+### 7.3 Greedy decoding costs a reasoning model 2.2 points
+
+| Model | greedy | temp 0.7 | Δ | p |
+|---|---|---|---|---|
+| **qwen3.6-35B-A3B** | 43.6 % | 45.8 % | **+2.2 pp** | **< 0.0001** |
+| gpt-oss-120b | 43.8 % | 44.0 % | +0.2 pp | 0.47 |
+| gemma-4-31B-it | 40.9 % | 41.1 % | +0.1 pp | 0.75 |
+| DeepSeek-Coder-V2-Lite | 6.9 % | 6.6 % | −0.4 pp | 0.17 |
+| **gemma-4-26B-A4B-it** | 38.7 % | 37.5 % | **−1.2 pp** | **0.0065** |
+
+Two models move significantly, and in opposite directions. The mechanism for
+qwen3.6-35B-A3B is visible in the generation length:
+
+| Model | tokens/task greedy | tokens/task at 0.7 | ratio |
+|---|---|---|---|
+| **qwen3.6-35B-A3B** | 64 545 | **195 719** | **3.03×** |
+| gemma-4-26B-A4B-it | 112 484 | 109 233 | 0.97× |
+| gpt-oss-120b | 51 409 | 48 835 | 0.95× |
+| gemma-4-31B-it | 100 060 | 94 952 | 0.95× |
+| DeepSeek-Coder-V2-Lite | 14 499 | 11 050 | 0.76× |
+
+qwen3.6-35B-A3B is the only model whose generation triples, and the only one that
+gains accuracy. Its median latency rises from 219 s to 345 s, and the number of
+tasks exhausting the 25-turn budget rises from **0 to 6.4** — all three consistent
+with the model deliberating more.
+
+It is an explicit reasoning model that emits its deliberation into the response.
+Under greedy decoding the most probable continuation apparently ends the thinking
+block early; sampling lets the chain run. **For a reasoning model, temperature 0 is
+therefore not a neutral choice made for reproducibility — it truncates deliberation
+and costs accuracy.**
+
+### 7.4 The model ranking depends on the decoding regime
+
+| Regime | qwen3.6 − gpt-oss | p | Verdict |
+|---|---|---|---|
+| greedy | −0.2 pp | 0.41 | indistinguishable |
+| temperature 0.7 | **+1.8 pp** | **< 0.0001** | **distinct** |
+
+A single run of each had put these two 0.7 pp apart at p = 0.84 and they were
+reported as tied. With five repetitions the question resolves — and the answer is
+that it depends on the decoding regime. Any ranking of these two models is only
+meaningful once the temperature is stated.
+
+---
+
+## 8. Excluded runs
 
 Three runs are reported as excluded rather than as scores, because none of them
 measured model capability under conditions comparable to §2.
@@ -212,28 +322,41 @@ also remove disqualifier 1 — but that is a different experiment, not this one.
 
 ---
 
-## 8. Threats to validity
+## 9. Threats to validity
 
 Each item below states what was found, what has been changed in the harness, and
 what still has to be re-run before the numbers in §2 can be treated as final.
 
-### 8.1 Stochastic sampling — cause found, fixed, re-run required
+### 9.1 Run-to-run variability — measured, no longer a threat
 
-`LLMConfig.temperature` defaults to **0.7** and the benchmark CLI never set it,
-so every run reported here sampled stochastically. The magnitude was measured
-incidentally: gemma-4-31B-it scored 80 % / 60 % / 0 % on the small sets and, on
-an identical re-run, 100 % / 80 % / 9.1 %. At n = 5 that is three single-task
-flips, which is why the scaled sets are used for every claim — but the variance
-is unquantified at n ≈ 400–1000.
+This was the largest open question in an earlier draft: `LLMConfig.temperature`
+defaults to 0.7, the CLI never set it, and the resulting variance was unquantified.
+It has since been measured directly rather than assumed away (Section 7).
 
-A `--temperature` flag now exists and defaults to **0.0**. The numbers in §2 were
-produced before it and are therefore single samples from a stochastic process.
-**They must be regenerated under greedy decoding.** Note that vLLM with
-continuous batching remains non-deterministic — batch composition changes
-floating-point reduction order — so a small residual variance will persist and
-repeated runs are still the honest way to report a headline figure.
+**Resolved.** Over five repetitions per configuration on `scaled_1comp`:
 
-### 8.2 The `turns` metric — cause found, fixed, affects §4
+| | Magnitude |
+|---|---|
+| Run-to-run sd, greedy | 0.2–0.6 pp (median 0.4) |
+| Run-to-run sd, temperature 0.7 | 0.3–0.9 pp (median 0.5) |
+| Binomial 95 % interval at n = 432 | ± 4.7 pp |
+
+The pipeline is an order of magnitude more stable than the finite task sample, so
+a single run per cell is defensible and the earlier single-run figures stand: the
+no-suffix baseline falls within 0.5 pp of the greedy mean for all five models.
+
+Two residues remain, and both are now stated rather than hidden:
+
+- **Greedy is not reproducible either.** vLLM's continuous batching contributes
+  0.2–0.6 pp on its own. Reporting temperature 0 as "deterministic" would be
+  wrong.
+- **`scaled_2comp` and `scaled` are single runs at temperature 0.7**, while
+  `scaled_1comp` carries the repeated design. Section 7.3 shows one model
+  (qwen3.6-35B-A3B) is sensitive to that difference by 2.2 pp, so its figures on
+  those two sets are not directly comparable with its greedy figure on the third.
+  Re-running those two sets under greedy would close the last gap.
+
+### 9.2 The `turns` metric — cause found, fixed, affects §4
 
 `turns` was recorded as `len(tool_calls)`. That is not a turn count: a model
 emitting several tool calls in one assistant message inflates it past the budget,
@@ -247,7 +370,7 @@ two-regime split in §4 (0–15 % against 67–94 %) is far too large to be an a
 of this, but the exact `ceil` fractions for DeepSeek should not be quoted from the
 current data.
 
-### 8.3 Inventory violations are intermediate events — resolved
+### 9.3 Inventory violations are intermediate events — resolved
 
 Models repeatedly attempt to place component types they have already exhausted;
 the executor rejects the action with an informative message and the agent
@@ -260,7 +383,7 @@ across a whole report, which overstated inventory violations as a terminal cause
 `inspect_results.py --turn-errors` now reports them separately, per occurrence
 and per affected task. §5 counts terminal outcomes only.
 
-### 8.4 Resource state is declared once and never observable — ablations available
+### 9.4 Resource state is declared once and never observable — ablations available
 
 The available-parts inventory is rendered into the initial prompt
 (`prompts.py:94`) with zero-count types omitted, the prompt is built once before
@@ -281,7 +404,7 @@ Running `scaled_2comp` in the four cells of that 2×2 decomposes the failure rat
 into inference, memory and residual reasoning. This is the single most
 informative follow-up experiment available and costs roughly four hours per model.
 
-### 8.5 Composition of the `scaled` set — resolved
+### 9.5 Composition of the `scaled` set — resolved
 
 The job script described this set as "variants + insight + unsolvable", which
 would have put a ceiling below 100 % on the rates in §3. Inspection of all 2 121
