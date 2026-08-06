@@ -383,26 +383,63 @@ across a whole report, which overstated inventory violations as a terminal cause
 `inspect_results.py --turn-errors` now reports them separately, per occurrence
 and per affected task. §5 counts terminal outcomes only.
 
-### 9.4 Resource state is declared once and never observable — ablations available
+### 9.4 The scaled sets barely test resource management
 
-The available-parts inventory is rendered into the initial prompt
-(`prompts.py:94`) with zero-count types omitted, the prompt is built once before
-the agent loop starts (`runner.py:718`), and `get_board_state` does not report
-parts. The agent must therefore infer unavailability from absence and track its
-own consumption across up to 25 turns. The benchmark consequently measures
-working memory over a resource constraint alongside planning.
+An earlier draft of this analysis identified inventory mismanagement as the
+mechanism behind the failures: models repeatedly attempting to place component
+types they had exhausted, burning turns on rejected actions. **That hypothesis was
+formed on the 5-task sets and does not survive contact with the scaled data.**
 
-Two opt-in ablations now isolate the two contributions, both off by default so
-existing results remain the baseline:
+**What the task files actually contain.** All 4 021 task files declare an
+`available_parts` inventory, so enforcement is active everywhere. But the
+inventories are tight:
 
-| Flag | Removes |
-|---|---|
-| `--declare-zero-parts` | The inference step: zero-count types are listed explicitly rather than omitted. |
-| `--observable-inventory` | The memory step: `get_board_state` reports the remaining inventory. |
+| Set | n | Tasks with zero slack | Median pieces offered | Median distinct types |
+|---|---|---|---|---|
+| `official` | 58 | 69.0 % | 6 | 1 |
+| `scaled` | 2 121 | **99.6 %** | 1 | 1 |
+| `challenges_1comp` | 948 | 83.3 % | 1 | 1 |
+| `challenges_2comp` | 894 | 83.3 % | 2 | 2 |
 
-Running `scaled_2comp` in the four cells of that 2×2 decomposes the failure rate
-into inference, memory and residual reasoning. This is the single most
-informative follow-up experiment available and costs roughly four hours per model.
+"Zero slack" means the inventory contains exactly as many pieces as the reference
+solution places. In `scaled` — the largest set, and the one carrying most of the
+statistical weight — **99.6 % of tasks offer exactly the pieces required, with a
+median of one piece of one type.** There is nothing to allocate: the only legal
+action is to place the single available piece.
+
+**What the agents actually get rejected for.** Extracting per-tool-call errors
+across the scaled sets (`inspect_results.py --turn-errors`) returns no inventory
+exhaustion at all. The rejected actions are **malformed tool calls**:
+
+| Model | Rejected action | Tasks affected |
+|---|---|---|
+| DeepSeek-Coder-V2-Lite | `place_component()` with an unexpected `direction` | 1.4 – 4.0 % |
+| DeepSeek-Coder-V2-Lite | `place_component()` with an unexpected `gear_group` | 0.1 – 0.5 % |
+| gemma-4-26B-A4B-it | `place_component()` missing required `y` | 1.1 – 2.5 % |
+| gpt-oss-120b | `place_component()` with an unexpected `direction` | 0.2 – 0.7 % |
+| gemma-4-31B-it, qwen3.6-35B-A3B | none recorded | 0 % |
+
+Two consequences.
+
+**For the results.** The headline numbers in §2 measure placement and path
+construction under an exactly-sized inventory. They do **not** measure resource
+allocation under scarcity, because these sets do not present that problem. Any
+claim about "agentic planning under resource constraints" belongs to `official`
+(median 6 pieces, 31 % with slack) and not to the scaled sets — and `official` is
+11 tasks at Tier 1, far too few to support one.
+
+**For the harness.** Those rejections surface a raw Python `TypeError` to the
+model rather than a structured message. A malformed call is a legitimate thing for
+an agent to attempt; answering it with an internal function signature is a harness
+defect, and it affects up to 4 % of DeepSeek's tasks. The tool schema and the
+executor signature should be reconciled, and unknown parameters should produce a
+message naming the accepted ones.
+
+**The ablations remain implemented but are no longer the priority.**
+`--declare-zero-parts` and `--observable-inventory` were added to decompose a
+resource-tracking confound that these sets turn out not to exercise. Running them
+on the scaled sets would measure close to nothing. They would only be informative
+on a set built with genuine inventory slack, which does not yet exist.
 
 ### 9.5 Composition of the `scaled` set — resolved
 
