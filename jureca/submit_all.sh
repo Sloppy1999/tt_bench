@@ -138,10 +138,14 @@ Options:
                    -s needs far more than 12h; check the partition ceiling with
                    scontrol show partition dc-hwai | grep MaxTime
       --samples N  Submit N repetitions per model for a variability estimate.
+                   Also accepts an inclusive range (--samples 5-5, --samples 3-5)
+                   to fill a gap left by a failed repetition without re-running
+                   the ones already on disk.
                    Each lands in <set>_sN/ with seed 1000+N, so repetitions do
-                   not supersede one another. Only meaningful with
-                   --temperature > 0: greedy decoding is deterministic, so
-                   repetitions at temperature 0 measure vLLM batching noise.
+                   not supersede one another. Worth running at BOTH temperatures:
+                   greedy is not reproducible either — measured sd 0.2-0.6 pp
+                   across five identical runs, from vLLM's continuous batching —
+                   against 0.3-0.9 pp with sampling at 0.7.
                    Cost multiplies by N — check the arithmetic before running.
       --batch      Run the repetitions inside ONE job per model instead of N.
                    The model then loads once rather than N times, worth ~30% for
@@ -365,12 +369,13 @@ if [ -n "$SAMPLES" ]; then
         ok "Repetitions: $SAMPLES per model in ONE job each (seeds 1001-$((1000 + SAMPLES)))"
         warn "Walltime must cover all $SAMPLES passes, and one failure loses them all."
     else
-        ok "Repetitions: $SAMPLES per model, one job each (seeds 1001-$((1000 + SAMPLES)))"
+        ok "Repetitions: $SAMPLE_FIRST-$SAMPLE_LAST per model, one job each "\
+           "(seeds $((1000 + SAMPLE_FIRST))-$((1000 + SAMPLE_LAST)))"
     fi
     if [ -z "$TEMPERATURE" ] || [ "$TEMPERATURE" = "0.0" ]; then
-        warn "--samples with greedy decoding: the repetitions will differ only by"
-        warn "vLLM batching non-determinism, not by sampling. Pass --temperature 0.7"
-        warn "to measure sampling variability, or drop --samples."
+        warn "Greedy repetitions measure vLLM batching noise (measured sd 0.2-0.6"
+        warn "pp), not sampling. Worth having as a floor — pair it with a"
+        warn "--temperature 0.7 arm to separate the two sources."
     fi
 fi
 
@@ -388,10 +393,29 @@ fi
 
 SUBMITTED_JOBS=()
 
+# --samples accepts a count (5 => 1..5) or an inclusive range (5-5, 3-5). The
+# range form fills a gap without re-running the repetitions that already
+# succeeded: a batched job that hits TIMEOUT on its last pass leaves the earlier
+# ones on disk, and repeating them wastes a node for data you already have.
+SAMPLE_FIRST=1
+SAMPLE_LAST=""
+if [ -n "$SAMPLES" ]; then
+    case "$SAMPLES" in
+        *-*) SAMPLE_FIRST="${SAMPLES%%-*}"; SAMPLE_LAST="${SAMPLES##*-}" ;;
+        *)   SAMPLE_FIRST=1;               SAMPLE_LAST="$SAMPLES" ;;
+    esac
+    case "$SAMPLE_FIRST$SAMPLE_LAST" in
+        ''|*[!0-9]*) fail "--samples takes N or A-B, got '$SAMPLES'"; exit 1 ;;
+    esac
+    if [ "$SAMPLE_FIRST" -gt "$SAMPLE_LAST" ]; then
+        fail "--samples range is inverted: '$SAMPLES'"; exit 1
+    fi
+fi
+
 SAMPLE_LIST=("")
 if [ -n "$SAMPLES" ] && [ "$BATCH_SAMPLES" -eq 0 ]; then
     SAMPLE_LIST=()
-    for i in $(seq 1 "$SAMPLES"); do SAMPLE_LIST+=("$i"); done
+    for i in $(seq "$SAMPLE_FIRST" "$SAMPLE_LAST"); do SAMPLE_LIST+=("$i"); done
 fi
 
 for entry in "${MODELS[@]}"; do
