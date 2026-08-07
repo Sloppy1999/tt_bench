@@ -62,7 +62,10 @@ LEGACY_TEMPERATURE = "0.7"
 
 def resolve_temperature(report: dict, set_label: str) -> tuple[str, str]:
     """(temperature, how it was determined) for one loaded report."""
-    if m := SET_TEMP_RE.search(set_label):
+    # Strip the repetition suffix before looking for _T: the suffixes are
+    # appended base_T<temp>_s<n>, so an anchored _T$ misses every repeated run
+    # and silently relabels a whole sampled arm as greedy.
+    if m := SET_TEMP_RE.search(SET_SAMPLE_RE.sub("", set_label)):
         return m.group(1), "dirname"
     recorded = (report.get("sampling") or {}).get("temperature")
     if recorded is not None:
