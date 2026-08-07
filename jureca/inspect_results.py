@@ -45,6 +45,32 @@ SET_BUDGET_RE = re.compile(r"_t(\d+)$")
 DEFAULT_BUDGET = 25
 DEFAULT_TEMPERATURE = "0.0"
 
+# The directory name is a WEAK source for the temperature: an unsuffixed
+# directory means greedy only for runs made after the harness could set the
+# temperature at all. Before 7920908/745cbce (both 2026-07-28) neither the
+# runner nor the sbatch had a --temperature flag, so LLMConfig's default of 0.7
+# applied and the run still landed in an unsuffixed directory. Reports written
+# since then carry a "sampling" block and are read from it directly; older ones
+# are attributed to 0.7 and flagged, because a silent 0.0 there would relabel
+# every pre-cutover measurement as greedy.
+# First day on which an unsuffixed directory reliably means greedy. Both cutover
+# commits landed DURING 2026-07-28, so runs from that day sit on either side of
+# them and are attributed to 0.7 with a '?' rather than silently resolved.
+GREEDY_DEFAULT_SINCE = "2026-07-29"
+LEGACY_TEMPERATURE = "0.7"
+
+
+def resolve_temperature(report: dict, set_label: str) -> tuple[str, str]:
+    """(temperature, how it was determined) for one loaded report."""
+    if m := SET_TEMP_RE.search(set_label):
+        return m.group(1), "dirname"
+    recorded = (report.get("sampling") or {}).get("temperature")
+    if recorded is not None:
+        return f"{float(recorded):.1f}", "report"
+    if str(report.get("timestamp", ""))[:10] < GREEDY_DEFAULT_SINCE:
+        return LEGACY_TEMPERATURE, "pre-cutover default"
+    return DEFAULT_TEMPERATURE, "dirname"
+
 
 def parse_set_label(label: str) -> tuple[str, int, str, int | None]:
     """Split a set directory name into (base, turn budget, temperature, sample)."""
@@ -114,12 +140,45 @@ def latest_report(set_dir: Path) -> Path | None:
     return reports[-1] if reports else None
 
 
+def report_temperature(report_path: Path, set_label: str) -> str:
+    """The decoding temperature a report was produced at.
+
+    Read from the report when it records one, else attributed by date: nothing
+    could set the temperature before GREEDY_DEFAULT_SINCE, so LLMConfig's 0.7
+    applied. An explicit _T suffix on the directory always wins.
+    """
+    try:
+        with report_path.open() as fh:
+            report = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return DEFAULT_TEMPERATURE
+    return resolve_temperature(report, set_label)[0]
+
+
+def latest_per_regime(set_dir: Path) -> list[Path]:
+    """Newest report per decoding temperature in a set directory.
+
+    Greedy carries no directory suffix, so a greedy re-run lands in the same
+    directory as a pre-cutover 0.7 run and `latest_report` would hide the older
+    regime behind the newer one — silently dropping the temperature comparison
+    the results chapter is built on. Keyed by regime, both survive.
+    """
+    newest: dict[str, Path] = {}
+    for report in sorted(set_dir.glob("benchmark_*.json")):
+        newest[report_temperature(report, set_dir.name)] = report
+    return list(newest.values())
+
+
 def summarise(report_path: Path, set_label: str) -> dict:
     with report_path.open() as fh:
         report = json.load(fh)
 
     results = report.get("results") or []
     base_set, budget, temperature, sample = parse_set_label(set_label)
+
+    # Resolve the temperature against the report itself wherever possible: an
+    # unsuffixed directory is an absence of evidence, not evidence of greedy.
+    temperature, temp_source = resolve_temperature(report, set_label)
 
     ok_turns: list[int] = []
     fail_turns: list[int] = []
@@ -185,6 +244,7 @@ def summarise(report_path: Path, set_label: str) -> dict:
         "set": set_label,
         "base_set": base_set,
         "temperature": temperature,
+        "temperature_source": temp_source,
         "sample": sample,
         "budget": budget,
         "report": str(report_path),
@@ -226,9 +286,8 @@ def discover(root: Path, model_filter: str | None, set_filter: str | None) -> di
         for set_dir in sorted((p for p in model_dir.iterdir() if p.is_dir()), key=lambda p: set_sort_key(p.name)):
             if set_filter and SET_BUDGET_RE.sub("", set_dir.name) != set_filter:
                 continue
-            if (report := latest_report(set_dir)) is None:
-                continue
-            rows.append(summarise(report, set_dir.name))
+            for report in latest_per_regime(set_dir):
+                rows.append(summarise(report, set_dir.name))
         if rows:
             by_model[model_dir.name] = rows
     return by_model
@@ -247,8 +306,11 @@ def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors:
         print("No reports found. Has a job finished writing to benchmark_results/?")
         return
 
+    # 'temp' is not decoration: greedy leaves no directory suffix, so one set
+    # directory can hold both a greedy and a 0.7 run and the two rows would
+    # otherwise read as duplicates of the same measurement.
     head = (
-        f"{'model':<24} {'set':<14} {'budget':>6} {'n':>5} {'ok':>4} {'rate':>7} "
+        f"{'model':<24} {'set':<14} {'temp':>5} {'budget':>6} {'n':>5} {'ok':>4} {'rate':>7} "
         f"{'turns ok':>12} {'turns fail':>12} {'ceil':>5} {'comp':>10} "
         f"{'tok/task':>9} {'lat_med':>8}"
     )
@@ -267,6 +329,7 @@ def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors:
             print(
                 f"{model if i == 0 else '':<24} "
                 f"{SET_BUDGET_RE.sub('', r['set']):<14} "
+                f"{(r['temperature'] + ('?' if r['temperature_source'] == 'pre-cutover default' else '')):>5} "
                 f"{r['budget']:>6} "
                 f"{r['total']:>5} {r['successful']:>4} "
                 f"{r['success_rate_pct']:>6.1f}% "
@@ -279,6 +342,9 @@ def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors:
             )
         print()
 
+    print("'temp' marked '?' is attributed, not recorded: the run predates the flag")
+    print("that sets the temperature, so LLMConfig's 0.7 applied and the directory")
+    print("carries no suffix to say so. Runs since then record it in the report.")
     print("turns columns are min/median/max. 'ceil' counts failures sitting on the")
     print("turn budget — those ran out of turns rather than converging on a wrong answer.")
     print("'comp' is components placed correctly / required by ground truth.")

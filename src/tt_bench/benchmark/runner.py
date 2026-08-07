@@ -1165,10 +1165,22 @@ class TuringTumbleBenchmark:
                 "success_rate": round(stats["successful"] / total * 100, 1) if total > 0 else 0,
             }
 
+        # Record the decoding configuration IN the report. Until now the only
+        # trace of it was the output directory name, which the sbatch suffixes
+        # with _T<temp> for anything but greedy — so a plain directory was read
+        # as greedy even for the runs made before that suffix existed (before
+        # 2026-07-28 nothing could set the temperature and LLMConfig's 0.7
+        # applied). Reports from two decoding regimes then land in one
+        # directory, distinguishable only by their timestamps.
         data = {
             "timestamp": report.timestamp,
             "model": report.model,
             "provider": report.provider,
+            "sampling": {
+                "temperature": getattr(self.llm.config, "temperature", None),
+                "seed": getattr(self.llm.config, "seed", None),
+                "max_turns": self.max_turns,
+            },
             "total_tasks": report.total_tasks,
             "successful": report.successful,
             "failed": report.failed,
