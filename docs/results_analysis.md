@@ -45,38 +45,40 @@ decoding regimes** — greedy (temperature 0) and sampling at temperature 0.7 �
 seeds 1001-1005. That 2x5 design supplies the run-to-run variance used throughout
 and is analysed in Section 7.
 
-**The three sets are therefore not measured under identical conditions.**
-`scaled_1comp` carries repeated runs at both temperatures; `scaled_2comp` and
-`scaled` are single runs at temperature 0.7. Section 7 shows that this matters for
-one model in particular.
+**The three sets are not measured under identical conditions.** `scaled_1comp`
+carries five repetitions under each regime; `scaled` is a single greedy run;
+`scaled_2comp` is still a single run at temperature 0.7 and has not been repeated
+under greedy. Section 7 quantifies what that costs.
 
 ---
 
 ## 2. Overall performance
 
-Success rate with 95 % Wilson confidence intervals:
+Greedy decoding is the primary condition. `scaled_1comp` reports the mean and
+standard deviation of five repetitions; the other two are single runs, and
+`scaled_2comp` is the one cell still measured at temperature 0.7.
 
-| Model | `scaled_1comp` (n=432) | `scaled_2comp` (n=402) | `scaled` (n=1013) |
+| Model | `scaled_1comp` greedy, 5 runs | `scaled_2comp` T = 0.7, 1 run | `scaled` greedy, 1 run |
 |---|---|---|---|
-| qwen3.6-35B-A3B | **45.6 %** [41.0, 50.3] | **40.3 %** [35.6, 45.2] | 11.3 % [9.5, 13.3] |
-| gpt-oss-120b | 44.9 % [40.3, 49.6] | 38.6 % [33.9, 43.4] | **11.8 %** [10.0, 14.0] |
-| gemma-4-31B-it | 39.8 % [35.3, 44.5] | 33.3 % [28.9, 38.1] | 5.8 % [4.5, 7.4] |
-| gemma-4-26B-A4B-it | 36.8 % [32.4, 41.5] | 21.6 % [17.9, 25.9] | 3.9 % [2.9, 5.3] |
-| DeepSeek-Coder-V2-Lite | 5.8 % [4.0, 8.4] | 0.0 % [0.0, 0.9] | 1.4 % [0.8, 2.3] |
+| qwen3.6-35B-A3B | 43.6 % ± 0.5 | **40.3 %** [35.6, 45.2] | 10.5 % [8.7, 12.5] |
+| gpt-oss-120b | **43.8 % ± 0.4** | 38.6 % [33.9, 43.4] | **11.7 %** [9.9, 13.9] |
+| gemma-4-31B-it | 40.9 % ± 0.3 | 33.3 % [28.9, 38.1] | 4.8 % [3.7, 6.3] |
+| gemma-4-26B-A4B-it | 38.7 % ± 0.6 | 21.6 % [17.9, 25.9] | 4.2 % [3.2, 5.7] |
+| DeepSeek-Coder-V2-Lite | 6.9 % ± 0.2 | 0.0 % [0.0, 0.9] | 1.4 % [0.8, 2.3] |
 
-On `scaled_1comp`, where five repetitions per regime are available, those rates
-carry a measured spread rather than an assumed one:
+(± is the spread across repetitions; brackets are 95 % Wilson intervals on a
+single run. DeepSeek's greedy cell rests on four repetitions, not five: a batched
+job reached its walltime on the fifth pass.)
 
-| Model | greedy (mean ± sd) | temperature 0.7 (mean ± sd) |
+Under sampling at temperature 0.7, `scaled_1comp` reads differently — see §7.3:
+
+| Model | greedy | temperature 0.7 |
 |---|---|---|
 | qwen3.6-35B-A3B | 43.6 % ± 0.5 | **45.8 % ± 0.4** |
-| gpt-oss-120b | **43.8 % ± 0.4** | 44.0 % ± 0.3 |
+| gpt-oss-120b | 43.8 % ± 0.4 | 44.0 % ± 0.3 |
 | gemma-4-31B-it | 40.9 % ± 0.3 | 41.1 % ± 0.9 |
 | gemma-4-26B-A4B-it | 38.7 % ± 0.6 | 37.5 % ± 0.8 |
 | DeepSeek-Coder-V2-Lite | 6.9 % ± 0.2 | 6.6 % ± 0.5 |
-
-(n = 5 repetitions per cell, except DeepSeek under greedy where n = 4: a batched
-job reached its walltime on the fifth pass.)
 
 **The ranking is stable across all three difficulty levels.** Not every gap in it
 is statistically meaningful, however. Two-proportion z-tests on adjacent pairs:
@@ -109,11 +111,15 @@ and the collapse is steepest on the larger boards:
 
 | Model | 1 comp | 2 comp | larger boards | 1→2 comp | 2 comp→scaled |
 |---|---|---|---|---|---|
-| qwen3.6-35B-A3B | 45.6 % | 40.3 % | 11.3 % | −5.3 pp | −29.0 pp |
-| gpt-oss-120b | 44.9 % | 38.6 % | 11.8 % | −6.4 pp | −26.7 pp |
-| gemma-4-31B-it | 39.8 % | 33.3 % | 5.8 % | −6.5 pp | −27.5 pp |
-| gemma-4-26B-A4B-it | 36.8 % | 21.6 % | 3.9 % | −15.2 pp | −17.7 pp |
-| DeepSeek-Coder-V2-Lite | 5.8 % | 0.0 % | 1.4 % | −5.8 pp | +1.4 pp |
+| gpt-oss-120b | 43.8 % | 38.6 % | 11.7 % | −5.2 pp | −26.8 pp |
+| qwen3.6-35B-A3B | 43.6 % | 40.3 % | 10.5 % | −3.3 pp | −29.8 pp |
+| gemma-4-31B-it | 40.9 % | 33.3 % | 4.8 % | −7.6 pp | −28.5 pp |
+| gemma-4-26B-A4B-it | 38.7 % | 21.6 % | 4.2 % | −17.1 pp | −17.4 pp |
+| DeepSeek-Coder-V2-Lite | 6.9 % | 0.0 % | 1.4 % | −6.9 pp | +1.4 pp |
+
+(The middle column is the one cell still measured at temperature 0.7, so the
+1→2 comp step mixes regimes. §7.3 bounds the error this introduces: below 1 pp for
+every model except qwen3.6-35B-A3B, where it could be 2 pp.)
 
 Adding a second required component costs 5–6 pp for the three strongest models
 but 15 pp for gemma-4-26B-A4B-it. Moving to 13×13 and 15×15 boards costs a
@@ -236,7 +242,10 @@ precision; adding tasks buys a great deal. This is what licenses the single run
 per cell used for `scaled_2comp` and `scaled` — and it argues against spending
 compute on repetitions elsewhere.
 
-### 7.3 Greedy decoding costs a reasoning model 2.2 points
+### 7.3 Sampling triples a reasoning model's deliberation
+
+On `scaled_1comp`, with five repetitions per regime, two models move significantly
+and in opposite directions:
 
 | Model | greedy | temp 0.7 | Δ | p |
 |---|---|---|---|---|
@@ -246,27 +255,54 @@ compute on repetitions elsewhere.
 | DeepSeek-Coder-V2-Lite | 6.9 % | 6.6 % | −0.4 pp | 0.17 |
 | **gemma-4-26B-A4B-it** | 38.7 % | 37.5 % | **−1.2 pp** | **0.0065** |
 
-Two models move significantly, and in opposite directions. The mechanism for
-qwen3.6-35B-A3B is visible in the generation length:
+The mechanism for qwen3.6-35B-A3B is generation length, and **it replicates on the
+larger set**:
 
-| Model | tokens/task greedy | tokens/task at 0.7 | ratio |
-|---|---|---|---|
-| **qwen3.6-35B-A3B** | 64 545 | **195 719** | **3.03×** |
-| gemma-4-26B-A4B-it | 112 484 | 109 233 | 0.97× |
-| gpt-oss-120b | 51 409 | 48 835 | 0.95× |
-| gemma-4-31B-it | 100 060 | 94 952 | 0.95× |
-| DeepSeek-Coder-V2-Lite | 14 499 | 11 050 | 0.76× |
+| | `scaled_1comp` (n = 432) | `scaled` (n = 1013) |
+|---|---|---|
+| tokens/task, temp 0.7 ÷ greedy | **3.03×** | **3.43×** |
+| tasks exhausting the turn budget, greedy | 0 | 0 |
+| tasks exhausting the turn budget, temp 0.7 | 4–12 | 45 |
+| every other model, token ratio | 0.76–0.97× | 0.99–1.36× |
 
-qwen3.6-35B-A3B is the only model whose generation triples, and the only one that
-gains accuracy. Its median latency rises from 219 s to 345 s, and the number of
-tasks exhausting the 25-turn budget rises from **0 to 6.4** — all three consistent
-with the model deliberating more.
+qwen3.6-35B-A3B is the only model whose generation expands under sampling, on both
+sets, by the same factor. Under greedy it never once exhausts the 25-turn budget;
+under sampling it does. It is an explicit reasoning model, and greedy decoding
+apparently ends its thinking block early: the most probable continuation is to
+stop deliberating.
 
-It is an explicit reasoning model that emits its deliberation into the response.
-Under greedy decoding the most probable continuation apparently ends the thinking
-block early; sampling lets the chain run. **For a reasoning model, temperature 0 is
-therefore not a neutral choice made for reproducibility — it truncates deliberation
-and costs accuracy.**
+**The accuracy payoff, however, is only demonstrated on the smaller set.** On
+`scaled` the same comparison gives −0.8 pp at p = 0.57 — no detectable difference.
+
+### 7.3.1 That null result is underpowered, and must not be read as "no effect"
+
+`scaled` was run once per regime, against five repetitions each on
+`scaled_1comp`. At n = 1013 and p ≈ 0.11, the standard error of the difference
+between two single runs is 1.39 pp:
+
+| True effect | Detectable at | Power |
+|---|---|---|
+| 0.8 pp (observed) | 0.58 SE | 9 % |
+| 2.2 pp (the `scaled_1comp` effect) | 1.58 SE | **35 %** |
+| minimum detectable at 80 % power | 2.8 SE | **3.9 pp** |
+
+**Had the 2.2 pp effect been present on `scaled` at full strength, this comparison
+would have missed it roughly two times in three.** The honest statement is
+therefore:
+
+> Sampling makes qwen3.6-35B-A3B deliberate about three times as much on both
+> sets. On the one-component set that converts into +2.2 pp (p < 0.0001, five
+> repetitions per regime). On the larger boards the effect is not measurable, and
+> the design cannot distinguish an absent effect from one it lacks the power to
+> see.
+
+Settling it needs repetitions on `scaled`, not a larger single run: five per
+regime would bring the minimum detectable effect to roughly 1.7 pp.
+
+The practical conclusion stands regardless of which way that resolves. **For a
+reasoning model, temperature 0 is not the neutral reproducibility choice it is
+usually taken to be** — it changes the amount of deliberation by a factor of
+three, and §7.1 shows it does not buy reproducibility either.
 
 ### 7.4 The model ranking depends on the decoding regime
 
@@ -350,11 +386,15 @@ Two residues remain, and both are now stated rather than hidden:
 - **Greedy is not reproducible either.** vLLM's continuous batching contributes
   0.2–0.6 pp on its own. Reporting temperature 0 as "deterministic" would be
   wrong.
-- **`scaled_2comp` and `scaled` are single runs at temperature 0.7**, while
-  `scaled_1comp` carries the repeated design. Section 7.3 shows one model
-  (qwen3.6-35B-A3B) is sensitive to that difference by 2.2 pp, so its figures on
-  those two sets are not directly comparable with its greedy figure on the third.
-  Re-running those two sets under greedy would close the last gap.
+- **One cell is still measured at temperature 0.7.** `scaled` has since been
+  re-run under greedy; `scaled_2comp` has not, because a multi-label `--sets`
+  value was truncated by sbatch's own comma-separated `--export` syntax and only
+  the first set ran. §7.3 bounds the resulting error at under 1 pp for every model
+  except qwen3.6-35B-A3B, where it could reach 2 pp. One re-run closes it.
+
+- **`scaled` is a single run per regime and the temperature comparison on it is
+  underpowered** — 35 % power for the effect size measured on `scaled_1comp`
+  (§7.3.1). Its null result is not evidence of absence.
 
 ### 9.2 The `turns` metric — cause found, fixed, affects §4
 
