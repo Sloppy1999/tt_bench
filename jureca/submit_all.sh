@@ -440,13 +440,31 @@ for entry in "${MODELS[@]}"; do
     # Same reasoning: pin these on every submission so a stale MAX_TURNS or SETS
     # in the submitting shell cannot ride in via --export=ALL and silently change
     # what the experiment measures.
-    EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS:-}"
+    # sbatch --export separates ASSIGNMENTS with commas, so a value containing one
+    # is split in half: SETS=scaled,scaled_2comp arrived at the job as SETS=scaled
+    # plus a stray variable named scaled_2comp. The job then ran one set, reported
+    # success, and nothing anywhere said a set had gone missing. Ship the list
+    # comma-free; run_benchmark.sbatch accepts either separator.
+    EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS//,/+}"
     EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0}"
     if [ -n "$SAMPLE_N" ]; then
         EXPORTS="$EXPORTS,SAMPLE=$SAMPLE_N"
     elif [ -n "$SAMPLES" ]; then
         EXPORTS="$EXPORTS,SAMPLES=$SAMPLES"   # --batch: the job loops internally
     fi
+
+    # Nothing else may smuggle a comma into --export for the same reason.
+    case "${EXPORTS#ALL,}" in
+        *,*=*,*) : ;;   # normal: several assignments
+    esac
+    for _kv in MODEL_ID="$model_id" MODEL_NAME="$model_name" TIERS="$TIERS" \
+               PROJECT_DIR="$PROJECT_DIR" TEMPERATURE="${TEMPERATURE:-0.0}"; do
+        case "${_kv#*=}" in
+            *,*) fail "Value of ${_kv%%=*} contains a comma, which sbatch --export"
+                 echo "        would read as a variable separator: ${_kv#*=}"
+                 exit 1 ;;
+        esac
+    done
 
     TIME_ARGS=()
     [ -n "$WALLTIME" ] && TIME_ARGS=(--time "$WALLTIME")
