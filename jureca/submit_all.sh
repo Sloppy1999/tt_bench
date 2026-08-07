@@ -362,6 +362,27 @@ if [ "$READY_FAIL" -eq 1 ]; then
 fi
 
 # ── Submit jobs ──────────────────────────────────────────────────────────────
+# --samples accepts a count (5 => 1..5) or an inclusive range (5-5, 3-5). The
+# range form fills a gap without re-running the repetitions that already
+# succeeded: a batched job that hits TIMEOUT on its last pass leaves the earlier
+# ones on disk, and repeating them wastes a node for data you already have.
+# Parsed HERE, before the banner: the banner below prints SAMPLE_FIRST, and under
+# `set -u` reading it one line too early is not a warning, it is an exit.
+SAMPLE_FIRST=1
+SAMPLE_LAST=""
+if [ -n "$SAMPLES" ]; then
+    case "$SAMPLES" in
+        *-*) SAMPLE_FIRST="${SAMPLES%%-*}"; SAMPLE_LAST="${SAMPLES##*-}" ;;
+        *)   SAMPLE_FIRST=1;               SAMPLE_LAST="$SAMPLES" ;;
+    esac
+    case "$SAMPLE_FIRST$SAMPLE_LAST" in
+        ''|*[!0-9]*) fail "--samples takes N or A-B, got '$SAMPLES'"; exit 1 ;;
+    esac
+    if [ "$SAMPLE_FIRST" -gt "$SAMPLE_LAST" ]; then
+        fail "--samples range is inverted: '$SAMPLES'"; exit 1
+    fi
+fi
+
 banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:-all}, time ${WALLTIME:-12:00:00})"
 
 if [ -n "$SAMPLES" ]; then
@@ -386,31 +407,20 @@ else
 fi
 
 if [ -n "$RUN_SCALED" ]; then
-    warn "RUN_SCALED=1 — each job also runs the ~1013-task scaled sets."
-    warn "That is 8-12h on its own; 12h of --time may not be enough."
+    # The job appends the scaled sets and THEN applies the SETS filter, so a
+    # narrowed --sets runs only what it names. Saying "also runs the ~1013-task
+    # scaled sets" regardless of that filter was a message contradicting the
+    # code, and it read as a walltime warning for work that was never queued.
+    if [ -n "$SETS" ]; then
+        ok "Scaled sets available; --sets narrows each job to: ${SETS//,/ }"
+    else
+        warn "RUN_SCALED=1 with no --sets — each job runs ALL sets, the three"
+        warn "~1013-task scaled ones included. That is 8-12h on its own."
+    fi
 fi
 [ "$DRY_RUN" -eq 1 ] && warn "DRY RUN — nothing will be submitted"
 
 SUBMITTED_JOBS=()
-
-# --samples accepts a count (5 => 1..5) or an inclusive range (5-5, 3-5). The
-# range form fills a gap without re-running the repetitions that already
-# succeeded: a batched job that hits TIMEOUT on its last pass leaves the earlier
-# ones on disk, and repeating them wastes a node for data you already have.
-SAMPLE_FIRST=1
-SAMPLE_LAST=""
-if [ -n "$SAMPLES" ]; then
-    case "$SAMPLES" in
-        *-*) SAMPLE_FIRST="${SAMPLES%%-*}"; SAMPLE_LAST="${SAMPLES##*-}" ;;
-        *)   SAMPLE_FIRST=1;               SAMPLE_LAST="$SAMPLES" ;;
-    esac
-    case "$SAMPLE_FIRST$SAMPLE_LAST" in
-        ''|*[!0-9]*) fail "--samples takes N or A-B, got '$SAMPLES'"; exit 1 ;;
-    esac
-    if [ "$SAMPLE_FIRST" -gt "$SAMPLE_LAST" ]; then
-        fail "--samples range is inverted: '$SAMPLES'"; exit 1
-    fi
-fi
 
 SAMPLE_LIST=("")
 if [ -n "$SAMPLES" ] && [ "$BATCH_SAMPLES" -eq 0 ]; then
