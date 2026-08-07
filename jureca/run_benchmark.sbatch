@@ -337,7 +337,10 @@ fi
 # labels. Empty (the default) runs everything selected above. Fail on an unknown
 # label instead of running nothing — a typo must not look like a clean result.
 if [ -n "${SETS:-}" ]; then
-    WANTED="${SETS//,/ }"
+    # Accept '+' as well as ',': submit_all.sh ships the list comma-free because
+    # sbatch --export reads a comma as a variable separator and would silently
+    # truncate the value to its first element.
+    WANTED="${SETS//[,+]/ }"
     FILTERED_SETS=()
     for want in $WANTED; do
         hit=""
