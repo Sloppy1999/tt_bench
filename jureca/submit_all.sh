@@ -38,6 +38,13 @@ if [ -n "${PROJECT_DIR:-}" ]; then
     :  # already set via environment
 elif [ -d "/p/scratch/westai0070/$USER/tt-bench" ]; then
     PROJECT_DIR="/p/scratch/westai0070/$USER/tt-bench"
+# The checkout is named tt_bench on at least one account, and only the hyphen
+# spelling was probed. That miss was invisible: the branch below resolves the
+# path relative to the script, which is correct when you run
+# `bash jureca/submit_all.sh` from the checkout — and silently wrong the moment
+# you run it from anywhere else.
+elif [ -d "/p/scratch/westai0070/$USER/tt_bench" ]; then
+    PROJECT_DIR="/p/scratch/westai0070/$USER/tt_bench"
 elif [ -d "$SCRIPT_DIR/.." ]; then
     PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 else
@@ -105,6 +112,7 @@ DRY_RUN=0
 SELECTED=()
 MAX_TURNS=""        # empty → run_benchmark.sbatch's default of 25
 SETS=""             # empty → all challenge sets
+PATTERN=""          # empty → each set's own glob
 WALLTIME=""         # empty → the #SBATCH --time in run_benchmark.sbatch (12h)
 TEMPERATURE=""      # empty → run_benchmark.sbatch default of 0.0 (greedy)
 SAMPLES=""          # empty → a single run; N submits N repetitions per model
@@ -133,7 +141,19 @@ Options:
                    <set>_tN/ so a sweep cannot overwrite itself.
       --sets LIST  Challenge sets to run, comma-separated (default: all).
                    Labels: official, 1comp, 2comp, and with -s also
-                   scaled, scaled_1comp, scaled_2comp
+                   scaled, scaled_1comp, scaled_2comp.
+                   Opt-in only, never part of a default run:
+                     unsolvable_1comp, unsolvable_2comp — ill-posed boards that
+                       CANNOT be solved with the parts offered. No model can
+                       score above 0; the transcript is the result, not the
+                       score. Read <out>/per_task/*.json.
+                     insight_1comp, insight_2comp — solvable, but the inventory
+                       carries a distractor part type.
+      --pattern G  Override each selected set's glob with G, relative to that
+                   set's challenges-dir. For probing named tasks without
+                   inventing a set label. Requires --sets with ONE label.
+                   Results still land in <set>/, so the manifest records the
+                   glob — check it before aggregating a narrowed report.
       --time D     Slurm walltime, overriding the script's 12h default.
                    -s needs far more than 12h; check the partition ceiling with
                    scontrol show partition dc-hwai | grep MaxTime
@@ -191,6 +211,7 @@ while [ $# -gt 0 ]; do
         -t|--tiers)   TIERS="${2:?--tiers needs a value, e.g. -t '1 2'}"; shift 2 ;;
         --turns)      MAX_TURNS="${2:?--turns needs a number, e.g. --turns 50}"; shift 2 ;;
         --sets)       SETS="${2:?--sets needs a list, e.g. --sets 1comp}"; shift 2 ;;
+        --pattern)    PATTERN="${2:?--pattern needs a glob}"; shift 2 ;;
         --time)       WALLTIME="${2:?--time needs a Slurm duration, e.g. --time 24:00:00}"; shift 2 ;;
         --temperature) TEMPERATURE="${2:?--temperature needs a value, e.g. --temperature 0.7}"; shift 2 ;;
         --samples)    SAMPLES="${2:?--samples needs a count, e.g. --samples 5}"; shift 2 ;;
@@ -222,6 +243,21 @@ if [ ${#SELECTED[@]} -gt 0 ]; then
         FILTERED+=("$match")
     done
     MODELS=("${FILTERED[@]}")
+fi
+
+# A pattern override applied to several sets would run the same glob against
+# several directories, which is never what anyone means. Caught here rather than
+# in the job: the job discovers it after a 5-minute model load.
+if [ -n "$PATTERN" ]; then
+    if [ -z "$SETS" ]; then
+        fail "--pattern needs --sets to say which set the glob belongs to"
+        exit 1
+    fi
+    case "${SETS//[,+]/ }" in
+        *' '*) fail "--pattern with more than one --sets label: '$SETS'"
+               fail "One glob cannot sensibly address several challenge dirs."
+               exit 1 ;;
+    esac
 fi
 
 # ── Pre-flight ───────────────────────────────────────────────────────────────
@@ -456,7 +492,7 @@ for entry in "${MODELS[@]}"; do
     # success, and nothing anywhere said a set had gone missing. Ship the list
     # comma-free; run_benchmark.sbatch accepts either separator.
     EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS//,/+}"
-    EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0}"
+    EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0},PATTERN=$PATTERN"
     if [ -n "$SAMPLE_N" ]; then
         EXPORTS="$EXPORTS,SAMPLE=$SAMPLE_N"
     elif [ -n "$SAMPLES" ]; then
@@ -468,7 +504,8 @@ for entry in "${MODELS[@]}"; do
         *,*=*,*) : ;;   # normal: several assignments
     esac
     for _kv in MODEL_ID="$model_id" MODEL_NAME="$model_name" TIERS="$TIERS" \
-               PROJECT_DIR="$PROJECT_DIR" TEMPERATURE="${TEMPERATURE:-0.0}"; do
+               PROJECT_DIR="$PROJECT_DIR" TEMPERATURE="${TEMPERATURE:-0.0}" \
+               PATTERN="$PATTERN"; do
         case "${_kv#*=}" in
             *,*) fail "Value of ${_kv%%=*} contains a comma, which sbatch --export"
                  echo "        would read as a variable separator: ${_kv#*=}"
