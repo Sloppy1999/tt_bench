@@ -82,7 +82,11 @@ REQUIRED WORKFLOW (you MUST follow this exactly):
 
 You MUST call run_simulation after EVERY component placement to verify!
 Be CONCISE — your analysis should be 2-3 sentences, not paragraphs.
-Do not just think about the solution - you must USE the tools to build and test it."""
+Do not just think about the solution - you must USE the tools to build and test it.
+
+In your final answer, the "explanation" field must describe your reasoning: what you observed
+from the simulations, why you placed each component where you did, and whether you believe the
+puzzle is solvable or unsolvable with the given inventory."""
 
 
 AGENTIC_PROMPT_TEMPLATE = """Solve this Turing Tumble puzzle using the available tools.
@@ -111,7 +115,10 @@ When you have a correct solution, output:
     {{"component_type": "bit",       "x": 5, "y": 6, "state": 0}}
   ],
   "success": true,
+  "explanation": "Step-by-step: I observed free fall at (3,9) from the simulation, placed a ramp_left there, and verified all 8 blue marbles reached the left catcher with no empty-cell traversals.",
   "verification": {{"left_catcher": 8, "right_catcher": 0}}
 }}
+
+If you determine the puzzle is unsolvable, set "success": false and explain why in "explanation".
 
 Use the tools now. Start by checking the current board state."""
