@@ -333,6 +333,30 @@ if [ "${RUN_SCALED:-}" = "1" ]; then
     warn "RUN_SCALED=1: ~1013 extra tasks queued. 12h of --time may not be enough."
 fi
 
+# ── Opt-in-only sets ─────────────────────────────────────────────────────────
+# These are reachable ONLY by naming them in SETS; they are never part of a
+# default run. Both are ILL-POSED by construction and score 0% by design, so
+# folding them into the roster would drag every headline number down with tasks
+# that measure something else entirely:
+#
+#   unsolvable_* — the board cannot be solved with the parts on offer, either
+#     because a gap has no matching part left (g1/g2) or because the part types
+#     were swapped out from under the solution (t1/t2). Exhaustively verified
+#     against the harness's own validate_synthesis: 0 winning placements exist.
+#     Nothing in AGENTIC_SYSTEM_PROMPT lets a model say "impossible", so success
+#     is unreachable and the RESULT IS THE TRANSCRIPT, not the score. Read
+#     <out>/per_task/*.json, not the summary line.
+#   insight_* — solvable, but available_parts carries a distractor type.
+#
+# The scaled_* sets already sweep these directories via their `**/` glob; these
+# labels exist to run them ALONE, without the ~1013 well-posed tasks alongside.
+OPTIONAL_SETS=(
+    "data/tasks/challenges_1comp|unsolvable/tt-official-ch*.json|unsolvable_1comp"
+    "data/tasks/challenges_2comp|unsolvable/tt-official-ch*.json|unsolvable_2comp"
+    "data/tasks/challenges_1comp|insight/tt-official-ch*.json|insight_1comp"
+    "data/tasks/challenges_2comp|insight/tt-official-ch*.json|insight_2comp"
+)
+
 # Optional set filter: SETS="1comp" or SETS="official,1comp" runs only those
 # labels. Empty (the default) runs everything selected above. Fail on an unknown
 # label instead of running nothing — a typo must not look like a clean result.
@@ -344,13 +368,13 @@ if [ -n "${SETS:-}" ]; then
     FILTERED_SETS=()
     for want in $WANTED; do
         hit=""
-        for cs in "${CHALLENGE_SETS[@]}"; do
+        for cs in "${CHALLENGE_SETS[@]}" "${OPTIONAL_SETS[@]}"; do
             IFS='|' read -r _d _p label <<< "$cs"
             [ "$label" = "$want" ] && hit="$cs" && break
         done
         if [ -z "$hit" ]; then
             fail "SETS names '$want', which is not an available set label."
-            printf '    available:'; for cs in "${CHALLENGE_SETS[@]}"; do
+            printf '    available:'; for cs in "${CHALLENGE_SETS[@]}" "${OPTIONAL_SETS[@]}"; do
                 IFS='|' read -r _d _p label <<< "$cs"; printf ' %s' "$label"; done; echo ""
             exit 1
         fi
@@ -358,6 +382,63 @@ if [ -n "${SETS:-}" ]; then
     done
     CHALLENGE_SETS=("${FILTERED_SETS[@]}")
     ok "Set filter: $WANTED"
+fi
+
+# Optional pattern override: narrows EVERY selected set to this glob instead of
+# the set's own. Meant for probing a handful of named tasks — e.g. the four
+# unsolvable subtypes of one challenge — without inventing a set label per probe.
+# The glob is relative to each set's challenges-dir, so it only makes sense with
+# a single set named in SETS. OUT_LABEL does not encode it (results still land in
+# <set>/), so it is written to the manifest below: without that record, a
+# 4-task directory is indistinguishable from a 40-task set that mostly crashed.
+if [ -n "${PATTERN:-}" ]; then
+    if [ -z "${SETS:-}" ]; then
+        fail "PATTERN is set but SETS is not. A pattern override applied to every"
+        fail "default set would silently run the same glob against three different"
+        fail "directories. Name the one set it belongs to: SETS=unsolvable_1comp"
+        exit 1
+    fi
+    OVERRIDDEN=()
+    for cs in "${CHALLENGE_SETS[@]}"; do
+        IFS='|' read -r _d _p label <<< "$cs"
+        OVERRIDDEN+=("$_d|$PATTERN|$label")
+    done
+    CHALLENGE_SETS=("${OVERRIDDEN[@]}")
+    warn "Pattern override: '$PATTERN' replaces each set's own glob"
+    warn "Results land in the unsuffixed <set>/ directory — check the manifest"
+    warn "for which tasks a report actually covers before aggregating it."
+fi
+
+# A glob that matches nothing is the quietest failure this pipeline has:
+# tt-benchmark logs "Found 0 challenge files", writes an empty report and exits
+# 0, so the set is counted as a success and the summary reads 0/0. Count the
+# matches HERE and refuse to run. Counted with pathlib, not the shell, so the
+# `**/` in the scaled patterns means what the runner will make it mean.
+banner "  Resolving challenge sets"
+SET_RESOLVE_FAIL=0
+for cset in "${CHALLENGE_SETS[@]}"; do
+    IFS='|' read -r challenges_dir pattern cset_label <<< "$cset"
+    N_MATCH=$("$VENV_PY" - "$PROJECT_DIR/$challenges_dir" "$pattern" <<'PY'
+import sys
+from pathlib import Path
+d, pat = Path(sys.argv[1]), sys.argv[2]
+print(len(sorted(d.glob(pat))) if d.is_dir() else -1)
+PY
+)
+    if [ "$N_MATCH" = "-1" ]; then
+        fail "$cset_label: directory does not exist — $challenges_dir"
+        SET_RESOLVE_FAIL=1
+    elif [ "$N_MATCH" -eq 0 ]; then
+        fail "$cset_label: '$pattern' matches 0 files under $challenges_dir"
+        fail "  The run would exit 0 with an empty report. Fix the glob."
+        SET_RESOLVE_FAIL=1
+    else
+        ok "$cset_label: $N_MATCH file(s) before the tier filter"
+    fi
+done
+if [ "$SET_RESOLVE_FAIL" -eq 1 ]; then
+    kill $VLLM_PID 2>/dev/null || true
+    exit 1
 fi
 
 echo "  Max turns: $MAX_TURNS"
@@ -459,6 +540,10 @@ echo ""
 MANIFEST_SUFFIX=""
 [ "$MAX_TURNS" != "25" ] && MANIFEST_SUFFIX="_t${MAX_TURNS}"
 [ -n "$SAMPLE" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_s${SAMPLE}"
+# A pattern-narrowed run covers a handful of tasks, not a full roster. Writing
+# it to the plain manifest_<model>.json would overwrite the record of the real
+# run with one describing four tasks — tag it with the set it probed instead.
+[ -n "${PATTERN:-}" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_$(echo "${SETS:-probe}" | tr ',+' '__')"
 MANIFEST="$RESULTS_BASE/manifest_${MODEL_NAME}${MANIFEST_SUFFIX}.json"
 "$VENV_PY" -c "
 import json
@@ -477,6 +562,7 @@ json.dump({
     'samples': '${SAMPLES:-${SAMPLE:-}}',
     'seeds': '$( [ -n "${SAMPLES:-}" ] && echo "1001-$((1000 + SAMPLES))" || echo "${SEED:-}" )',
     'sets': '${SETS:-all}',
+    'pattern_override': '${PATTERN:-}',
     'run_scaled': '${RUN_SCALED:-0}',
     'results_dir': '${RESULTS_DIR}',
     'completed': $( [ $TOTAL_SUCCESS -eq ${#CHALLENGE_SETS[@]} ] && echo True || echo False ),
