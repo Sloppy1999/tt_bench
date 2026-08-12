@@ -549,6 +549,29 @@ class TuringTumbleBenchmark:
         results = board.run(input_seq)
         return self._validate_simulation_results(board, task_info, results)
 
+    @staticmethod
+    def _model_declares_unsolvable(final_result: Any) -> bool:
+        """Check whether the model declared the task unsolvable.
+
+        Parses the ``final_result`` dict returned by ``generate_with_tools``
+        for a ``success`` field set to ``False``.  Handles both flat dicts
+        (most models) and ``{"content": "<json>"}`` wrappers (some providers).
+        """
+        if not isinstance(final_result, dict):
+            return False
+        for candidate in (final_result,):
+            if "success" in candidate:
+                return candidate.get("success") is False
+        content = final_result.get("content", "")
+        if isinstance(content, str) and content.strip():
+            try:
+                inner = json.loads(content)
+                if isinstance(inner, dict) and "success" in inner:
+                    return inner.get("success") is False
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return False
+
     def run_understanding_task(self, task_path: Path) -> List[TaskResult]:
         """Run procedural understanding tasks for a challenge.
 
@@ -700,7 +723,7 @@ class TuringTumbleBenchmark:
         start_time = time.time()
 
         try:
-            task_info, _ = self.load_task(task_path)
+            task_info, raw_data = self.load_task(task_path)
             task_id = task_info["task_id"]
             board_data = task_info["board"]
 
@@ -747,32 +770,63 @@ class TuringTumbleBenchmark:
                     max_tokens=self.max_tokens,
                 )
 
-            is_valid, msg = False, "No solution found"
+            # ── Determine if this is an unsolvable variant ──────────────────
+            task_meta = raw_data.get("_meta", {}) if isinstance(raw_data, dict) else {}
+            is_unsolvable = task_meta.get("variant_type") == "unsolvable"
+
             placed = executor.get_placed_components()
             solution_used = placed
+            unsolvable_detected: Optional[bool] = None
 
-            # Validate if the LLM submitted a final_answer *or* if it
-            # placed components before running out of turns.  This catches
-            # the common case where a model finds the right board but
-            # exhausts its turn budget before emitting a final_solution.
-            if final_result or placed:
-                is_valid, msg = self.validate_synthesis(task_info, placed)
+            if is_unsolvable:
+                # For unsolvable tasks, success = model correctly declares
+                # unsolvability rather than trying to build an impossible
+                # solution.  validate_synthesis always returns False for
+                # these boards, so the normal scoring path cannot reward a
+                # correct answer.
+                declared_unsolvable = self._model_declares_unsolvable(final_result)
+                if declared_unsolvable:
+                    is_valid = True
+                    msg = "Correctly identified task as unsolvable"
+                else:
+                    is_valid = False
+                    msg = "Model did not recognize task as unsolvable"
+                unsolvable_detected = declared_unsolvable
+            else:
+                # ── Normal validation for well-posed tasks ────────────────
+                is_valid, msg = False, "No solution found"
 
-            # Fall back to the best board state recorded during successful
-            # simulation runs — handles the case where the LLM places a
-            # correct component, verifies it, then removes it.
-            if not is_valid:
-                best = executor.get_best_placement()
-                if best and best != placed:
-                    is_valid, msg = self.validate_synthesis(task_info, best)
-                    if is_valid:
-                        solution_used = best
+                # Validate if the LLM submitted a final_answer *or* if it
+                # placed components before running out of turns.  This catches
+                # the common case where a model finds the right board but
+                # exhausts its turn budget before emitting a final_solution.
+                if final_result or placed:
+                    is_valid, msg = self.validate_synthesis(task_info, placed)
 
-            # Compute component-level accuracy against ground truth
+                # Fall back to the best board state recorded during successful
+                # simulation runs — handles the case where the LLM places a
+                # correct component, verifies it, then removes it.
+                if not is_valid:
+                    best = executor.get_best_placement()
+                    if best and best != placed:
+                        is_valid, msg = self.validate_synthesis(task_info, best)
+                        if is_valid:
+                            solution_used = best
+
+            # Compute component-level accuracy against ground truth.
+            # For unsolvable tasks where the model correctly refused, the
+            # component score is not meaningful: the right answer is to place
+            # nothing, so every score would read 0.0 regardless of correctness.
             gt_placements = task_info.get("solution", {}).get("placed_components", [])
-            comp_score, comp_correct, comp_placed, comp_gt = self._compute_component_score(
-                solution_used, gt_placements
-            )
+            if is_unsolvable and unsolvable_detected:
+                comp_score = None
+                comp_correct = 0
+                comp_placed = 0
+                comp_gt = len(gt_placements)
+            else:
+                comp_score, comp_correct, comp_placed, comp_gt = self._compute_component_score(
+                    solution_used, gt_placements
+                )
 
             transcript = []
             for tc, tr in zip(tool_calls, tool_results):
@@ -801,6 +855,7 @@ class TuringTumbleBenchmark:
                 },
                 expected={
                     "solution": task_info.get("solution", {}),
+                    "_meta": task_meta,
                 },
                 metrics={
                     "valid": float(is_valid),
@@ -821,6 +876,7 @@ class TuringTumbleBenchmark:
                     "component_correct": comp_correct,
                     "component_placed": comp_placed,
                     "component_gt": comp_gt,
+                    "unsolvable_detected": float(unsolvable_detected) if unsolvable_detected is not None else None,
                     **cx_metrics,
                 },
                 error=msg if not is_valid else error,
