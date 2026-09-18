@@ -54,7 +54,9 @@ mkdir -p "$PROJECT_DIR/slurm_logs"
 # previous one and you cannot tell which run a log belongs to.
 JOB_TAG="${SLURM_JOB_ID:-manual}"
 
-VENV_DIR="$PROJECT_DIR/.venv-ttbench"
+# Overridable so a second vLLM build can be tested against the same checkout
+# without disturbing jobs already running on the default one.
+VENV_DIR="${VENV_DIR:-$PROJECT_DIR/.venv-ttbench}"
 if [ ! -d "$VENV_DIR" ]; then
     VENV_DIR="/p/scratch/westai0070/${SLURM_JOB_USER:-$USER}/.venv-ttbench"
 fi
