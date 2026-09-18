@@ -6,82 +6,82 @@
   "objective": "Make the pattern blue, red, blue, red, blue, red... using a shorter path.",
   "board": {
     "width": 11,
-    "height": 17,
+    "height": 9,
     "fixed_components": [
-      {
-        "type": "ramp_left",
-        "x": 8,
-        "y": 0
-      },
-      {
-        "type": "ramp_left",
-        "x": 7,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 2
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 8
-      },
       {
         "type": "ramp_right",
         "x": 2,
         "y": 0
       },
       {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 3,
         "y": 1
       },
       {
         "type": "ramp_right",
-        "x": 4,
+        "x": 2,
         "y": 2
       },
       {
         "type": "ramp_left",
-        "x": 6,
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
         "y": 4
       },
       {
         "type": "ramp_right",
         "x": 7,
-        "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 6
-      },
-      {
-        "type": "crossover",
-        "x": 5,
-        "y": 7
+        "y": 5
       },
       {
         "type": "ramp_left",
-        "x": 4,
-        "y": 8
+        "x": 8,
+        "y": 6
       },
       {
-        "type": "crossover",
-        "x": 5,
-        "y": 3
+        "type": "ramp_right",
+        "x": 7,
+        "y": 7
       }
     ],
     "ball_hoppers": {
@@ -99,11 +99,11 @@
     "trigger_levers": {
       "left": {
         "x": 2,
-        "y": 17
+        "y": 9
       },
       "right": {
         "x": 8,
-        "y": 17
+        "y": 9
       }
     }
   },
@@ -122,29 +122,29 @@
       {
         "type": "ramp_left",
         "x": 3,
-        "y": 15
+        "y": 7
       }
     ],
     "explanation": "Scaled variant \u2014 16 total components, 1 to place.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
-      "red",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
       "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue"
+      "red"
     ]
   },
   "input_sequence": [
@@ -166,7 +166,8 @@
     "red"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 8,
+    "right_catcher": 8,
+    "intercepted": 0
   }
 }

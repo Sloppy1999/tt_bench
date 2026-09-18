@@ -6,17 +6,17 @@
   "objective": "Make the pattern blue, red, blue, red, blue, red... using a shorter path.",
   "board": {
     "width": 11,
-    "height": 5,
+    "height": 3,
     "fixed_components": [
       {
-        "type": "ramp_left",
-        "x": 8,
+        "type": "ramp_right",
+        "x": 2,
         "y": 0
       },
       {
         "type": "ramp_left",
-        "x": 7,
-        "y": 1
+        "x": 8,
+        "y": 0
       }
     ],
     "ball_hoppers": {
@@ -34,18 +34,18 @@
     "trigger_levers": {
       "left": {
         "x": 2,
-        "y": 5
+        "y": 3
       },
       "right": {
         "x": 8,
-        "y": 5
+        "y": 3
       }
     }
   },
   "available_parts": {
     "ramp_right": 1,
-    "ramp_left": 0,
-    "crossover": 1,
+    "ramp_left": 1,
+    "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
@@ -55,36 +55,36 @@
   "solution": {
     "placed_components": [
       {
-        "type": "crossover",
-        "x": 5,
-        "y": 2
+        "type": "ramp_left",
+        "x": 3,
+        "y": 1
       },
       {
         "type": "ramp_right",
-        "x": 1,
-        "y": 3
+        "x": 7,
+        "y": 1
       }
     ],
     "explanation": "Scaled variant \u2014 4 total components, 2 to place.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
-      "red",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
       "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue",
       "red",
-      "blue"
+      "red"
     ]
   },
   "input_sequence": [
@@ -106,7 +106,8 @@
     "red"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 8,
+    "right_catcher": 8,
+    "intercepted": 0
   }
 }

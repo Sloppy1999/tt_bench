@@ -7,32 +7,68 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "column",
     "fixed_components": [
       {
         "type": "bit",
         "x": 3,
-        "y": 1,
+        "y": 0,
         "state": 0
       },
       {
         "type": "ramp_left",
-        "x": 3,
+        "x": 1,
         "y": 2
       },
       {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 3
+        "type": "ramp_right",
+        "x": 5,
+        "y": 2
       },
       {
         "type": "ramp_right",
-        "x": 4,
+        "x": 0,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
         "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 6
       },
       {
         "type": "ramp_right",
         "x": 5,
         "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 7
       },
       {
         "type": "ramp_left",
@@ -41,35 +77,43 @@
       },
       {
         "type": "ramp_left",
-        "x": 7,
+        "x": 1,
         "y": 8
       },
       {
         "type": "ramp_right",
-        "x": 8,
-        "y": 9
+        "x": 5,
+        "y": 8
       },
       {
         "type": "ramp_right",
-        "x": 9,
+        "x": 0,
         "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 10
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
     "trigger_levers": {
       "left": {
-        "x": 2,
+        "x": 1,
         "y": 11
       },
       "right": {
@@ -79,8 +123,8 @@
     }
   },
   "available_parts": {
-    "ramp_right": 2,
-    "ramp_left": 0,
+    "ramp_right": 1,
+    "ramp_left": 1,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -93,17 +137,17 @@
       {
         "type": "ramp_left",
         "x": 2,
-        "y": 2
+        "y": 1
       },
       {
         "type": "ramp_right",
         "x": 4,
-        "y": 2
+        "y": 1
       }
     ],
     "explanation": "The bit sends the blue balls in alternating directions. First right, then left, then right, and so on. You must add ramps on either side of the bit to get the balls to a path that leads to the bottom. NOTE - component positions are estimates pending simulator verification",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
       "blue",
@@ -116,6 +160,14 @@
     ]
   },
   "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
+  },
+  "required_output": [
     "blue",
     "blue",
     "blue",
@@ -125,8 +177,9 @@
     "blue",
     "blue"
   ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 33,
+    "checked": "simulation reproduces the guide's printed required output"
   }
 }

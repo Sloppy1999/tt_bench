@@ -11,7 +11,12 @@
       "question": "Which ball is caught in the interceptor?",
       "answer": "3rd",
       "type": "select",
-      "options": ["1st", "2nd", "3rd", "4th"]
+      "options": [
+        "1st",
+        "2nd",
+        "3rd",
+        "4th"
+      ]
     }
   ]
 }

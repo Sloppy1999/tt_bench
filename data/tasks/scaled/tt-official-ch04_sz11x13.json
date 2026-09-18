@@ -1,0 +1,186 @@
+{
+  "task_id": "tt-official-ch04_sz11x13",
+  "challenge_number": 4,
+  "tier": 1,
+  "title": "Fusion",
+  "objective": "Release one red ball and then all of the blue balls.",
+  "board": {
+    "width": 11,
+    "height": 13,
+    "hopper_entry_mode": "inward",
+    "fixed_components": [
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 1,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 10
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 11
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 3,
+        "y": 13
+      },
+      "right": {
+        "x": 8,
+        "y": 13
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 5,
+    "ramp_left": 7,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 0,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 9
+      }
+    ],
+    "explanation": "Tall scaled variant \u2014 board expanded from 11\u00d711 to 11\u00d713, extending the marble path through the added rows. The paths need to come together, but they start far apart! Use the ramps to bring the paths together and lead all of the balls to the left side.",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "red"
+  ],
+  "expected_output": {
+    "left_catcher": 9,
+    "right_catcher": 0,
+    "intercepted": 0
+  },
+  "required_output": [
+    "red",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 19,
+    "checked": "simulation reproduces the guide's printed required output"
+  }
+}

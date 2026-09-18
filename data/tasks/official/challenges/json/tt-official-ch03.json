@@ -7,53 +7,47 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
         "type": "ramp_right",
-        "x": 2,
-        "y": 0
-      },
-      {
-        "type": "ramp_right",
         "x": 3,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 2
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 3
-      },
-      {
-        "type": "ramp_left",
-        "x": 8,
         "y": 0
       },
       {
         "type": "ramp_left",
         "x": 7,
-        "y": 1
+        "y": 0
       },
       {
         "type": "ramp_left",
-        "x": 6,
-        "y": 2
+        "x": 9,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
-        "count": 1
+        "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
-        "count": 1
+        "count": 8
       }
     },
     "trigger_levers": {
@@ -62,14 +56,14 @@
         "y": 11
       },
       "right": {
-        "x": 8,
+        "x": 9,
         "y": 11
       }
     }
   },
   "available_parts": {
-    "ramp_right": 4,
-    "ramp_left": 3,
+    "ramp_right": 5,
+    "ramp_left": 1,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -80,50 +74,73 @@
   "solution": {
     "placed_components": [
       {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
         "type": "ramp_left",
         "x": 6,
-        "y": 4
+        "y": 1
       },
       {
         "type": "ramp_right",
         "x": 5,
-        "y": 5
+        "y": 2
       },
       {
         "type": "ramp_right",
         "x": 6,
-        "y": 6
+        "y": 3
       },
       {
         "type": "ramp_right",
         "x": 7,
-        "y": 7
+        "y": 4
       },
       {
         "type": "ramp_right",
         "x": 8,
-        "y": 8
-      },
-      {
-        "type": "ramp_left",
-        "x": 9,
-        "y": 9
+        "y": 5
       }
     ],
     "explanation": "Like the last puzzle, the ramps bring the paths of the red and blue balls into one path that leads to the right lever. After the first blue ball, all the rest are red. NOTE - component positions are estimates pending simulator verification",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
-      "blue",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
+      "red",
       "red"
     ]
   },
   "input_sequence": [
-    "blue",
-    "red"
+    "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 0,
+    "right_catcher": 9,
+    "intercepted": 0
+  },
+  "required_output": [
+    "blue",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 13,
+    "checked": "simulation reproduces the guide's printed required output"
   }
 }

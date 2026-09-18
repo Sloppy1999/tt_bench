@@ -5,22 +5,25 @@
       "qid": "tt-official-ch07-pA-q1",
       "type": "ball_path",
       "question": "Starting from the blue ball hopper with the solved board configuration, describe the complete path of the first blue ball.",
-      "answer": "The first blue ball drops from (2,-1), rolls onto ramp_right at (3,1), then solution: ramp_right at (4,2), ramp_right at (5,3), ramp_right at (6,4), crossover at (7,5), crossover at (7,6), ramp_right at (7,7), reaching the exit.",
-      "difficulty": "easy"
+      "answer": "The first blue ball drops from (2, -1), rolls onto ramp_right at (3, 0), then crossover at (4, 1), then crossover at (5, 2), then ramp_left at (6, 3), then ramp_left at (5, 4), then ramp_left at (4, 5), then crossover at (3, 6), then ramp_right at (2, 7), then crossover at (3, 8), then ramp_left at (4, 9), and is caught at the left exit.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch07-pA-q2",
       "type": "output_sequence",
       "question": "How many blue balls reach the exit?",
-      "answer": "All 8 blue balls reach the exit.",
-      "difficulty": "easy"
+      "answer": "8 balls reach an exit in the order: blue exits left, blue exits left, blue exits left, blue exits left, blue exits left, blue exits left, blue exits left, blue exits left. 8 exit left, 0 exit right, 0 are intercepted.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch07-pA-q3",
       "type": "parts_count",
       "question": "How many ramps and crossovers were used in the solution?",
-      "answer": "The solution uses 6 ramps and 2 crossovers.",
-      "difficulty": "easy"
+      "answer": "There are 0 placed by the solution.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     }
   ]
 }

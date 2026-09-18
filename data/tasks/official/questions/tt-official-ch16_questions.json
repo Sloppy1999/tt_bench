@@ -12,8 +12,9 @@
       "qid": "tt-official-ch16-q2",
       "type": "ball_path",
       "question": "Where does the 4th ball go in the solved configuration, and why?",
-      "answer": "The 4th ball goes to the interceptor because both bits are pointing right, which routes the ball to the interceptor instead of the bottom output.",
-      "difficulty": "medium"
+      "answer": "The first blue ball drops from (2, -1), rolls onto bit at (3, 0), then ramp_right at (4, 1), then ramp_left at (5, 2), then ramp_right at (4, 3), then ramp_left at (5, 4), then ramp_right at (4, 5), then ramp_left at (5, 6), then ramp_right at (4, 7), then ramp_left at (5, 8), then ramp_left at (4, 9), and is caught at the left exit.",
+      "difficulty": "medium",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch16-q3",
