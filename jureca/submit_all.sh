@@ -120,6 +120,8 @@ SETS=""             # empty → all challenge sets
 PATTERN=""          # empty → each set's own glob
 WALLTIME=""         # empty → the #SBATCH --time in run_benchmark.sbatch (12h)
 TEMPERATURE=""      # empty → run_benchmark.sbatch default of 0.0 (greedy)
+ARM=""              # empty → run_benchmark.sbatch default of "baseline"
+VENV=""             # empty → run_benchmark.sbatch picks its default venv
 SAMPLES=""          # empty → a single run; N submits N repetitions per model
 BATCH_SAMPLES=0     # 1 → all repetitions inside ONE job (model loads once)
 
@@ -154,6 +156,14 @@ Options:
                        score. Read <out>/per_task/*.json.
                      insight_1comp, insight_2comp — solvable, but the inventory
                        carries a distractor part type.
+      --arm A      Harness-ablation arm (default: baseline). One of
+                     baseline, fb-optional, fb-auto, rev-retry, rev-structured.
+                   See HARNESS_ABLATION_PLAN.md section 5 for what each changes.
+                   Results land in <set>_a<arm>/ so arms cannot overwrite one
+                   another or the baseline. The TURN-BUDGET arms are --turns,
+                   not --arm: 10/15/40 land in <set>_tN/ already.
+                   rev-* needs the vllm provider; the runner refuses otherwise
+                   rather than producing baseline results under an arm label.
       --pattern G  Override each selected set's glob with G, relative to that
                    set's challenges-dir. For probing named tasks without
                    inventing a set label. Requires --sets with ONE label.
@@ -195,6 +205,14 @@ Examples:
   for n in 25 50 100; do
     bash jureca/submit_all.sh --sets 1comp --turns \$n gemma-4-31b-it
   done
+
+  # Harness ablation, one model, all seven arms (Phase 1 of the plan):
+  for n in 10 15 40; do
+    bash jureca/submit_all.sh -s --sets scaled_1comp --turns \$n gemma-4-31b-it
+  done
+  for a in fb-optional fb-auto rev-retry rev-structured; do
+    bash jureca/submit_all.sh -s --sets scaled_1comp --arm \$a gemma-4-31b-it
+  done
 EOF
 }
 
@@ -219,6 +237,8 @@ while [ $# -gt 0 ]; do
         --pattern)    PATTERN="${2:?--pattern needs a glob}"; shift 2 ;;
         --time)       WALLTIME="${2:?--time needs a Slurm duration, e.g. --time 24:00:00}"; shift 2 ;;
         --temperature) TEMPERATURE="${2:?--temperature needs a value, e.g. --temperature 0.7}"; shift 2 ;;
+        --arm)        ARM="${2:?--arm needs a label, e.g. --arm fb-auto}"; shift 2 ;;
+        --venv)       VENV="${2:?--venv needs a path, e.g. --venv \$PROJECT_DIR/.venv-ttbench-v29}"; shift 2 ;;
         --samples)    SAMPLES="${2:?--samples needs a count, e.g. --samples 5}"; shift 2 ;;
         --batch)      BATCH_SAMPLES=1; shift ;;
         --mail)       MAIL_USER="${2:?--mail needs an address}"; shift 2 ;;
@@ -248,6 +268,19 @@ if [ ${#SELECTED[@]} -gt 0 ]; then
         FILTERED+=("$match")
     done
     MODELS=("${FILTERED[@]}")
+fi
+
+# Reject an unknown arm before submitting. run_benchmark.sbatch checks it too,
+# but it does so after the job has been scheduled and the model loaded — a typo
+# should cost a shell prompt, not a node allocation.
+if [ -n "$ARM" ]; then
+    case "$ARM" in
+        baseline|fb-optional|fb-auto|rev-retry|rev-structured) : ;;
+        *)  fail "Unknown --arm '$ARM'"
+            echo "    available: baseline fb-optional fb-auto rev-retry rev-structured"
+            echo "    (turn-budget arms are --turns 10|15|40, not --arm)"
+            exit 1 ;;
+    esac
 fi
 
 # A pattern override applied to several sets would run the same glob against
@@ -280,7 +313,10 @@ fi
 # dangling symlink while bin/activate stays perfectly readable — so the old
 # `-f bin/activate` test passed and the job died on the compute node instead.
 # Validate capability (does it run? does vLLM import?), not mere presence.
-VENV_DIR="$PROJECT_DIR/.venv-ttbench"
+# Pre-flight the venv the JOBS will use, not always the default one: this
+# assignment used to clobber an exported VENV_DIR, so --venv was checked here
+# and then never reached sbatch.
+VENV_DIR="${VENV:-$PROJECT_DIR/.venv-ttbench}"
 VENV_PY="$VENV_DIR/bin/python"
 
 if [ ! -x "$VENV_PY" ]; then
@@ -498,6 +534,14 @@ for entry in "${MODELS[@]}"; do
     # comma-free; run_benchmark.sbatch accepts either separator.
     EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS//,/+}"
     EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0},PATTERN=$PATTERN"
+    # Which vLLM build serves the model decides what the run measures, so it
+    # is pinned per submission like the rest. Relying on --export=ALL to carry
+    # an exported VENV_DIR did not work: the jobs silently used the default
+    # venv and a model needing a newer vLLM failed 90s in.
+    if [ -n "$VENV" ]; then
+        EXPORTS="$EXPORTS,VENV_DIR=$VENV"
+    fi
+    EXPORTS="$EXPORTS,ARM=${ARM:-baseline}"
     if [ -n "$SAMPLE_N" ]; then
         EXPORTS="$EXPORTS,SAMPLE=$SAMPLE_N"
     elif [ -n "$SAMPLES" ]; then
@@ -510,7 +554,7 @@ for entry in "${MODELS[@]}"; do
     esac
     for _kv in MODEL_ID="$model_id" MODEL_NAME="$model_name" TIERS="$TIERS" \
                PROJECT_DIR="$PROJECT_DIR" TEMPERATURE="${TEMPERATURE:-0.0}" \
-               PATTERN="$PATTERN"; do
+               PATTERN="$PATTERN" ARM="${ARM:-baseline}"; do
         case "${_kv#*=}" in
             *,*) fail "Value of ${_kv%%=*} contains a comma, which sbatch --export"
                  echo "        would read as a variable separator: ${_kv#*=}"
@@ -523,7 +567,7 @@ for entry in "${MODELS[@]}"; do
 
     # A per-job name so `squeue` is readable: six identical "tt-vllm" rows tell
     # you nothing, and the notification mail carries the job name too.
-    NAME_ARGS=(--job-name "tt-$model_name${SAMPLE_N:+-s$SAMPLE_N}")
+    NAME_ARGS=(--job-name "tt-$model_name${ARM:+-$ARM}${SAMPLE_N:+-s$SAMPLE_N}")
 
     MAIL_ARGS=()
     [ -n "$MAIL_USER" ] && MAIL_ARGS=(--mail-type "$MAIL_TYPE" --mail-user "$MAIL_USER")
