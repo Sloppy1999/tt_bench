@@ -11,6 +11,7 @@ from pathlib import Path
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from tt_bench.simulator.targets import validate_targets
 from tt_bench.simulator import (
     Board,
     build_gear_connections,
@@ -45,6 +46,7 @@ class TuringTumbleToolExecutor:
         expose_inventory: bool = False,
         target_final_state: Optional[List[str]] = None,
         expected_output: Optional[Dict[str, Any]] = None,
+        required_output: Optional[List[str]] = None,
     ):
         self.board = board
         # Ablation switch: report the remaining inventory from get_board_state.
@@ -71,6 +73,7 @@ class TuringTumbleToolExecutor:
         # only sets _solution_found when the input matches this sequence
         # (prevents false positives from exploratory simulations).
         self._target_sequence: Optional[List[str]] = target_sequence
+        self._required_output = required_output
         self._target_final_state = target_final_state
         self._expected_output = dict(expected_output or {})
 
@@ -325,10 +328,7 @@ class TuringTumbleToolExecutor:
                         y == self.board.rows - 1
                         and next_pos is not None
                         and next_pos[1] >= self.board.rows
-                        and x in (
-                            self.board.left_catcher_x,
-                            self.board.right_catcher_x,
-                        )
+                        and self.board.catcher_at(x) is not None
                     ):
                         continue
 
@@ -422,28 +422,12 @@ class TuringTumbleToolExecutor:
         ):
             return False
 
-        if self._target_final_state is not None:
-            actual = []
-            for result in results:
-                if result.caught_by == "left_catcher":
-                    actual.append("blue")
-                elif result.caught_by == "right_catcher":
-                    actual.append("red")
-            return actual == self._target_final_state
-
-        numeric_targets = {
-            "left_catcher": left_count,
-            "right_catcher": right_count,
-            "intercepted": interceptor_count,
+        task = {
+            "solution": {"final_marble_state": self._target_final_state},
+            "required_output": self._required_output,
+            "expected_output": self._expected_output,
         }
-        compared = False
-        for key, actual in numeric_targets.items():
-            expected = self._expected_output.get(key)
-            if isinstance(expected, int):
-                compared = True
-                if actual != expected:
-                    return False
-        return compared
+        return validate_targets(task, self.board, results)[0]
 
     def get_board_state(self) -> Dict[str, Any]:
         """Get the current board configuration in the canonical LLM shape.
@@ -537,6 +521,7 @@ def create_executor_from_task(
     expose_inventory: bool = False,
     target_final_state: Optional[List[str]] = None,
     expected_output: Optional[Dict[str, Any]] = None,
+    required_output: Optional[List[str]] = None,
 ) -> TuringTumbleToolExecutor:
     """Create a tool executor from task configuration.
 
@@ -550,8 +535,8 @@ def create_executor_from_task(
             When set, ``run_simulation`` only flags ``solution_found`` when the
             simulation input matches this sequence.
         target_final_state: Expected ordered catcher-colour sequence.
-        expected_output: Numeric catcher/interceptor targets used when no final
-            sequence is declared.
+        expected_output: Count and bit-state targets checked alongside sequences.
+        required_output: Additional required ordered output; must also match.
 
     Returns:
         Configured TuringTumbleToolExecutor
@@ -596,6 +581,7 @@ def create_executor_from_task(
         expose_inventory=expose_inventory,
         target_final_state=target_final_state,
         expected_output=expected_output,
+        required_output=required_output,
     )
 
 
