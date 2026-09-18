@@ -245,7 +245,10 @@ ok "vLLM started (PID: $VLLM_PID)"
 # ── Wait for vLLM to be ready ────────────────────────────────────────────────
 banner "Waiting for vLLM server to be ready"
 
-MAX_WAIT=600  # 10 minutes for model loading
+# 10 minutes covers a warm start, but not a cold torch.compile cache under
+# tensor parallelism: on vLLM 0.29 every 4-GPU model sat in engine init past
+# 600s and was killed, while both 1-GPU models came up fine. Overridable.
+MAX_WAIT="${VLLM_MAX_WAIT:-1800}"
 WAITED=0
 while ! curl -s --max-time 2 "http://localhost:${VLLM_PORT}/v1/models" > /dev/null 2>&1; do
     # Fail fast if the server process already died (don't poll a corpse for 10 min).
@@ -282,6 +285,28 @@ MAX_TURNS="${MAX_TURNS:-25}"
 # configuration scored 80/60/0% and then 100/80/9%. Results for TEMPERATURE != 0
 # land in a suffixed directory so a sampling sweep cannot overwrite the baseline.
 TEMPERATURE="${TEMPERATURE:-0.0}"
+
+# Harness-ablation arm (HARNESS_ABLATION_PLAN.md section 5). "baseline" is the
+# configuration behind docs/results_analysis.md and adds no flags, so an
+# unset ARM reproduces the historical runs exactly. Anything else appends
+# _a<arm> to the output directory, because two arms in one directory are
+# distinguishable only by timestamp and any aggregation silently mixes them.
+#
+# The turn-budget arms are NOT here: they are MAX_TURNS, which already suffixes
+# with _tN. Only the arms needing new CLI flags are labelled.
+ARM="${ARM:-baseline}"
+ARM_ARGS=""
+case "$ARM" in
+    baseline)       ARM_ARGS="" ;;
+    fb-optional)    ARM_ARGS="--prompt-variant optional" ;;
+    fb-auto)        ARM_ARGS="--auto-simulate" ;;
+    rev-retry)      ARM_ARGS="--revision-style retry --revision-rounds 3" ;;
+    rev-structured) ARM_ARGS="--revision-style structured --revision-rounds 3" ;;
+    *)
+        fail "ARM names '$ARM', which is not an available arm."
+        echo "    available: baseline fb-optional fb-auto rev-retry rev-structured"
+        exit 1 ;;
+esac
 
 # Repetition index for a variability study. Results land in <set>_sN/ so the
 # repetitions do NOT supersede each other: the analysis tools read the newest
@@ -357,6 +382,12 @@ OPTIONAL_SETS=(
     "data/tasks/challenges_2comp|unsolvable/tt-official-ch*.json|unsolvable_2comp"
     "data/tasks/challenges_1comp|insight/tt-official-ch*.json|insight_1comp"
     "data/tasks/challenges_2comp|insight/tt-official-ch*.json|insight_2comp"
+    # Phase 2 of the harness ablation: a frozen, stratified 500-task draw from
+    # `scaled`. The directory is GENERATED, not committed — it holds symlinks:
+    #   uv run python scripts/build_sub500.py --materialise data/tasks/scaled_sub500
+    # qwen3.6-35B-A3B needs ~13.5 h for the full 1013-task scaled set at 8
+    # workers, past the 12 h walltime; 500 fits. See HARNESS_ABLATION_PLAN.md 6.9.
+    "data/tasks/scaled_sub500|*.json|scaled_sub500"
 )
 
 # Optional set filter: SETS="1comp" or SETS="official,1comp" runs only those
@@ -429,6 +460,8 @@ PY
 )
     if [ "$N_MATCH" = "-1" ]; then
         fail "$cset_label: directory does not exist — $challenges_dir"
+        [ "$cset_label" = "scaled_sub500" ] && fail \
+            "  It is generated: python scripts/build_sub500.py --materialise $challenges_dir"
         SET_RESOLVE_FAIL=1
     elif [ "$N_MATCH" -eq 0 ]; then
         fail "$cset_label: '$pattern' matches 0 files under $challenges_dir"
@@ -445,6 +478,7 @@ fi
 
 echo "  Max turns: $MAX_TURNS"
 echo "  Temperature: $TEMPERATURE"
+echo "  Arm:       $ARM${ARM_ARGS:+ ($ARM_ARGS)}"
 [ -n "$SAMPLE" ] && echo "  Sample:      $SAMPLE (seed $SEED)"
 if [ -n "$SAMPLE" ] && [ "$TEMPERATURE" = "0.0" ]; then
     warn "Greedy repetitions measure vLLM batching non-determinism (measured"
@@ -466,7 +500,8 @@ ARGS_COMMON="--provider vllm \
              --max-tokens 32768 \
              --timeout 600 \
              --workers 8 \
-             --tiers $TIERS"
+             --tiers $TIERS \
+             $ARM_ARGS"
 
 TOTAL_SUCCESS=0
 TOTAL_FAILED=0
@@ -487,6 +522,7 @@ for SAMPLE in "${SAMPLE_INDICES[@]}"; do
       OUT_LABEL="$cset_label"
       [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${cset_label}_t${MAX_TURNS}"
       [ "$TEMPERATURE" != "0.0" ] && OUT_LABEL="${OUT_LABEL}_T${TEMPERATURE}"
+      [ "$ARM" != "baseline" ] && OUT_LABEL="${OUT_LABEL}_a${ARM}"
       [ -n "$SAMPLE" ] && OUT_LABEL="${OUT_LABEL}_s${SAMPLE}"
       OUT_DIR="$RESULTS_DIR/${OUT_LABEL}"
       mkdir -p "$OUT_DIR"
@@ -541,6 +577,7 @@ echo ""
 # Same reasoning as OUT_LABEL: a sweep must not overwrite its own manifest.
 MANIFEST_SUFFIX=""
 [ "$MAX_TURNS" != "25" ] && MANIFEST_SUFFIX="_t${MAX_TURNS}"
+[ "$ARM" != "baseline" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_a${ARM}"
 [ -n "$SAMPLE" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_s${SAMPLE}"
 # A pattern-narrowed run covers a handful of tasks, not a full roster. Writing
 # it to the plain manifest_<model>.json would overwrite the record of the real
@@ -561,6 +598,8 @@ json.dump({
     'tool_parser': '${TOOL_PARSER}',
     'max_turns': ${MAX_TURNS},
     'temperature': ${TEMPERATURE},
+    'arm': '${ARM}',
+    'arm_args': '${ARM_ARGS}',
     'samples': '${SAMPLES:-${SAMPLE:-}}',
     'seeds': '$( [ -n "${SAMPLES:-}" ] && echo "1001-$((1000 + SAMPLES))" || echo "${SEED:-}" )',
     'sets': '${SETS:-all}',
