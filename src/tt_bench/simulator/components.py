@@ -333,6 +333,7 @@ class MarbleResult:
     steps: int  # Number of steps taken
     terminated: bool  # Whether simulation terminated
     termination_reason: str | None  # Reason for termination
+    colour: str | None = None  # Which hopper the marble came from
 
     @property
     def success(self) -> bool:

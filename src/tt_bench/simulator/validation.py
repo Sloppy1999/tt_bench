@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 from tt_bench.simulator.board import Board
 
@@ -21,7 +20,7 @@ def load_challenge(challenge_path: str) -> tuple[Board, dict]:
     with open(challenge_path) as fp:
         task = json.load(fp)
 
-    board = Board.from_task_json(challenge_path)
+    board = Board.from_task_dict(task)
     return board, task
 
 
@@ -37,6 +36,23 @@ def verify_solution(challenge_path: str, sequence: list[str] | None = None) -> b
         bool: True if solution is valid
     """
     board, task = load_challenge(challenge_path)
+    return _verify_task_board(board, task, sequence)
+
+
+def verify_task(task: dict, sequence: list[str] | None = None) -> bool:
+    """Verify an already-loaded challenge dictionary.
+
+    This is useful to generators, which should reject invalid candidates before
+    writing them into a benchmark dataset.
+    """
+    board = Board.from_task_dict(task)
+    return _verify_task_board(board, task, sequence)
+
+
+def _verify_task_board(
+    board: Board, task: dict, sequence: list[str] | None = None
+) -> bool:
+    """Verify one task using a single simulator run."""
 
     # Use challenge's input_sequence if no explicit sequence provided
     if sequence is None:
@@ -68,6 +84,15 @@ def verify_solution(challenge_path: str, sequence: list[str] | None = None) -> b
             if 0 <= x < board.cols and 0 <= y < board.rows and curr not in board.components:
                 return False  # Free-fall through empty cell
 
+    # A matching subset of catcher outputs is not sufficient if another
+    # marble was lost elsewhere on the board.
+    if any(
+        result.caught_by is None
+        and result.termination_reason not in ("no_blue_balls", "no_red_balls")
+        for result in results
+    ):
+        return False
+
     # --- Check final_marble_state (primary ground truth) ---
     final_marble_state = task.get("solution", {}).get("final_marble_state")
     if final_marble_state is not None:
@@ -91,19 +116,17 @@ def verify_solution(challenge_path: str, sequence: list[str] | None = None) -> b
             for k in ("left_catcher", "right_catcher", "intercepted")
         )
         if has_numeric:
-            return _verify_against_expected_output(board, expected_output, sequence)
+            return _verify_against_expected_output(board, expected_output, results)
 
     # --- Fallback to heuristic-based verification ---
     objective = task.get("objective", "").lower()
-    return _verify_heuristic(board, objective, sequence)
+    return _verify_heuristic(board, objective, sequence, results)
 
 
 def _verify_against_expected_output(
-    board: Board, expected: dict, sequence: list[str] | None
+    board: Board, expected: dict, results: list
 ) -> bool:
     """Verify solution against explicit expected_output declaration."""
-    results = board.run(sequence)
-
     # Get actual output
     left_catcher = sum(1 for r in results if r.caught_by == "left_catcher")
     right_catcher = sum(1 for r in results if r.caught_by == "right_catcher")
@@ -132,11 +155,13 @@ def _verify_against_expected_output(
     return True
 
 
-def _verify_heuristic(board: Board, objective: str, sequence: list[str] | None) -> bool:
+def _verify_heuristic(
+    board: Board,
+    objective: str,
+    sequence: list[str] | None,
+    results: list,
+) -> bool:
     """Fallback heuristic-based verification."""
-    # Run simulation
-    results = board.run(sequence)
-
     # Analyze results
     blue_reached_left = 0
     blue_reached_right = 0

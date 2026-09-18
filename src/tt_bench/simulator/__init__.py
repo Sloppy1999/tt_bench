@@ -15,7 +15,7 @@ from tt_bench.simulator.components import (
     Trigger,
 )
 from tt_bench.simulator.board import Board, build_gear_connections
-from tt_bench.simulator.validation import load_challenge, verify_solution
+from tt_bench.simulator.validation import load_challenge, verify_solution, verify_task
 
 __all__ = [
     "Bit",
@@ -34,4 +34,5 @@ __all__ = [
     "Side",
     "Trigger",
     "verify_solution",
+    "verify_task",
 ]

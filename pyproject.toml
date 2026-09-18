@@ -24,6 +24,11 @@ dependencies = [
 tt-benchmark = "tt_bench.benchmark.runner:main"
 tt-simulate = "tt_bench.cli.simulate:run_cli"
 
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

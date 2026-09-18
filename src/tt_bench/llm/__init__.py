@@ -8,6 +8,7 @@ from tt_bench.llm.client import (
     ToolResult,
     create_llm_client,
     load_env,
+    turing_tumble_tools,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "ToolResult",
     "create_llm_client",
     "load_env",
+    "turing_tumble_tools",
 ]
