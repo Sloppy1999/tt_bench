@@ -617,22 +617,12 @@ class TuringTumbleBenchmark:
                 logger.warning(f"No questions found for {task_id}, skipping understanding tasks")
                 return results
 
-            # Map question types from folder to internal types
-            type_mapping = {
-                "ball_path": "execution_trace",
-                "output_sequence": "execution_trace",
-                "component_count": "component_count",
-                "trigger_sequence": "trigger_sequence",
-            }
-
             logger.info(f"Running understanding tasks for: {task_id} ({len(questions)} questions)")
 
-            for q in questions:
-                q_type_raw = q.get("type", "")
-                q_type = type_mapping.get(q_type_raw, q_type_raw) if q_type_raw else "unknown"
-                question = q.get("question", "")
-                expected_answer = q.get("answer", "")
-                qid = q.get("qid", "")
+            for question_index, q in enumerate(questions, start=1):
+                qid, q_type, question, expected_answer = self._normalise_question(
+                    q, question_index
+                )
 
                 if not question:
                     continue
@@ -655,6 +645,8 @@ class TuringTumbleBenchmark:
 
                     # Validate by running actual simulation or comparing to expected answer
                     predicted = predicted or {}
+                    if not isinstance(predicted, dict):
+                        predicted = {"answer": predicted}
                     validation_result = self._validate_understanding(
                         board, q_type, question, predicted, expected_answer=expected_answer
                     )
@@ -664,7 +656,7 @@ class TuringTumbleBenchmark:
                             task_id=f"{task_id}_{qid}",
                             task_type="understanding",
                             success=validation_result["correct"],
-                            llm_response=predicted.get("answer", ""),
+                            llm_response=str(predicted.get("answer", "")),
                             predicted=predicted,
                             expected=validation_result["expected"],
                             metrics={
@@ -715,6 +707,24 @@ class TuringTumbleBenchmark:
 
         return results
 
+    @staticmethod
+    def _normalise_question(
+        question_data: Dict[str, Any], index: int
+    ) -> Tuple[str, str, str, Any]:
+        """Normalize all question schemas present in the official corpus."""
+        qid = (
+            question_data.get("qid")
+            or question_data.get("question_id")
+            or question_data.get("id")
+            or f"q{index}"
+        )
+        question_type = question_data.get("type") or "unknown"
+        question = question_data.get("question", "")
+        expected = question_data.get(
+            "answer", question_data.get("expected_answer", "")
+        )
+        return str(qid), str(question_type), str(question), expected
+
     def run_agentic_task(self, task_path: Path) -> TaskResult:
         """Run an agentic synthesis task using function calling.
 
@@ -755,6 +765,10 @@ class TuringTumbleBenchmark:
                     task_info.get("input_sequence", ["blue"])
                 ),
                 expose_inventory=getattr(self, "observable_inventory", False),
+                target_final_state=task_info.get("solution", {}).get(
+                    "final_marble_state"
+                ),
+                expected_output=task_info.get("expected_output", {}),
             )
 
             # Build prompt
@@ -763,7 +777,10 @@ class TuringTumbleBenchmark:
             # Run agent with tools
             final_result, error, tool_calls, tool_results, usage, turn_logprobs = self.llm.generate_with_tools(
                     prompt=prompt,
-                    tools=llm_client_.TURING_TUMBLE_TOOLS,
+                    tools=llm_client_.turing_tumble_tools(
+                        board_data.get("height", 11),
+                        board_data.get("width", 11),
+                    ),
                     tool_executor=executor,
                     system_prompt=AGENTIC_SYSTEM_PROMPT,
                     max_turns=self.max_turns,
@@ -915,10 +932,68 @@ class TuringTumbleBenchmark:
             "output_sequence": "In what order do balls exit the machine (blue exit, red exit, or intercepted)?",
             "trigger_sequence": "Which lever does the first blue ball trigger and what color ball is released next?",
             "component_count": "Provide a number (e.g., '8 components')",
+            "parts_count": "Provide the requested count as a number.",
+            "numeric": "Provide the requested value as a number.",
+            "calculation": "Provide the calculated value and a brief justification.",
+            "select": "Return the selected option exactly.",
+            "state_trace": "Report the requested states in order.",
+            "state_tracking": "Report the requested states in order.",
+            "final_state": "Report the final state.",
+            "pattern": "Report the complete requested pattern.",
+            "configuration": "Describe the requested configuration precisely.",
+            "alternating_mechanism": "Describe the alternating behavior precisely.",
+            "logic_analysis": "Give the result and a concise causal explanation.",
+            "conceptual": "Give a concise conceptual answer.",
+            "concept": "Give a concise conceptual answer.",
             "component_role": "This component [functions as...]",
             "abstraction": "This board performs [computation type]",
         }
         return formats.get(question_type or "", "Provide a clear answer.")
+
+    @staticmethod
+    def _prediction_text(predicted: Any) -> str:
+        """Extract the answer field without letting reasoning mask a wrong answer."""
+        if isinstance(predicted, dict):
+            if "answer" in predicted:
+                value = predicted["answer"]
+                return value if isinstance(value, str) else json.dumps(value)
+            values = [
+                value for key, value in predicted.items()
+                if key not in {"reasoning", "explanation"}
+            ]
+            return " ".join(
+                value if isinstance(value, str) else json.dumps(value)
+                for value in values
+            )
+        return predicted if isinstance(predicted, str) else json.dumps(predicted)
+
+    @staticmethod
+    def _normalise_answer_text(value: Any) -> str:
+        text = str(value).lower().replace("_", " ")
+        return " ".join(re.findall(r"[a-z0-9+-]+", text))
+
+    @classmethod
+    def _text_answer_matches(cls, predicted: str, expected: str) -> bool:
+        """Compare free-form answers while allowing concise paraphrases."""
+        pred_norm = cls._normalise_answer_text(predicted)
+        exp_norm = cls._normalise_answer_text(expected)
+        if not pred_norm or not exp_norm:
+            return False
+        if pred_norm == exp_norm or exp_norm in pred_norm:
+            return True
+
+        stopwords = {
+            "a", "an", "and", "are", "as", "at", "be", "by", "for",
+            "from", "in", "is", "it", "of", "on", "the", "then", "to",
+            "with", "will",
+        }
+        expected_tokens = {
+            token for token in exp_norm.split() if token not in stopwords
+        }
+        predicted_tokens = set(pred_norm.split())
+        if not expected_tokens:
+            return False
+        return len(expected_tokens & predicted_tokens) / len(expected_tokens) >= 0.7
 
     def _validate_understanding(
         self, board: tt_sim.Board, question_type: str, question: str, predicted: Dict[str, Any],
@@ -928,15 +1003,24 @@ class TuringTumbleBenchmark:
         result = {"correct": False, "expected": {}, "error": None}
 
         try:
-            if question_type in ("execution_trace", "ball_path", "output_sequence", "trigger_sequence"):
+            trace_types = {
+                "execution_trace", "ball_path", "output_sequence",
+                "trigger_sequence", "state_trace", "state_tracking",
+                "final_state", "pattern",
+            }
+            numeric_types = {"component_count", "parts_count", "numeric", "calculation"}
+
+            if question_type in trace_types:
                 if expected_answer:
-                    string_values = []
-                    if isinstance(predicted, dict):
-                        for v in predicted.values():
-                            if isinstance(v, str):
-                                string_values.append(v)
-                    predicted_text = " ".join(string_values).lower()
+                    predicted_text = self._prediction_text(predicted).lower()
                     exp_lower = expected_answer.lower()
+
+                    if self._normalise_answer_text(
+                        predicted_text
+                    ) == self._normalise_answer_text(expected_answer):
+                        result["correct"] = True
+                        result["expected"] = {"answer": expected_answer}
+                        return result
 
                     outcome_checks = []
 
@@ -960,7 +1044,21 @@ class TuringTumbleBenchmark:
                     if "releasing a blue" in exp_lower or "blue ball is released" in exp_lower:
                         outcome_checks.append("blue released")
 
-                    matched = any(kw in predicted_text for kw in outcome_checks)
+                    coord_pattern = r"\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)"
+                    expected_coords = [
+                        (int(x), int(y))
+                        for x, y in re.findall(coord_pattern, expected_answer)
+                    ]
+                    predicted_coords = [
+                        (int(x), int(y))
+                        for x, y in re.findall(coord_pattern, predicted_text)
+                    ]
+                    coords_match = not expected_coords or predicted_coords == expected_coords
+                    markers_match = (
+                        all(kw in predicted_text for kw in outcome_checks)
+                        if outcome_checks else self._text_answer_matches(predicted_text, expected_answer)
+                    )
+                    matched = coords_match and markers_match
                     result["correct"] = matched
                     result["expected"] = {"answer": expected_answer}
                 else:
@@ -976,15 +1074,17 @@ class TuringTumbleBenchmark:
                         "final_states": sim_result.final_state,
                     }
 
-            elif question_type == "component_count":
+            elif question_type in numeric_types:
                 if expected_answer:
-                    import re
+                    pred_str = self._prediction_text(predicted)
+                    pred_candidates = re.findall(r'-?\d+(?:\.\d+)?', pred_str)
+                    exp_candidates = re.findall(r'-?\d+(?:\.\d+)?', str(expected_answer))
 
-                    pred_str = " ".join(v for v in predicted.values() if isinstance(v, str))
-                    pred_candidates = re.findall(r'\d+', pred_str)
-                    exp_candidates = re.findall(r'\d+', expected_answer)
-
-                    if not pred_candidates or not exp_candidates:
+                    if not exp_candidates:
+                        result["correct"] = self._text_answer_matches(
+                            pred_str, str(expected_answer)
+                        )
+                    elif not pred_candidates:
                         result["correct"] = False
                     else:
                         exp_has_total = re.search(r'(?:total|of|are)\s+(\d+)', expected_answer)
@@ -1002,15 +1102,30 @@ class TuringTumbleBenchmark:
                 else:
                     result["correct"] = None
 
-            elif question_type == "component_role":
-                result["correct"] = None
-                result["expected"] = {"type": "explanation"}
-                result["note"] = "component_role requires manual review; no automated validation"
+            elif question_type == "select":
+                if expected_answer:
+                    predicted_text = self._normalise_answer_text(
+                        self._prediction_text(predicted)
+                    )
+                    expected_text = self._normalise_answer_text(expected_answer)
+                    result["correct"] = (
+                        predicted_text == expected_text
+                        or predicted_text.startswith(f"{expected_text} ")
+                    )
+                    result["expected"] = {"answer": expected_answer}
+                else:
+                    result["correct"] = None
 
-            elif question_type == "abstraction":
-                result["correct"] = None
-                result["expected"] = {"type": "computation description"}
-                result["note"] = "abstraction requires manual review; no automated validation"
+            else:
+                if expected_answer:
+                    result["correct"] = self._text_answer_matches(
+                        self._prediction_text(predicted), str(expected_answer)
+                    )
+                    result["expected"] = {"answer": expected_answer}
+                else:
+                    result["correct"] = None
+                    result["expected"] = {"type": "manual review"}
+                    result["note"] = f"{question_type} requires manual review"
 
         except Exception as e:
             result["error"] = str(e)
@@ -1056,8 +1171,6 @@ class TuringTumbleBenchmark:
 
         # Find challenge files
         challenge_files = sorted(self.challenges_dir.glob(pattern))
-        if max_tasks:
-            challenge_files = challenge_files[:max_tasks]
 
         # Filter by tier if specified
         if tiers is not None:
@@ -1076,6 +1189,11 @@ class TuringTumbleBenchmark:
             logger.info(
                 "Tier filter %s → %d challenge(s)", sorted(tier_set), len(challenge_files)
             )
+
+        # Truncate only after filtering, or a tier-limited run samples from the
+        # wrong tier and can come back empty.
+        if max_tasks:
+            challenge_files = challenge_files[:max_tasks]
 
         logger.info(f"Found {len(challenge_files)} challenge files")
 

@@ -16,6 +16,7 @@ import json
 import os
 import time
 import logging
+from copy import deepcopy
 from pathlib import Path
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -360,6 +361,19 @@ TURING_TUMBLE_TOOLS = [
 ]
 
 
+def turing_tumble_tools(rows: int, cols: int) -> List[Dict[str, Any]]:
+    """Return tool schemas constrained to a specific board's dimensions."""
+    schemas = deepcopy(TURING_TUMBLE_TOOLS)
+    for tool in schemas:
+        name = tool.get("function", {}).get("name")
+        if name not in {"place_component", "remove_component"}:
+            continue
+        properties = tool["function"]["parameters"]["properties"]
+        properties["x"]["maximum"] = max(cols - 1, 0)
+        properties["y"]["maximum"] = max(rows - 1, 0)
+    return schemas
+
+
 # ---------------------------------------------------------------------------
 # Provider Implementations
 # ---------------------------------------------------------------------------
@@ -511,11 +525,17 @@ class OpenAIClient(LLMClient):
                 "model": model,
                 "messages": messages,
                 "tools": tools,
-                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+                "max_completion_tokens": kwargs.get(
+                    "max_tokens", self.config.max_tokens
+                ),
             }
 
             if is_gpt5:
-                pass
+                payload["reasoning_effort"] = "low"
+            else:
+                payload["temperature"] = kwargs.get(
+                    "temperature", self.config.temperature
+                )
 
             # Request logprobs when enabled
             if self.config.capture_logprobs:
@@ -745,6 +765,179 @@ class AnthropicClient(LLMClient):
             finish_reason=data.get("stop_reason", ""),
             latency_ms=latency_ms,
             raw_response=data,
+        )
+
+    def generate_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict[str, Any]],
+        tool_executor,
+        system_prompt: Optional[str] = None,
+        max_turns: int = 10,
+        **kwargs,
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
+        """Generate using Anthropic's native ``tool_use`` protocol."""
+        model = self._resolve_model_id(self.config.model)
+        messages: List[Dict[str, Any]] = [{"role": "user", "content": prompt}]
+        anthropic_tools = []
+        for tool in tools:
+            function = tool.get("function", {})
+            anthropic_tools.append(
+                {
+                    "name": function.get("name", ""),
+                    "description": function.get("description", ""),
+                    "input_schema": function.get(
+                        "parameters", {"type": "object", "properties": {}}
+                    ),
+                }
+            )
+
+        tool_calls_made: List[ToolCall] = []
+        tool_results: List[ToolResult] = []
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
+
+        headers = {
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+
+        for turn in range(max_turns):
+            payload: Dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "tools": anthropic_tools,
+                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+                "temperature": kwargs.get("temperature", self.config.temperature),
+            }
+            if system_prompt:
+                payload["system"] = system_prompt
+
+            try:
+                response = requests.post(
+                    f"{self.base_url}/v1/messages",
+                    json=payload,
+                    headers=headers,
+                    timeout=self.config.timeout,
+                )
+                response.raise_for_status()
+                data = response.json()
+            except Exception as exc:
+                logger.exception("Anthropic tool call failed: %s", exc)
+                return (
+                    None,
+                    str(exc),
+                    tool_calls_made,
+                    tool_results,
+                    {
+                        "prompt_tokens": total_prompt_tokens,
+                        "completion_tokens": total_completion_tokens,
+                    },
+                    None,
+                )
+
+            usage = data.get("usage", {})
+            total_prompt_tokens += usage.get("input_tokens", 0)
+            total_completion_tokens += usage.get("output_tokens", 0)
+            blocks = data.get("content", [])
+            text = "\n".join(
+                block.get("text", "")
+                for block in blocks
+                if block.get("type") == "text"
+            ).strip()
+            tool_use_blocks = [
+                block for block in blocks if block.get("type") == "tool_use"
+            ]
+
+            if not tool_use_blocks:
+                try:
+                    final_result = json.loads(text) if text else {"final_answer": ""}
+                except json.JSONDecodeError:
+                    final_result = {"final_answer": text}
+                return (
+                    final_result,
+                    "" if text else "Empty response",
+                    tool_calls_made,
+                    tool_results,
+                    {
+                        "prompt_tokens": total_prompt_tokens,
+                        "completion_tokens": total_completion_tokens,
+                    },
+                    None,
+                )
+
+            messages.append({"role": "assistant", "content": blocks})
+            result_blocks = []
+            for block in tool_use_blocks:
+                tool_call_id = block.get("id", f"call_{turn}")
+                tool_name = block.get("name", "")
+                arguments = block.get("input", {})
+                tool_call = ToolCall(
+                    name=tool_name,
+                    arguments=arguments,
+                    tool_call_id=tool_call_id,
+                    turn_index=turn,
+                    assistant_text=text,
+                )
+                tool_calls_made.append(tool_call)
+
+                try:
+                    result = tool_executor.execute(tool_name, arguments)
+                    tool_result = ToolResult(
+                        tool_name=tool_name,
+                        result=result,
+                        tool_call_id=tool_call_id,
+                        turn_index=turn,
+                    )
+                    is_error = False
+                except Exception as exc:
+                    result = {"error": str(exc)}
+                    tool_result = ToolResult(
+                        tool_name=tool_name,
+                        result=result,
+                        error=str(exc),
+                        tool_call_id=tool_call_id,
+                        turn_index=turn,
+                    )
+                    is_error = True
+                tool_results.append(tool_result)
+                result_blocks.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_call_id,
+                        "content": json.dumps(result),
+                        "is_error": is_error,
+                    }
+                )
+
+            messages.append({"role": "user", "content": result_blocks})
+            if (
+                hasattr(tool_executor, "is_solution_found")
+                and tool_executor.is_solution_found()
+            ):
+                return (
+                    {"content": "", "solution_found": True},
+                    "",
+                    tool_calls_made,
+                    tool_results,
+                    {
+                        "prompt_tokens": total_prompt_tokens,
+                        "completion_tokens": total_completion_tokens,
+                    },
+                    None,
+                )
+
+        return (
+            None,
+            f"Max turns ({max_turns}) reached",
+            tool_calls_made,
+            tool_results,
+            {
+                "prompt_tokens": total_prompt_tokens,
+                "completion_tokens": total_completion_tokens,
+            },
+            None,
         )
 
 

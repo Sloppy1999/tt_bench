@@ -27,10 +27,11 @@ class TestToLlmDictOnOfficialChallenge:
 
         assert d["dimensions"] == {"width": 11, "height": 11}
         assert d["hopper_entry_mode"] == "inward"
-        # Official ch01 hoppers at x=2/8, catchers at x=2/8.
+        # Official ch01 hoppers at x=2/8. The blue lever sits under the ramp
+        # chain's exit column, which the guide's board puts at x=3.
         assert d["ball_hoppers"]["blue"]["x"] == 2
         assert d["ball_hoppers"]["red"]["x"] == 8
-        assert d["trigger_levers"]["left"]["x"] == 2
+        assert d["trigger_levers"]["left"]["x"] == 3
         assert d["trigger_levers"]["right"]["x"] == 8
 
     def test_entry_x_precomputed_for_inward_mode(self):

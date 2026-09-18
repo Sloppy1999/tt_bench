@@ -9,9 +9,9 @@ import sys
 import time
 from pathlib import Path
 
+from tt_bench.simulator import load_challenge, verify_solution
 from tt_bench.simulator.board import Board, build_gear_connections
-from tt_bench.simulator.components import Component, ComponentType, Side
-from tt_bench.simulator.renderer import BoardRenderer
+from tt_bench.simulator.components import Component, ComponentType, MarbleResult, Side
 
 # CLI Interface
 # =============================================================================

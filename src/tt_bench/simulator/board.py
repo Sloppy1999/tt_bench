@@ -181,6 +181,7 @@ class Board:
                 steps=0,
                 terminated=True,
                 termination_reason="no_blue_balls",
+                colour="blue",
             )
         if side == Side.RED and self.red_balls_remaining <= 0:
             return MarbleResult(
@@ -190,6 +191,7 @@ class Board:
                 steps=0,
                 terminated=True,
                 termination_reason="no_red_balls",
+                colour="red",
             )
 
         # Decrement ball count
@@ -348,6 +350,7 @@ class Board:
             steps=steps,
             terminated=terminated,
             termination_reason=termination_reason,
+            colour=side.value,
         )
 
         self.marble_history.append(result)
@@ -580,8 +583,13 @@ class Board:
         with open(task_path) as fp:
             task = json.load(fp)
 
+        return cls.from_task_dict(task)
+
+    @classmethod
+    def from_task_dict(cls, task: dict) -> Board:
+        """Build a board from an already-loaded challenge dictionary."""
+
         board_data = task.get("board", {})
-        available = task.get("available_parts", {})
         solution = task.get("solution", {})
 
         # Create board
@@ -727,6 +735,9 @@ def build_gear_connections(board: Board) -> None:
     Args:
         board: The Board to analyze and update
     """
+    # Rebuilding must also remove stale edges after an editable board changes.
+    board.gear_connections.clear()
+
     # Find all gear-related components
     gear_bits: list[tuple[int, int]] = []
     gears: list[tuple[int, int]] = []
