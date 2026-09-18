@@ -7,134 +7,33 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 0
-      },
-      {
-        "type": "ramp_right",
-        "x": 8,
-        "y": 0
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 2
-      },
-      {
-        "type": "ramp_left",
-        "x": 10,
-        "y": 2
+        "type": "bit",
+        "x": 5,
+        "y": 2,
+        "state": 0
       },
       {
         "type": "bit",
         "x": 5,
-        "y": 3,
+        "y": 4,
         "state": 0
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 4
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 4
-      },
-      {
-        "type": "ramp_left",
-        "x": 10,
-        "y": 4
-      },
-      {
-        "type": "bit",
-        "x": 5,
-        "y": 5,
-        "state": 0
-      },
-      {
-        "type": "ramp_left",
-        "x": 9,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 6
-      },
-      {
-        "type": "crossover",
-        "x": 8,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 7
-      },
-      {
-        "type": "ramp_left",
-        "x": 7,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 8
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 8
-      },
-      {
-        "type": "ramp_left",
-        "x": 10,
-        "y": 8
       },
       {
         "type": "interceptor",
         "x": 5,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 9,
-        "y": 9
+        "y": 10
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -144,15 +43,15 @@
         "y": 11
       },
       "right": {
-        "x": 8,
+        "x": 9,
         "y": 11
       }
     }
   },
   "available_parts": {
-    "ramp_right": 0,
-    "ramp_left": 0,
-    "crossover": 0,
+    "ramp_right": 14,
+    "ramp_left": 9,
+    "crossover": 1,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
@@ -160,24 +59,155 @@
     "trigger": 0
   },
   "solution": {
-    "placed_components": [],
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 7
+      },
+      {
+        "type": "crossover",
+        "x": 8,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 9
+      }
+    ],
     "explanation": "",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": []
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "red",
+      "intercepted"
+    ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 0,
+    "right_catcher": 1,
+    "intercepted": 1
+  },
+  "required_output": [
+    "blue",
+    "intercepted"
+  ],
+  "final_bit_states": {
+    "bit_5_2": 1,
+    "bit_5_4": 0
+  },
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 77,
+    "checked": "simulation reproduces the guide's printed required output"
   }
 }

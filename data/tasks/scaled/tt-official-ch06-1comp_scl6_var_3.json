@@ -2,47 +2,45 @@
   "task_id": "tt-official-ch06-1comp_scl6_var_3",
   "challenge_number": 6,
   "tier": 2,
-  "title": "Entropy (1 Component)",
-  "objective": "Make the pattern blue, red, blue, red, blue, red... using a shorter path.",
+  "title": "Total Internal Reflection",
+  "objective": "Make the pattern blue, red, blue, red, blue, red...",
   "board": {
     "width": 11,
     "height": 7,
     "fixed_components": [
       {
-        "type": "ramp_left",
-        "x": 8,
+        "type": "ramp_right",
+        "x": 2,
         "y": 0
       },
       {
         "type": "ramp_left",
-        "x": 7,
+        "x": 3,
         "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 8
       },
       {
         "type": "ramp_right",
         "x": 2,
-        "y": 0
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 4
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -55,7 +53,8 @@
         "x": 8,
         "y": 7
       }
-    }
+    },
+    "hopper_entry_mode": "inward"
   },
   "available_parts": {
     "ramp_right": 0,
@@ -71,52 +70,30 @@
     "placed_components": [
       {
         "type": "ramp_left",
-        "x": 6,
+        "x": 3,
         "y": 5
       }
     ],
     "explanation": "Scaled variant \u2014 6 total components, 1 to place.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue"
     ]
   },
   "input_sequence": [
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red"
+    "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
   }
 }

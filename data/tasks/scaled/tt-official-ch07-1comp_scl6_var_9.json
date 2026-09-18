@@ -2,8 +2,8 @@
   "task_id": "tt-official-ch07-1comp_scl6_var_9",
   "challenge_number": 7,
   "tier": 2,
-  "title": "Path of Least Resistance (1 Component)",
-  "objective": "Create a path for the blue balls to reach the ouutput with only 6 ramps",
+  "title": "Path of Least Resistance",
+  "objective": "Create a path for the blue balls to reach the output with only 6 ramps.",
   "board": {
     "width": 11,
     "height": 7,
@@ -14,35 +14,33 @@
         "y": 0
       },
       {
-        "type": "crossover",
-        "x": 4,
+        "type": "ramp_left",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
         "y": 2
       },
       {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
         "type": "ramp_right",
-        "x": 0,
+        "x": 2,
         "y": 4
-      },
-      {
-        "type": "crossover",
-        "x": 1,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 6
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -55,7 +53,8 @@
         "x": 8,
         "y": 7
       }
-    }
+    },
+    "hopper_entry_mode": "inward"
   },
   "available_parts": {
     "ramp_right": 0,
@@ -71,13 +70,13 @@
     "placed_components": [
       {
         "type": "ramp_left",
-        "x": 2,
+        "x": 3,
         "y": 5
       }
     ],
     "explanation": "Scaled variant \u2014 6 total components, 1 to place.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
       "blue",
@@ -90,17 +89,11 @@
     ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
   }
 }

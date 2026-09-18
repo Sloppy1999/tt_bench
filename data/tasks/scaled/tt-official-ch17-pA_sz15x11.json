@@ -1,0 +1,143 @@
+{
+  "task_id": "tt-official-ch17-pA_sz15x11",
+  "challenge_number": 17,
+  "tier": 3,
+  "title": "Fixed Ratio",
+  "objective": "Let only 3 red balls reach the bottom and catch the 4th ball in the interceptor.",
+  "board": {
+    "width": 15,
+    "height": 11,
+    "hopper_entry_mode": "inward",
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 7,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "type": "bit",
+        "x": 7,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "interceptor",
+        "x": 6,
+        "y": 3
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 9,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 5,
+    "ramp_left": 4,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 9
+      }
+    ],
+    "explanation": "Wide padded variant \u2014 board expanded from 11\u00d711 to 15\u00d711 without changing the marble path. This puzzle demonstrates how you can flip the solution to the previous puzzle around and get the same thing.",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "red",
+      "red",
+      "red",
+      "intercepted"
+    ]
+  },
+  "input_sequence": [
+    "red"
+  ],
+  "expected_output": {
+    "left_catcher": 0,
+    "right_catcher": 3,
+    "intercepted": 1
+  },
+  "required_output": [
+    "red",
+    "red",
+    "red",
+    "intercepted"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 67,
+    "checked": "simulation reproduces the guide's printed required output"
+  }
+}

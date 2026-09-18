@@ -1,0 +1,158 @@
+{
+  "task_id": "tt-official-ch15-pB-1comp_var_13_sz11x13",
+  "challenge_number": 15,
+  "tier": 2,
+  "title": "Inversion",
+  "objective": "If bit A starts to the left, intercept a red ball. If bit A starts to the right, intercept a blue ball.",
+  "board": {
+    "width": 11,
+    "height": 13,
+    "hopper_entry_mode": "inward",
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 0,
+        "state": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "type": "interceptor",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 5,
+        "y": 10,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 11
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 12
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 13
+      },
+      "right": {
+        "x": 6,
+        "y": 13
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 0,
+    "ramp_left": 1,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 0
+      }
+    ],
+    "explanation": "Tall scaled variant \u2014 board expanded from 11\u00d711 to 11\u00d713, extending the marble path through the added rows. Place 1 component(s) to complete the board: ramp_left at (7, 0).",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "red",
+      "intercepted"
+    ]
+  },
+  "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 0,
+    "right_catcher": 1,
+    "intercepted": 1
+  },
+  "required_output": [
+    "blue",
+    "intercepted"
+  ],
+  "final_bit_states": {
+    "bit_3_0": 0,
+    "bit_5_10": 1
+  }
+}

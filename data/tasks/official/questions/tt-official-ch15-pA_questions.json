@@ -11,7 +11,10 @@
       "question": "Where does the 2nd ball go?",
       "answer": "interceptor",
       "type": "select",
-      "options": ["bottom (output)", "interceptor"]
+      "options": [
+        "bottom (output)",
+        "interceptor"
+      ]
     }
   ]
 }

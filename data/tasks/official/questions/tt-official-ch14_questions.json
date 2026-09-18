@@ -5,22 +5,25 @@
       "qid": "tt-official-ch14-q1",
       "type": "ball_path",
       "question": "Starting from the blue ball hopper with bit A pointing to the LEFT with the solved board configuration, describe the path of the blue ball.",
-      "answer": "The blue ball drops from (2,-1), rolls through the ramps at (1,8), (2,7), (3,8), (4,9), (5,10), landing on bit A which points left, directing the ball to the interceptor at (8,9) - intercepting a blue ball.",
-      "difficulty": "medium"
+      "answer": "The first blue ball drops from (2, -1), rolls onto ramp_right at (3, 0), then ramp_right at (4, 1), then bit at (5, 2), then ramp_left at (4, 3), then ramp_left at (3, 4), then ramp_left at (2, 5), then ramp_right at (1, 6), then ramp_right at (2, 7), then ramp_right at (3, 8), then ramp_right at (4, 9), then ramp_right at (5, 10), and is caught at the right exit.",
+      "difficulty": "medium",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch14-q2",
       "type": "ball_path",
       "question": "Starting from the blue ball hopper with bit A pointing to the RIGHT with the solved board configuration, describe the path of the balls.",
-      "answer": "The blue ball drops from (2,-1), rolls through the ramps to the right lever, triggering the release of a red ball. The red ball then rolls through the left-side ramps (7,10), (8,11) into the interceptor - intercepting a red ball.",
-      "difficulty": "medium"
+      "answer": "The first blue ball drops from (2, -1), rolls onto ramp_right at (3, 0), then ramp_right at (4, 1), then bit at (5, 2), then ramp_left at (4, 3), then ramp_left at (3, 4), then ramp_left at (2, 5), then ramp_right at (1, 6), then ramp_right at (2, 7), then ramp_right at (3, 8), then ramp_right at (4, 9), then ramp_right at (5, 10), and is caught at the right exit.",
+      "difficulty": "medium",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch14-q3",
       "type": "output_sequence",
       "question": "Based on the starting state of bit A, what color ball gets intercepted?",
-      "answer": "If bit A starts pointing LEFT, a blue ball is intercepted. If bit A starts pointing RIGHT, a red ball is intercepted.",
-      "difficulty": "easy"
+      "answer": "2 balls reach an exit in the order: blue exits right, intercepted. 0 exit left, 1 exit right, 1 is intercepted.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     }
   ]
 }

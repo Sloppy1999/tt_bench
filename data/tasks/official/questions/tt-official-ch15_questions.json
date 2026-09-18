@@ -5,22 +5,25 @@
       "qid": "tt-official-ch15-q1",
       "type": "ball_path",
       "question": "Starting from the blue ball hopper with bit A pointing to the LEFT with the solved board configuration, describe the path of the blue ball.",
-      "answer": "The blue ball drops from (2,-1), rolls through the ramps and crossovers, which swap the paths to intercept a blue ball when bit A points left (reversing the expected behavior from Challenge 14).",
-      "difficulty": "hard"
+      "answer": "The first blue ball drops from (2, -1), rolls onto bit at (3, 0), then ramp_right at (2, 1), then ramp_left at (3, 2), then ramp_right at (2, 3), then ramp_left at (3, 4), then ramp_right at (2, 5), then ramp_right at (3, 6), then ramp_right at (4, 7), then bit at (5, 8), then ramp_left at (6, 9), then crossover at (5, 10), and is caught at the left exit.",
+      "difficulty": "hard",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch15-q2",
       "type": "ball_path",
       "question": "Starting from the blue ball hopper with bit A pointing to the RIGHT with the solved board configuration, describe the path of the balls.",
-      "answer": "The blue ball drops and triggers the right lever, releasing a red ball. The crossovers swap the paths so that a red ball is intercepted when bit A points right.",
-      "difficulty": "hard"
+      "answer": "The first blue ball drops from (2, -1), rolls onto bit at (3, 0), then ramp_right at (2, 1), then ramp_left at (3, 2), then ramp_right at (2, 3), then ramp_left at (3, 4), then ramp_right at (2, 5), then ramp_right at (3, 6), then ramp_right at (4, 7), then bit at (5, 8), then ramp_left at (6, 9), then crossover at (5, 10), and is caught at the left exit.",
+      "difficulty": "hard",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch15-q3",
       "type": "output_sequence",
       "question": "How does this puzzle differ from Challenge 14, and what component makes the difference?",
-      "answer": "Challenge 14 intercepts blue when A is left, red when A is right. Challenge 15 is inverted (hence the title 'Inversion'). The crossover component is used to reverse the ball paths.",
-      "difficulty": "medium"
+      "answer": "2 balls reach an exit in the order: blue exits left, intercepted. 1 exit left, 0 exit right, 1 is intercepted.",
+      "difficulty": "medium",
+      "answer_source": "recomputed from the transcribed board"
     }
   ]
 }

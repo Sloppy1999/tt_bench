@@ -1,0 +1,170 @@
+{
+  "task_id": "tt-official-ch17-pB_sz15x11",
+  "challenge_number": 17,
+  "tier": 3,
+  "title": "Fixed Ratio",
+  "objective": "Make the pattern blue, red, red, red.",
+  "board": {
+    "width": 15,
+    "height": 11,
+    "hopper_entry_mode": "inward",
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 7,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "type": "bit",
+        "x": 7,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "interceptor",
+        "x": 6,
+        "y": 3
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 2,
+        "y": 11
+      },
+      "right": {
+        "x": 7,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 8,
+    "ramp_left": 6,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 8
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 9
+      }
+    ],
+    "explanation": "Wide padded variant \u2014 board expanded from 11\u00d711 to 15\u00d711 without changing the marble path. Here you can kick off the computer by releasing a blue ball that travels to the right lever and releases a red ball. The red ball starts the two bit counter (just like the previous puzzle) that stops after 4 red balls are released.",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "red",
+      "red",
+      "red",
+      "red",
+      "intercepted"
+    ]
+  },
+  "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 0,
+    "right_catcher": 4,
+    "intercepted": 1
+  },
+  "required_output": [
+    "blue",
+    "red",
+    "red",
+    "red",
+    "intercepted"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 69,
+    "checked": "simulation reproduces the guide's printed required output"
+  }
+}

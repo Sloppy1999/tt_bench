@@ -1,0 +1,158 @@
+{
+  "task_id": "tt-official-16-2comp_var_7_sz11x15",
+  "challenge_number": 16,
+  "tier": 2,
+  "title": "Termination",
+  "objective": "Let only 3 balls reach the bottom and catch the 4th ball in the interceptor ",
+  "board": {
+    "width": 11,
+    "height": 15,
+    "hopper_entry_mode": "inward",
+    "fixed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "interceptor",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 10
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 11
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 12
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 13
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 3,
+        "y": 15
+      },
+      "right": {
+        "x": 8,
+        "y": 15
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 0,
+    "ramp_left": 1,
+    "crossover": 0,
+    "bit": 1,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 8
+      }
+    ],
+    "explanation": "Tall scaled variant \u2014 board expanded from 11\u00d711 to 11\u00d715, extending the marble path through the added rows. Place 2 component(s) to complete the board: bit at (3, 2), ramp_left at (5, 8).",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "intercepted"
+    ]
+  },
+  "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 3,
+    "right_catcher": 0,
+    "intercepted": 1
+  },
+  "required_output": [
+    "blue",
+    "blue",
+    "blue",
+    "intercepted"
+  ]
+}

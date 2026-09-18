@@ -1,99 +1,78 @@
 {
   "task_id": "tt-official-ch07-2comp_var_4",
-  "challenge_number": 6,
+  "challenge_number": 7,
   "tier": 2,
-  "title": "Path of Least Resistance (2 Components)",
-  "objective": "Create a path for the blue balls to reach the ouutput with only 6 ramps",
+  "title": "Path of Least Resistance",
+  "objective": "Create a path for the blue balls to reach the output with only 6 ramps.",
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 0
-      },
-      {
         "type": "crossover",
-        "x": 4,
-        "y": 2
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 6
-      },
-      {
-        "type": "ramp_left",
         "x": 3,
-        "y": 9
+        "y": 2
       },
       {
         "type": "crossover",
         "x": 5,
+        "y": 2
+      },
+      {
+        "type": "crossover",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "crossover",
+        "x": 2,
         "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 0
       },
       {
         "type": "ramp_left",
         "x": 4,
-        "y": 8
+        "y": 1
       },
       {
         "type": "ramp_left",
         "x": 2,
-        "y": 6
-      },
-      {
-        "type": "crossover",
-        "x": 1,
-        "y": 7
+        "y": 3
       },
       {
         "type": "ramp_right",
         "x": 0,
-        "y": 8
+        "y": 5
       },
       {
         "type": "ramp_right",
         "x": 1,
-        "y": 9
-      },
-      {
-        "type": "crossover",
-        "x": 2,
-        "y": 2
+        "y": 6
       },
       {
         "type": "ramp_left",
-        "x": 3,
-        "y": 1
-      },
-      {
-        "type": "crossover",
-        "x": 3,
-        "y": 5
+        "x": 4,
+        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
     "trigger_levers": {
       "left": {
-        "x": 2,
+        "x": 3,
         "y": 11
       },
       "right": {
@@ -104,8 +83,8 @@
   },
   "available_parts": {
     "ramp_right": 0,
-    "ramp_left": 1,
-    "crossover": 1,
+    "ramp_left": 0,
+    "crossover": 2,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
@@ -117,17 +96,17 @@
       {
         "type": "crossover",
         "x": 1,
-        "y": 5
+        "y": 4
       },
       {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 3
+        "type": "crossover",
+        "x": 3,
+        "y": 8
       }
     ],
-    "explanation": "Variant \u2014 removed crossover at (1, 5). This variant swaps one solution component.",
-    "verified": false,
-    "position_verified": false,
+    "explanation": "Place 2 component(s) to complete the board: crossover at (1, 4), crossover at (3, 8).",
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
       "blue",
@@ -140,6 +119,14 @@
     ]
   },
   "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
+  },
+  "required_output": [
     "blue",
     "blue",
     "blue",
@@ -148,9 +135,5 @@
     "blue",
     "blue",
     "blue"
-  ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
-  }
+  ]
 }

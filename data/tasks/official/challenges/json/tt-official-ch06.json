@@ -7,64 +7,83 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
         "type": "ramp_right",
-        "x": 3,
-        "y": 2
+        "x": 4,
+        "y": 1
       },
       {
         "type": "ramp_left",
-        "x": 7,
-        "y": 2
+        "x": 6,
+        "y": 1
       },
       {
         "type": "ramp_right",
-        "x": 3,
-        "y": 6
+        "x": 4,
+        "y": 3
       },
       {
         "type": "ramp_left",
-        "x": 7,
-        "y": 6
+        "x": 6,
+        "y": 3
       },
       {
         "type": "ramp_right",
-        "x": 3,
-        "y": 8
+        "x": 4,
+        "y": 5
       },
       {
         "type": "ramp_left",
-        "x": 7,
-        "y": 8
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
     "trigger_levers": {
       "left": {
-        "x": 2,
+        "x": 4,
         "y": 11
       },
       "right": {
-        "x": 8,
+        "x": 6,
         "y": 11
       }
     }
   },
   "available_parts": {
-    "ramp_right": 2,
-    "ramp_left": 0,
+    "ramp_right": 1,
+    "ramp_left": 1,
     "crossover": 5,
     "bit": 0,
     "gear_bit": 0,
@@ -76,18 +95,23 @@
     "placed_components": [
       {
         "type": "ramp_right",
-        "x": 4,
-        "y": 8
+        "x": 3,
+        "y": 0
       },
       {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 9
+        "type": "ramp_left",
+        "x": 7,
+        "y": 0
       },
       {
         "type": "crossover",
         "x": 5,
-        "y": 5
+        "y": 2
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 4
       },
       {
         "type": "crossover",
@@ -97,44 +121,65 @@
       {
         "type": "crossover",
         "x": 5,
-        "y": 7
-      },
-      {
-        "type": "crossover",
-        "x": 4,
-        "y": 5
-      },
-      {
-        "type": "crossover",
-        "x": 4,
         "y": 8
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 10
       }
     ],
     "explanation": "The paths for the red and blue balls cross over each other five times. Crossovers must be placed at each point where they cross. In the last two puzzles, the paths crossed each other one and three times. One, three, and five are all odd numbers. What would happen if the paths crossed over each other an even number of times?. NOTE - component positions are estimates pending simulator verification",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
+      "red",
+      "blue",
+      "red",
+      "blue",
+      "red",
       "blue",
       "red",
       "blue",
       "red",
       "blue",
       "red",
-      "..."
+      "blue",
+      "red",
+      "blue",
+      "red",
+      "blue"
     ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 8,
+    "right_catcher": 8,
+    "intercepted": 0
+  },
+  "required_output": [
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red",
+    "blue",
+    "red"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 27,
+    "checked": "simulation reproduces the guide's printed required output"
   }
 }

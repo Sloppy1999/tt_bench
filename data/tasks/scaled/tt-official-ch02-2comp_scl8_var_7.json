@@ -14,9 +14,14 @@
         "y": 0
       },
       {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 3,
         "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 2
       },
       {
         "type": "ramp_left",
@@ -24,18 +29,13 @@
         "y": 3
       },
       {
-        "type": "ramp_left",
+        "type": "ramp_right",
         "x": 2,
         "y": 4
       },
       {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
+        "type": "ramp_left",
+        "x": 3,
         "y": 5
       }
     ],
@@ -75,19 +75,19 @@
   "solution": {
     "placed_components": [
       {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 3,
-        "y": 6
+        "y": 7
       },
       {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 7
+        "type": "ramp_right",
+        "x": 2,
+        "y": 6
       }
     ],
     "explanation": "Scaled variant \u2014 8 total components, 2 to place.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
       "blue",
@@ -110,7 +110,8 @@
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
   }
 }

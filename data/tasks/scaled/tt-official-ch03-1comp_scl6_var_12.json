@@ -6,7 +6,7 @@
   "objective": "Release one blue ball and then all of the red balls using a shorter path.",
   "board": {
     "width": 11,
-    "height": 7,
+    "height": 4,
     "fixed_components": [
       {
         "type": "ramp_right",
@@ -14,24 +14,24 @@
         "y": 0
       },
       {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 3,
         "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 2
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 3
       },
       {
         "type": "ramp_left",
         "x": 8,
         "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 2
       }
     ],
     "ball_hoppers": {
@@ -48,18 +48,18 @@
     },
     "trigger_levers": {
       "left": {
-        "x": 2,
-        "y": 7
+        "x": 3,
+        "y": 4
       },
       "right": {
-        "x": 8,
-        "y": 7
+        "x": 7,
+        "y": 4
       }
     }
   },
   "available_parts": {
-    "ramp_right": 0,
-    "ramp_left": 1,
+    "ramp_right": 1,
+    "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -70,16 +70,16 @@
   "solution": {
     "placed_components": [
       {
-        "type": "ramp_left",
-        "x": 9,
-        "y": 5
+        "type": "ramp_right",
+        "x": 2,
+        "y": 2
       }
     ],
     "explanation": "Scaled variant \u2014 6 total components, 1 to place.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
-      "red",
+      "blue",
       "red"
     ]
   },
@@ -88,7 +88,8 @@
     "red"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 1,
+    "right_catcher": 1,
+    "intercepted": 0
   }
 }

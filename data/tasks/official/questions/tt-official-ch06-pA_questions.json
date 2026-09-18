@@ -5,15 +5,17 @@
       "qid": "tt-official-ch06-pA-q1",
       "type": "ball_path",
       "question": "Starting from the blue ball hopper with the solved board configuration, describe the complete path of the first blue ball.",
-      "answer": "The first blue ball drops from (2,-1), rolls onto crossover at (5,1), then continues through crossovers at (5,2) and (5,3), then ramps: ramp_right at (4,4), ramp_right at (5,5), ramp_right at (6,6), ramp_right at (7,7), ramp_right at (8,8), reaching the right lever.",
-      "difficulty": "easy"
+      "answer": "The first blue ball drops from (2, -1), rolls onto ramp_right at (3, 0), then ramp_right at (4, 1), then crossover at (5, 2), then ramp_right at (6, 3), then ramp_left at (7, 4), then ramp_left at (6, 5), then crossover at (5, 6), then ramp_left at (4, 7), then ramp_right at (3, 8), then ramp_right at (4, 9), then crossover at (5, 10), and is caught at the right exit.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch06-pA-q2",
       "type": "output_sequence",
       "question": "What is the output pattern after running the machine?",
-      "answer": "The pattern is blue, red, blue, red, blue, red... alternating.",
-      "difficulty": "easy"
+      "answer": "16 balls reach an exit in the order: blue exits right, red exits left, blue exits right, red exits left, blue exits right, red exits left, blue exits right, red exits left, blue exits right, red exits left, blue exits right, red exits left, blue exits right, red exits left, blue exits right, red exits left. 8 exit left, 8 exit right, 0 are intercepted.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch06-pA-q3",

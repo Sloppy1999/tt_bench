@@ -1,53 +1,51 @@
 {
   "task_id": "tt-official-ch07-2comp_scl8_var_1",
-  "challenge_number": 6,
+  "challenge_number": 7,
   "tier": 2,
-  "title": "Path of Least Resistance (2 Components)",
-  "objective": "Create a path for the blue balls to reach the ouutput with only 6 ramps",
+  "title": "Path of Least Resistance",
+  "objective": "Create a path for the blue balls to reach the output with only 6 ramps.",
   "board": {
     "width": 11,
     "height": 9,
     "fixed_components": [
       {
-        "type": "crossover",
-        "x": 4,
-        "y": 2
-      },
-      {
         "type": "ramp_right",
-        "x": 0,
-        "y": 4
-      },
-      {
-        "type": "crossover",
-        "x": 1,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
-        "y": 6
+        "x": 2,
+        "y": 0
       },
       {
         "type": "ramp_left",
         "x": 3,
-        "y": 9
+        "y": 1
       },
       {
-        "type": "crossover",
-        "x": 5,
-        "y": 7
+        "type": "ramp_right",
+        "x": 2,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 5
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -60,7 +58,8 @@
         "x": 8,
         "y": 9
       }
-    }
+    },
+    "hopper_entry_mode": "inward"
   },
   "available_parts": {
     "ramp_right": 1,
@@ -75,19 +74,19 @@
   "solution": {
     "placed_components": [
       {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 7
+      },
+      {
         "type": "ramp_right",
         "x": 2,
         "y": 6
-      },
-      {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 7
       }
     ],
     "explanation": "Scaled variant \u2014 8 total components, 2 to place.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
       "blue",
@@ -100,17 +99,11 @@
     ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
   }
 }

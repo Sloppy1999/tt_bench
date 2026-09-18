@@ -7,112 +7,46 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "column",
     "fixed_components": [
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 0,
         "state": 0
       },
       {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 2
-      },
-      {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 2,
         "state": 0
       },
       {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 3
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 4
-      },
-      {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 4,
         "state": 0
       },
       {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 6
-      },
-      {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 6,
         "state": 0
-      },
-      {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 7
-      },
-      {
-        "type": "interceptor",
-        "x": 3,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
     "trigger_levers": {
       "left": {
-        "x": 2,
+        "x": 1,
         "y": 11
       },
       "right": {
@@ -122,23 +56,106 @@
     }
   },
   "available_parts": {
-    "ramp_right": 0,
-    "ramp_left": 0,
+    "ramp_right": 4,
+    "ramp_left": 8,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
-    "interceptor": 0,
+    "interceptor": 1,
     "trigger": 0
   },
   "solution": {
-    "placed_components": [],
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "interceptor",
+        "x": 4,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 9
+      }
+    ],
     "explanation": "",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": []
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue"
+    ]
   },
   "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
+  },
+  "required_output": [
     "blue",
     "blue",
     "blue",
@@ -148,8 +165,9 @@
     "blue",
     "blue"
   ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 97,
+    "checked": "simulation reproduces the guide's printed required output"
   }
 }
