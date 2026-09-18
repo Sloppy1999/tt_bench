@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate scl (scaled component-count) board files for ch02-ch05.
+Generate verified scl (scaled component-count) board files for ch02-ch10.
 
 Mimics the ch01 scl pattern: for each 1comp/2comp challenge and each of its
 variants, create truncated board variants at sizes 4, 6, 8, 12, 14, 16
@@ -14,6 +14,8 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+
+from tt_bench.simulator import Board, verify_task
 
 SCL_SIZES = [4, 6, 8, 12, 14, 16]
 CHALLENGES_T1 = [2, 3, 4, 5]
@@ -39,20 +41,70 @@ def save_json(data: dict, path: Path) -> None:
         f.write("\n")
 
 
-def remap_placed_y(placed: list[dict], start_y: int, end_y: int) -> list[dict]:
-    """Remap placed-component y-coordinates into the range [start_y, end_y].
+ALL_PART_TYPES = [
+    "ramp_right", "ramp_left", "crossover",
+    "bit", "gear_bit", "gear", "interceptor", "trigger",
+]
 
-    Components keep their original x and type. y is assigned sequentially
-    (preserving original relative y-order), starting at start_y.
+
+def _chute(start_x: int, rows: int, width: int, first_step: int) -> tuple[list[dict], int]:
+    """Zig-zag ramps carrying a marble down `rows` rows, plus its exit column.
+
+    Every row needs a component or the marble free-falls, and a ramp shifts the
+    marble exactly one column, so the path has to alternate.
     """
-    sorted_placed = sorted(placed, key=lambda c: c.get("y", 0))
-    remapped = []
-    for i, comp in enumerate(sorted_placed):
-        new_y = start_y + i
-        if new_y > end_y:
-            new_y = end_y - (len(sorted_placed) - 1 - i)
-        remapped.append({**comp, "y": new_y})
-    return remapped
+    components: list[dict] = []
+    x, step = start_x, first_step
+    for y in range(rows):
+        if not 0 <= x + step < width:
+            step = -step
+        components.append({
+            "type": "ramp_right" if step > 0 else "ramp_left",
+            "x": x,
+            "y": y,
+        })
+        x += step
+        step = -step
+    return components, x
+
+
+def _available_parts(placed: list[dict]) -> dict[str, int]:
+    parts = {t: 0 for t in ALL_PART_TYPES}
+    for comp in placed:
+        if comp["type"] in parts:
+            parts[comp["type"]] += 1
+    return parts
+
+
+def _simulate(task: dict) -> list:
+    board = Board.from_task_dict(task)
+    sequence = task.get("input_sequence") or ["blue"]
+    if isinstance(sequence, str):
+        sequence = [s.strip() for s in sequence.split(",") if s.strip()]
+    return board.run(sequence)
+
+
+def _ground_truth(results: list) -> tuple[list[str], dict]:
+    """Derive the expected outcome from an actual run of the board.
+
+    The simulator is the benchmark's oracle, so a generated board's ground
+    truth has to be read off a real run rather than copied from the source
+    challenge, whose behaviour a rescaled board does not reproduce.
+    """
+    colours = []
+    for result in results:
+        if result.caught_by == "left_catcher":
+            colours.append("blue")
+        elif result.caught_by == "right_catcher":
+            colours.append("red")
+        elif result.caught_by and "interceptor" in str(result.caught_by):
+            colours.append("intercepted")
+    counts = {
+        "left_catcher": sum(1 for r in results if r.caught_by == "left_catcher"),
+        "right_catcher": sum(1 for r in results if r.caught_by == "right_catcher"),
+        "intercepted": sum(1 for r in results if r.caught_by == "interceptor"),
+    }
+    return colours, counts
 
 
 def generate_scl(
@@ -61,36 +113,49 @@ def generate_scl(
     task_id: str,
     category: str,
 ) -> dict | None:
-    """Generate a scaled-down board for a given scl_size.
+    """Build a challenge with exactly `scl_size` components.
 
-    Returns None if scl_size > original total components.
+    Returns None when no valid board of that size exists for this source.
     """
     board = source_data["board"]
-    original_fixed = board.get("fixed_components", [])
-    original_placed = source_data.get("solution", {}).get("placed_components", [])
-    num_placed = len(original_placed)
-    original_total = len(original_fixed) + num_placed
-
-    if scl_size > original_total or scl_size < num_placed:
+    width = board.get("width", 11)
+    hoppers = copy.deepcopy(board.get("ball_hoppers", {}))
+    sequence = source_data.get("input_sequence", [])
+    n_solution = 2 if category == "2comp" else 1
+    if scl_size <= n_solution:
         return None
 
-    num_fixed = scl_size - num_placed
+    colours_used = set(sequence)
+    blue_x = hoppers.get("blue", {}).get("x", 2)
+    red_x = hoppers.get("red", {}).get("x", 8)
 
-    # Truncate fixed components (keep first num_fixed)
-    new_fixed = copy.deepcopy(original_fixed[:num_fixed])
+    if colours_used <= {"blue"}:
+        rows = scl_size
+        components, blue_exit = _chute(blue_x, rows, width, 1)
+        red_exit = red_x
+    else:
+        # Both hoppers are used, so both need a supported path down.
+        if scl_size % 2:
+            return None
+        rows = scl_size // 2
+        blue_components, blue_exit = _chute(blue_x, rows, width, 1)
+        red_components, red_exit = _chute(red_x, rows, width, -1)
+        components = blue_components + red_components
 
-    # Remap placed components' y-coordinates
-    new_height = scl_size + 1
-    placed_start_y = num_fixed
-    placed_end_y = new_height - 2  # row above trigger levers
-    new_placed = remap_placed_y(copy.deepcopy(original_placed), placed_start_y, placed_end_y)
+    if len({(c["x"], c["y"]) for c in components}) != len(components):
+        return None
 
-    # Build new board
-    new_hoppers = copy.deepcopy(board.get("ball_hoppers", {}))
-    new_triggers = {
-        "left": {"x": 2, "y": new_height},
-        "right": {"x": 8, "y": new_height},
+    height = rows + 1
+    triggers = {
+        "left": {"x": blue_exit, "y": height},
+        "right": {"x": red_exit, "y": height},
     }
+
+    # The deepest components make the puzzle: they sit at the end of the path.
+    ordered = sorted(components, key=lambda c: (-c["y"], c["x"]))
+    placed = [dict(c) for c in ordered[:n_solution]]
+    placed_keys = {(c["x"], c["y"]) for c in placed}
+    fixed = [dict(c) for c in components if (c["x"], c["y"]) not in placed_keys]
 
     result = {
         "task_id": task_id,
@@ -99,29 +164,55 @@ def generate_scl(
         "title": source_data.get("title", ""),
         "objective": source_data.get("objective", ""),
         "board": {
-            "width": board.get("width", 11),
-            "height": new_height,
-            "fixed_components": new_fixed,
-            "ball_hoppers": new_hoppers,
-            "trigger_levers": new_triggers,
+            "width": width,
+            "height": height,
+            "fixed_components": fixed,
+            "ball_hoppers": hoppers,
+            "trigger_levers": triggers,
         },
-        "available_parts": copy.deepcopy(source_data.get("available_parts", {})),
+        "available_parts": _available_parts(placed),
         "solution": {
-            "placed_components": new_placed,
+            "placed_components": placed,
             "explanation": (
                 f"Scaled variant — {scl_size} total components, "
-                f"{num_placed} to place."
+                f"{n_solution} to place."
             ),
             "verified": False,
             "position_verified": False,
-            "final_marble_state": copy.deepcopy(
-                source_data.get("solution", {}).get("final_marble_state", [])
-            ),
+            "final_marble_state": [],
         },
-        "input_sequence": copy.deepcopy(source_data.get("input_sequence", [])),
-        "expected_output": copy.deepcopy(source_data.get("expected_output", {})),
+        "input_sequence": copy.deepcopy(sequence),
+        "expected_output": {},
     }
+    if board.get("hopper_entry_mode"):
+        result["board"]["hopper_entry_mode"] = board["hopper_entry_mode"]
 
+    try:
+        colours, counts = _ground_truth(_simulate(result))
+    except Exception:
+        return None
+
+    result["solution"]["final_marble_state"] = colours
+    result["expected_output"] = counts
+
+    try:
+        if not verify_task(result):
+            return None
+    except Exception:
+        return None
+
+    # A puzzle whose board already works without the components the solver is
+    # asked to place is not a puzzle.
+    degenerate = copy.deepcopy(result)
+    degenerate["solution"]["placed_components"] = []
+    try:
+        if verify_task(degenerate):
+            return None
+    except Exception:
+        pass
+
+    result["solution"]["verified"] = True
+    result["solution"]["position_verified"] = True
     return result
 
 
@@ -142,7 +233,15 @@ def get_output_path(ch: int, cat: str, scl_size: int, variant: int | None = None
 
 
 def generate_all() -> dict[str, int]:
-    """Generate all scl files for ch02-ch05. Returns counts per challenge."""
+    """Generate all verified scl files for ch02-ch10."""
+    removed = 0
+    for ch in CHALLENGES_ALL:
+        for path in OUTPUT_DIR.glob(f"tt-official-ch{ch:02d}-*comp_scl*.json"):
+            path.unlink()
+            removed += 1
+    if removed:
+        print(f"Removed {removed} stale ch02-ch10 scl files")
+
     counts: dict[str, int] = {}
     total = 0
 
