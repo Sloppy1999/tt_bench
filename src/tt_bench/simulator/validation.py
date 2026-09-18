@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from tt_bench.simulator.board import Board
+from tt_bench.simulator.targets import validate_targets
 
 # Challenge Loader
 # =============================================================================
@@ -78,7 +79,7 @@ def _verify_task_board(
                 y == board.rows - 1
                 and next_pos is not None
                 and next_pos[1] >= board.rows
-                and x in (board.left_catcher_x, board.right_catcher_x)
+                and board.catcher_at(x) is not None
             ):
                 continue
             if 0 <= x < board.cols and 0 <= y < board.rows and curr not in board.components:
@@ -93,34 +94,7 @@ def _verify_task_board(
     ):
         return False
 
-    # --- Check final_marble_state (primary ground truth) ---
-    final_marble_state = task.get("solution", {}).get("final_marble_state")
-    if final_marble_state is not None:
-        actual_colours = []
-        for r in results:
-            if r.caught_by == "left_catcher":
-                actual_colours.append("blue")
-            elif r.caught_by == "right_catcher":
-                actual_colours.append("red")
-            elif r.caught_by and "interceptor" in str(r.caught_by):
-                actual_colours.append("intercepted")
-        if actual_colours != final_marble_state:
-            return False
-        return True
-
-    # --- Check expected_output counts (explicit numeric fields) ---
-    expected_output = task.get("expected_output")
-    if expected_output:
-        has_numeric = any(
-            k in expected_output
-            for k in ("left_catcher", "right_catcher", "intercepted")
-        )
-        if has_numeric:
-            return _verify_against_expected_output(board, expected_output, results)
-
-    # --- Fallback to heuristic-based verification ---
-    objective = task.get("objective", "").lower()
-    return _verify_heuristic(board, objective, sequence, results)
+    return validate_targets(task, board, results)[0]
 
 
 def _verify_against_expected_output(

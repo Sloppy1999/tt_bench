@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from tt_bench.simulator.targets import validate_targets
 from tt_bench.llm import client as llm_client_
 from tt_bench.tools import executor as tool_executor_
 
@@ -176,7 +177,8 @@ class TuringTumbleBenchmark:
             "board": data.get("board", {}),
             "available_parts": data.get("available_parts", {}),
             "solution": data.get("solution", {}),
-            "expected_output": data.get("expected_output", {}), 
+            "expected_output": data.get("expected_output", {}),
+            "required_output": data.get("required_output"),
             "input_sequence": data.get(
                 "input_sequence", ["blue"]
             ),  
@@ -414,13 +416,20 @@ class TuringTumbleBenchmark:
 
     @staticmethod
     def _caught_colour_sequence(results: List[tt_sim.MarbleResult]) -> List[str]:
-        """Map catcher hits to the benchmark's blue/red final marble sequence."""
+        """Map catcher hits to the benchmark's final marble sequence.
+
+        An interceptor is a terminal position like the catchers, so it has to
+        appear in the sequence: ground truth records it as "intercepted", and
+        dropping it here would make every interceptor task unsolvable.
+        """
         colours: List[str] = []
         for result in results:
             if result.caught_by == "left_catcher":
                 colours.append("blue")
             elif result.caught_by == "right_catcher":
                 colours.append("red")
+            elif result.caught_by and "interceptor" in str(result.caught_by):
+                colours.append("intercepted")
         return colours
 
     @staticmethod
@@ -449,7 +458,7 @@ class TuringTumbleBenchmark:
                     y == board.rows - 1
                     and next_pos is not None
                     and next_pos[1] >= board.rows
-                    and x in (board.left_catcher_x, board.right_catcher_x)
+                    and board.catcher_at(x) is not None
                 ):
                     # The final coordinate just above a trigger lever is a
                     # catcher approach slot in several official encodings, not
@@ -482,39 +491,7 @@ class TuringTumbleBenchmark:
             summary = ", ".join(f"{k}: {v}" for k, v in sorted(reasons.items()))
             return False, f"{len(lost)} marble(s) did not reach a valid catcher ({summary})"
 
-        actual_final = self._caught_colour_sequence(results)
-        expected_final = task_info.get("solution", {}).get("final_marble_state")
-        if expected_final is not None:
-            if actual_final == expected_final:
-                return True, f"Matched final marble sequence: {actual_final}"
-            return False, f"Expected final marble sequence {expected_final}, got {actual_final}"
-
-        expected_output = task_info.get("expected_output", {}) or {}
-        expected_left = expected_output.get("left_catcher")
-        expected_right = expected_output.get("right_catcher")
-        if isinstance(expected_left, int) or isinstance(expected_right, int):
-            left_count = sum(1 for r in results if r.caught_by == "left_catcher")
-            right_count = sum(1 for r in results if r.caught_by == "right_catcher")
-            if expected_left is not None and left_count != expected_left:
-                return False, f"Expected left_catcher={expected_left}, got {left_count}"
-            if expected_right is not None and right_count != expected_right:
-                return False, f"Expected right_catcher={expected_right}, got {right_count}"
-            return True, f"Matched catcher counts: left={left_count}, right={right_count}"
-
-        # Last-resort heuristic for custom tasks without explicit ground truth.
-        objective = task_info.get("objective", "").lower()
-        if "blue" in objective and "red" not in objective:
-            blue_count = task_info.get("board", {}).get("ball_hoppers", {}).get("blue", {}).get("count", 0)
-            if actual_final == ["blue"] * blue_count:
-                return True, f"All {blue_count} blue marbles reached the end"
-            return False, f"Expected {blue_count} blue marbles, got {actual_final}"
-        if "red" in objective and "blue" not in objective:
-            red_count = task_info.get("board", {}).get("ball_hoppers", {}).get("red", {}).get("count", 0)
-            if actual_final == ["red"] * red_count:
-                return True, f"All {red_count} red marbles reached the end"
-            return False, f"Expected {red_count} red marbles, got {actual_final}"
-
-        return False, "No explicit expected output/final_marble_state available"
+        return validate_targets(task_info, board, results)
 
     def validate_synthesis(
         self,
@@ -542,9 +519,8 @@ class TuringTumbleBenchmark:
         self, board: tt_sim.Board, expected: Dict[str, Any], task_info: Dict[str, Any]
     ) -> Tuple[bool, str]:
         """Validate using explicit expected_output declaration."""
-        # ``expected`` is retained for API compatibility. The most precise
-        # ground truth for official tasks is ``solution.final_marble_state``;
-        # ``expected_output`` may only contain descriptive metadata.
+        # ``expected`` is retained for API compatibility. All declarations in
+        # task_info are checked together by the shared target contract.
         input_seq = self._normalize_input_sequence(task_info.get("input_sequence", ["blue"]))
         results = board.run(input_seq)
         return self._validate_simulation_results(board, task_info, results)
@@ -769,6 +745,7 @@ class TuringTumbleBenchmark:
                     "final_marble_state"
                 ),
                 expected_output=task_info.get("expected_output", {}),
+                required_output=task_info.get("required_output"),
             )
 
             # Build prompt

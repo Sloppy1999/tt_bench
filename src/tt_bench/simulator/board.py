@@ -61,6 +61,14 @@ class Board:
         self.left_catcher_x = left_catcher_x if left_catcher_x is not None else blue_hopper_x
         self.right_catcher_x = right_catcher_x if right_catcher_x is not None else red_hopper_x
 
+        # The levers are bars, not single cells: on the physical board each one
+        # spans its half of the bottom and they meet at the central ball return.
+        # The stored x values are where the guide draws each lever's cup, which
+        # is only the column a marble happens to land on in the simpler boards.
+        # The return sits midway between the two cups — not at the middle of the
+        # board, which is a different column once a board is padded wider.
+        self.chute_x = (self.left_catcher_x + self.right_catcher_x) / 2
+
         # Components: dict of (x, y) -> Component
         self.components: dict[tuple[int, int], Component] = {}
 
@@ -88,6 +96,19 @@ class Board:
     # -------------------------------------------------------------------------
     # Component Placement
     # -------------------------------------------------------------------------
+
+    def catcher_at(self, x: int) -> str | None:
+        """Which trigger lever a marble leaving the bottom at column ``x`` hits.
+
+        Each lever is a bar covering its half of the board, so the side of the
+        central ball return decides it, not an exact column. A marble dropping
+        into the return itself triggers nothing.
+        """
+        if x < self.chute_x:
+            return "left_catcher"
+        if x > self.chute_x:
+            return "right_catcher"
+        return None
 
     def place(self, x: int, y: int, component: Component) -> None:
         """Place a component at the given position."""
@@ -271,16 +292,14 @@ class Board:
             if curr_y >= self.rows:
                 # Reached bottom - landing on a trigger lever releases the
                 # same-coloured hopper: left lever → blue, right lever → red.
-                if curr_x == self.left_catcher_x:
-                    caught_by = "left_catcher"
+                caught_by = self.catcher_at(curr_x)
+                if caught_by == "left_catcher":
                     if self.blue_balls_remaining > 0:
                         self._pending_trigger_releases.append(Side.BLUE)
-                elif curr_x == self.right_catcher_x:
-                    caught_by = "right_catcher"
+                elif caught_by == "right_catcher":
                     if self.red_balls_remaining > 0:
                         self._pending_trigger_releases.append(Side.RED)
                 else:
-                    caught_by = None
                     termination_reason = "fell_off_bottom"
                 terminated = True
                 break

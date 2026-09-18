@@ -21,11 +21,13 @@ from tt_bench.llm.client import (
     turing_tumble_tools,
 )
 from tt_bench.simulator import Bit, Board, verify_task
+from tt_bench.simulator.targets import validate_targets
 from tt_bench.tools.executor import TuringTumbleToolExecutor
 
 
 def test_tool_simulation_restores_mutable_board_state():
-    board = Board(rows=2, cols=5, blue_hopper_x=2, blue_hopper_count=2)
+    # One marble isolates restoration from the lever's automatic second release.
+    board = Board(rows=2, cols=5, blue_hopper_x=2, blue_hopper_count=1)
     board.place(2, 0, Bit(2, 0, state=0))
     executor = TuringTumbleToolExecutor(board)
 
@@ -34,7 +36,7 @@ def test_tool_simulation_restores_mutable_board_state():
 
     assert first["final_bit_states"] == second["final_bit_states"] == {"bit_2_0": 1}
     assert board.get_all_states() == {"bit_2_0": 0}
-    assert board.blue_balls_remaining == 2
+    assert board.blue_balls_remaining == 1
     assert board.marble_history == []
 
 
@@ -322,3 +324,111 @@ def test_tier_filter_applies_before_max_tasks(tmp_path):
     assert len(tier_two) == 2
     # The tier-2 files sort last, so a pre-filter truncation to 3 would drop them.
     assert files[:3] == [f for f in files if json.loads(f.read_text())["tier"] == 1][:3]
+
+
+def test_intercepted_marbles_appear_in_the_scored_sequence():
+    # The catcher-to-sequence mapping lives in three places. Two of them used to
+    # drop interceptor hits, so a task whose ground truth ends in "intercepted"
+    # could never be scored correct — not even by its own reference solution.
+    task = json.loads(
+        (Path(__file__).resolve().parent.parent
+         / "data/tasks/official/challenges/json/tt-official-ch16-pB.json").read_text()
+    )
+    target = task["solution"]["final_marble_state"]
+    assert "intercepted" in target
+
+    board = Board.from_task_dict(task)
+    results = board.run(task["input_sequence"])
+
+    # The dataset-side check (validation.py) always agreed with the ground truth.
+    assert verify_task(task) is True
+
+    # The scorer must reach the same verdict, through the shared contract.
+    assert validate_targets(task, board, results)[0]
+    benchmark = TuringTumbleBenchmark.__new__(TuringTumbleBenchmark)
+    solved, message = benchmark._validate_simulation_results(board, task, results)
+    assert solved, message
+
+    # So must the agent's early-stop signal, or it keeps working on a solved board.
+    executor = TuringTumbleToolExecutor(
+        board,
+        target_final_state=target,
+        expected_output=task.get("expected_output"),
+    )
+    assert executor._results_match_target(
+        results, left_count=1, right_count=0, interceptor_count=1, free_fall_errors=[]
+    )
+
+
+def test_required_output_reads_ball_colours_not_catchers():
+    """The two sequence targets describe different readings of one run.
+
+    ``final_marble_state`` names the catcher each marble reached;
+    ``required_output`` is the guide's printed strip, which is the colour of
+    each ball. Comparing the strip against catchers rejected correct boards --
+    on ch09-pA a blue ball leaves on the right, so the two sequences differ.
+    """
+    task = json.loads(
+        (Path(__file__).resolve().parent.parent
+         / "data/tasks/official/challenges/json/tt-official-ch09-pA.json").read_text()
+    )
+    catchers = task["solution"]["final_marble_state"]
+    printed = task["required_output"]
+    assert catchers != printed, "this board must exercise the divergence"
+
+    board = Board.from_task_dict(task)
+    results = board.run(task["input_sequence"])
+    assert validate_targets(task, board, results)[0]
+
+    # Swapping the two targets must be rejected, or they are interchangeable
+    # and the contract means nothing.
+    swapped = deepcopy(task)
+    swapped["solution"]["final_marble_state"] = printed
+    swapped["required_output"] = catchers
+    board = Board.from_task_dict(swapped)
+    results = board.run(swapped["input_sequence"])
+    assert not validate_targets(swapped, board, results)[0]
+
+
+def test_bit_state_objectives_are_scored():
+    """A "flip bits X and Y" goal has to be a target, not a note.
+
+    Both balls reaching the left catcher says nothing about the bits, so the
+    bit configuration must be declared where scoring reads it.
+    """
+    task = json.loads(
+        (Path(__file__).resolve().parent.parent
+         / "data/tasks/official/challenges/json/tt-official-ch11.json").read_text()
+    )
+    goal = task["expected_output"]["final_bit_states"]
+    assert any(state == 1 for state in goal.values())
+    assert verify_task(task)
+
+    wrong = deepcopy(task)
+    for key, state in list(wrong["expected_output"]["final_bit_states"].items()):
+        if state == 1:
+            wrong["expected_output"]["final_bit_states"][key] = 0
+    assert not verify_task(wrong)
+
+
+def test_trigger_levers_span_their_half_of_the_board():
+    """Each lever is a bar, not a single cell.
+
+    On ch09-pA the red balls leave at column 3 and the blue ones at 4 or 6, so
+    an exact-column catcher could never catch all three. The ball return sits
+    between the two lever cups, not at the middle of the board -- a padded
+    board keeps its levers where they were while the board grows wider.
+    """
+    board = Board(rows=11, cols=11, blue_hopper_x=2, red_hopper_x=8,
+                  left_catcher_x=3, right_catcher_x=7)
+    assert board.catcher_at(3) == "left_catcher"
+    assert board.catcher_at(4) == "left_catcher"
+    assert board.catcher_at(6) == "right_catcher"
+    assert board.catcher_at(7) == "right_catcher"
+    assert board.catcher_at(5) is None          # straight into the return
+
+    # A width-padded board must keep its own lever columns catching.
+    wide = Board(rows=11, cols=15, blue_hopper_x=2, red_hopper_x=8,
+                 left_catcher_x=3, right_catcher_x=7)
+    assert wide.catcher_at(3) == "left_catcher"
+    assert wide.catcher_at(7) == "right_catcher"

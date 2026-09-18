@@ -64,6 +64,24 @@ def page_map() -> dict[str, int]:
     return pages
 
 
+def ball_counts(page_no: int) -> tuple[int, int] | None:
+    """How many balls the guide loads in each hopper, as (blue, red).
+
+    The challenge page prints the available-parts count on its own line and the
+    two hopper counts side by side on the next one. The counts matter: challenge
+    11 starts with two blue balls and no red ones, which no default can stand in
+    for.
+    """
+    text = subprocess.run(
+        ["pdftotext", "-layout", "-f", str(page_no), "-l", str(page_no),
+         str(GUIDE), "-"], capture_output=True, text=True).stdout
+    for line in text.splitlines():
+        counts = re.findall(r"x\s*(\d+)", line)
+        if len(counts) == 2:
+            return int(counts[0]), int(counts[1])
+    return None
+
+
 def required_output(page_no: int, cache: Path) -> list[str] | None:
     """The ball sequence the guide prints as the challenge's required output."""
     xml = subprocess.run(
@@ -163,6 +181,59 @@ def is_state_goal(objective: str) -> bool:
     return bool(re.search(r"flip (?:the )?bits?\b", text)) or bool(re.search(r"\bif .*\bbits?\b", text))
 
 
+def guide_objective(page_no: int) -> str | None:
+    """The objective line the guide prints for a challenge.
+
+    Worth reading rather than trusting the task file: challenge 11 was recorded
+    as "Flip bits 1 and 4" where the guide asks for bits 2 and 5.
+    """
+    text = subprocess.run(
+        ["pdftotext", "-layout", "-f", str(page_no), "-l", str(page_no),
+         str(GUIDE), "-"], capture_output=True, text=True).stdout
+    m = re.search(r"Objective:\s*(.+)", text)
+    return " ".join(m.group(1).split()) if m else None
+
+
+def labelled_bits(components: list[dict]) -> list[dict]:
+    """The row of bits the guide labels, left to right.
+
+    The labels ("1 2 3 4 5", or "A B") sit under the one row holding several
+    bits, so that row is what the objective's numbering refers to.
+    """
+    bits = [c for c in components if c["type"] in ("bit", "gear_bit")]
+    if not bits:
+        return []
+    rows: dict[int, list[dict]] = {}
+    for bit in bits:
+        rows.setdefault(bit["y"], []).append(bit)
+    widest = max(rows.values(), key=len)
+    return sorted(widest, key=lambda c: c["x"])
+
+
+def state_goal_bits(objective: str, components: list[dict]) -> list[dict] | None:
+    """Which bits an objective asks to be flipped right, or None if it says no."""
+    text = " ".join((objective or "").split())
+    m = re.search(r"[Ff]lip (?:the )?bits? ([\w, ]+?) to the right", text)
+    if not m:
+        return None
+    labels = [tok for tok in re.split(r"[,\s]+|\band\b", m.group(1)) if tok]
+    row = labelled_bits(components)
+    if not row:
+        return None
+    chosen = []
+    for label in labels:
+        if label.isdigit():
+            index = int(label) - 1
+        elif len(label) == 1 and label.isalpha():
+            index = ord(label.upper()) - ord("A")
+        else:
+            return None
+        if not 0 <= index < len(row):
+            return None
+        chosen.append(row[index])
+    return chosen or None
+
+
 def loose_intercept(objective: str) -> str | None:
     """Colour an objective wants intercepted when it fixes no count."""
     text = " ".join((objective or "").split()).lower()
@@ -223,14 +294,15 @@ def matches_printed(produced: list[str], target: list[str], objective: str) -> b
 
 def _task(original: dict, fixed: list[dict], placed: list[dict], *,
           entry: str, left_x: int, right_x: int, first: str,
-          target: list[str]) -> dict:
+          target: list[str], counts: tuple[int, int]) -> dict:
     task = deepcopy(original)
     task["board"] = {
         "width": GRID,
         "height": GRID,
         "hopper_entry_mode": entry,
         "fixed_components": deepcopy(fixed),
-        "ball_hoppers": {"blue": {"x": 2, "count": 8}, "red": {"x": 8, "count": 8}},
+        "ball_hoppers": {"blue": {"x": 2, "count": counts[0]},
+                         "red": {"x": 8, "count": counts[1]}},
         "trigger_levers": {"left": {"x": left_x, "y": GRID},
                            "right": {"x": right_x, "y": GRID}},
     }
@@ -248,7 +320,9 @@ def _task(original: dict, fixed: list[dict], placed: list[dict], *,
 
 def fit_configuration(original: dict, fixed: list[dict], placed: list[dict],
                       target: list[str], want_intercept: str | None = None,
-                      objective: str = "", state_goal: bool = False) -> dict | None:
+                      objective: str = "", state_goal: bool = False,
+                      counts: tuple[int, int] = (8, 8),
+                      goal_bits: list[dict] | None = None) -> dict | None:
     """Find the catcher setup under which the board produces the guide's output."""
     # The real board keeps the blue lever on the left and the red one on the
     # right, so prefer positions closest to those before considering others; an
@@ -260,9 +334,10 @@ def fit_configuration(original: dict, fixed: list[dict], placed: list[dict],
     for entry in ("inward", "column"):
         for first in ("blue", "red"):
             for left_x, right_x in placements:
+                    bit_goal = None
                     task = _task(original, fixed, placed, entry=entry,
                                  left_x=left_x, right_x=right_x, first=first,
-                                 target=target)
+                                 target=target, counts=counts)
                     try:
                         board = Board.from_task_dict(task)
                         results = board.run(task["input_sequence"])
@@ -274,11 +349,28 @@ def fit_configuration(original: dict, fixed: list[dict], placed: list[dict],
                                 if r.steps > 0 and not r.caught_by]
                         if lost or len(produced) < 2:
                             continue
+                        # The goal is a bit configuration, so the run has to
+                        # leave the named bits pointing right and every other
+                        # bit where it started. Without this the search would
+                        # settle for any setup that merely runs cleanly.
+                        ended = board.get_all_states()
+                        if goal_bits is not None:
+                            wanted = {(c["x"], c["y"]) for c in goal_bits}
+                            satisfied = True
+                            for comp in fixed + placed:
+                                if comp["type"] not in ("bit", "gear_bit"):
+                                    continue
+                                key = f'{comp["type"]}_{comp["x"]}_{comp["y"]}'
+                                want = 1 if (comp["x"], comp["y"]) in wanted \
+                                    else comp.get("state", 0)
+                                if ended.get(key) != want:
+                                    satisfied = False
+                                    break
+                            if not satisfied:
+                                continue
                         task["solution"]["final_marble_state"] = catcher_colours(results)
                         task["required_output"] = produced
-                        # The goal is a bit configuration, so record where the
-                        # bits actually end up once the machine stops.
-                        task["final_bit_states"] = board.get_all_states()
+                        bit_goal = ended
                     elif want_intercept is not None:
                         caught = [r for r in results if r.caught_by]
                         stopped = [r for r in caught
@@ -298,6 +390,10 @@ def fit_configuration(original: dict, fixed: list[dict], placed: list[dict],
                         "right_catcher": sum(1 for r in results if r.caught_by == "right_catcher"),
                         "intercepted": sum(1 for r in results if r.caught_by == "interceptor"),
                     }
+                    if bit_goal is not None:
+                        # Declared here because this is the only place scoring
+                        # reads bit targets from; under solution it is inert.
+                        task["expected_output"]["final_bit_states"] = bit_goal
                     try:
                         if not verify_task(task):
                             continue
@@ -319,6 +415,10 @@ def transcribe(stem: str, page: int, cache: Path, templates) -> tuple[dict | Non
     except Exception as exc:
         return None, f"extract failed ({type(exc).__name__})"
 
+    # The guide prints how many balls each hopper holds; challenge 11 needs
+    # exactly two blue and no red, so a default would make it unsolvable.
+    counts = ball_counts(page) or (8, 8)
+
     setup_keys = {(p.type, p.x, p.y) for p in setup}
     fixed = [p.to_dict() for p in setup]
     placed = [p.to_dict() for p in whole if (p.type, p.x, p.y) not in setup_keys]
@@ -327,17 +427,21 @@ def transcribe(stem: str, page: int, cache: Path, templates) -> tuple[dict | Non
 
     # An interception objective is the more precise of the two: the printed ball
     # strip shows only the balls that reach the bottom, not the one caught.
+    # The guide's own wording is authoritative for the goal.
+    objective = guide_objective(page) or original.get("objective", "")
+
     candidates: list[tuple[list[str], str | None]] = []
-    from_objective = objective_target(original.get("objective", ""))
+    from_objective = objective_target(objective)
     if from_objective:
         candidates.append((from_objective, None))
     printed = required_output(page, cache)
     if printed:
         candidates.append((printed, None))
-    loose = loose_intercept(original.get("objective", ""))
+    loose = loose_intercept(objective)
     if loose:
         candidates.append(([], loose))
-    state_goal = is_state_goal(original.get("objective", ""))
+    state_goal = is_state_goal(objective)
+    goal_bits = state_goal_bits(objective, fixed + placed) if state_goal else None
     if state_goal and not candidates:
         candidates.append(([], None))
     if not candidates:
@@ -357,7 +461,8 @@ def transcribe(stem: str, page: int, cache: Path, templates) -> tuple[dict | Non
                 comp["state"] = assignment[(comp["x"], comp["y"])]
         for target, want_intercept in candidates:
             task = fit_configuration(original, fixed, placed, target, want_intercept,
-                                     original.get("objective", ""), state_goal)
+                                     objective, state_goal,
+                                     counts=counts, goal_bits=goal_bits)
             if task is not None:
                 break
         if task is not None:
@@ -375,12 +480,17 @@ def transcribe(stem: str, page: int, cache: Path, templates) -> tuple[dict | Non
     except Exception:
         pass
 
+    task["objective"] = objective
     task["solution"]["verified"] = True
     task["solution"]["position_verified"] = True
     task["provenance"] = {
         "board": "transcribed from practice-guide-2021.pdf",
         "page": page,
-        "checked": "simulation reproduces the guide's printed required output",
+        "checked": (
+            "simulation leaves the bits the objective names pointing right"
+            if state_goal else
+            "simulation reproduces the guide's printed required output"
+        ),
     }
     return task, "OK"
 
