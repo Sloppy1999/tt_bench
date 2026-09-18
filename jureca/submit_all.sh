@@ -103,6 +103,11 @@ MODELS=(
     # whole nodes regardless — the extra GPUs are free KV-cache headroom.
     # Needs its own --tool-call-parser: it emits the harmony format, not hermes.
     "openai/gpt-oss-120b|gpt-oss-120b|4"
+    # Qwen4Exp architecture: needs vLLM >= 0.29 (0.24 does not know it at all).
+    # The unsloth GGUF build of this model cannot be used — vLLM registers no
+    # gguf quantization method in any release we can install — so this is the
+    # AWQ INT4 (compressed-tensors) repack, ~176GB against 4x93.6GiB of H100.
+    "cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4|qwen3.8-flash-next-awq4|4"
 )
 
 # ── Defaults (override via flags) ────────────────────────────────────────────
