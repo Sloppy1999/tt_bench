@@ -48,9 +48,11 @@ banner "Pre-flight checks"
 ok "API keys loaded from .env by the benchmark runner"
 
 if curl -s --max-time 3 http://localhost:1234/v1/models > /dev/null 2>&1; then
+    LMSTUDIO_AVAILABLE=true
     MODELS=$(curl -s http://localhost:1234/v1/models | python3 -c "import sys,json; print(', '.join(m['id'] for m in json.load(sys.stdin)['data']))")
     ok "LMStudio reachable — models: $MODELS"
 else
+    LMSTUDIO_AVAILABLE=false
     warn "LMStudio not reachable at localhost:1234 — LMStudio runs will be skipped"
 fi
 
@@ -58,13 +60,16 @@ rm -rf "$RESULTS_DIR"
 mkdir -p "$RESULTS_DIR"
 
 # ── Discover local models ───────────────────────────────────────────────────
-MODEL_LIST=$(curl -s http://localhost:1234/v1/models | python3 -c "
+MODEL_LIST=""
+if [ "$LMSTUDIO_AVAILABLE" = true ]; then
+    MODEL_LIST=$(curl -s http://localhost:1234/v1/models | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 llms = [m['id'] for m in data.get('data', []) if 'embed' not in m.get('id','').lower()]
 for m in llms:
     print(m)
 ")
+fi
 
 if [ -z "$MODEL_LIST" ]; then
     warn "No LLM models found in LMStudio — LMStudio runs will be skipped"
