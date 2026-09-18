@@ -1,22 +1,19 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Sync TT-Bench to JURECA
+# Deploy TT-Bench to JURECA
 # =============================================================================
-# Copies the task corpus and the code that reads it to the project directory on
-# JURECA, so a Slurm run benchmarks the same data and the same simulator as the
-# local tree.
+# The project directory on JURECA is a git checkout of this repository, so the
+# safe way to update it is to push a branch and pull it there. A file-level
+# mirror would delete whatever has been committed or produced on the cluster
+# since the local tree last diverged — results, logs and plotting scripts that
+# only exist there.
+#
+# This script therefore inspects the remote checkout, reports whether a pull
+# would be clean, and prints the commands to run. It changes nothing by itself.
 #
 # Usage:
-#   JURECA_HOST=user@jureca.fz-juelich.de bash jureca/sync_to_jureca.sh        # preview
-#   JURECA_HOST=user@jureca.fz-juelich.de bash jureca/sync_to_jureca.sh --go   # transfer
-#
-# Optional:
-#   JURECA_DIR=/p/scratch/westai0070/$USER/tt-bench   # override the destination
-#
-# This mirrors: files deleted locally are deleted on JURECA. That is deliberate
-# — invalid tasks that were removed here must not stay behind and get scored
-# there — but it means the destination is made to match this tree exactly.
-# Benchmark results on JURECA are never touched.
+#   bash jureca/sync_to_jureca.sh              # inspect, using ssh host "jureca"
+#   JURECA_HOST=user@host bash jureca/sync_to_jureca.sh
 # =============================================================================
 
 set -euo pipefail
@@ -31,82 +28,76 @@ ok()    { echo -e "  ${GREEN}✔${NC} $1"; }
 warn()  { echo -e "  ${YELLOW}!${NC} $1"; }
 fail()  { echo -e "  ${RED}✘${NC} $1"; }
 
-GO=false
-[ "${1:-}" = "--go" ] && GO=true
+HOST="${JURECA_HOST:-jureca}"
+BRANCH="$(git branch --show-current)"
+LOCAL_HEAD="$(git rev-parse --short HEAD)"
 
-if [ -z "${JURECA_HOST:-}" ]; then
-    fail "JURECA_HOST is not set."
-    echo "    Set the login node you use, for example:"
-    echo "      export JURECA_HOST=your-user@jureca.fz-juelich.de"
+banner "Local"
+echo "  branch : $BRANCH"
+echo "  head   : $LOCAL_HEAD  $(git log -1 --format=%s)"
+if [ -n "$(git status --porcelain)" ]; then
+    warn "working tree is dirty — commit before deploying"
+else
+    ok "working tree clean"
+fi
+if git rev-parse --verify -q "origin/$BRANCH" >/dev/null; then
+    ok "branch exists on origin ($(git rev-list --count "origin/$BRANCH..HEAD") commits unpushed)"
+else
+    warn "branch is not on origin yet — it must be pushed before JURECA can pull it"
+fi
+
+banner "Remote checkout"
+REMOTE_INFO=$(ssh -o BatchMode=yes -o ConnectTimeout=20 "$HOST" 'bash -s' <<'EOF' 2>/dev/null || true
+# $USER is not always set in a non-login ssh shell.
+me=$(id -un)
+for d in /p/scratch/westai0070/$me/tt_bench /p/scratch/westai0070/$me/tt-bench; do
+    [ -d "$d/.git" ] || continue
+    echo "DIR=$d"
+    echo "BRANCH=$(git -C "$d" branch --show-current)"
+    echo "HEAD=$(git -C "$d" rev-parse --short HEAD)"
+    echo "DIRTY=$(git -C "$d" status --porcelain | wc -l)"
+    echo "VENV=$([ -d "$d/.venv-ttbench" ] && echo yes || echo no)"
+    exit 0
+done
+echo "DIR="
+EOF
+)
+
+REMOTE_DIR=$(sed -n 's/^DIR=//p' <<<"$REMOTE_INFO")
+if [ -z "$REMOTE_DIR" ]; then
+    fail "Could not inspect a git checkout on $HOST"
+    echo "    Either no checkout exists under /p/scratch/westai0070/<user>/tt_bench,"
+    echo "    or the connection needs re-authenticating. JURECA uses MFA, so open a"
+    echo "    session yourself first (ssh $HOST) and leave it running — the"
+    echo "    ControlPersist master in ~/.ssh/config lets this script reuse it."
     exit 1
 fi
+ok "checkout: $REMOTE_DIR"
+echo "  branch : $(sed -n 's/^BRANCH=//p' <<<"$REMOTE_INFO")"
+echo "  head   : $(sed -n 's/^HEAD=//p' <<<"$REMOTE_INFO")"
+echo "  venv   : $(sed -n 's/^VENV=//p' <<<"$REMOTE_INFO")"
 
-REMOTE_USER="${JURECA_HOST%@*}"
-[ "$REMOTE_USER" = "$JURECA_HOST" ] && REMOTE_USER="$USER"
-REMOTE_DIR="${JURECA_DIR:-/p/scratch/westai0070/$REMOTE_USER/tt-bench}"
-
-# What the benchmark actually needs: the tasks, the code that reads them, and
-# the job scripts. Everything else is local clutter or remote output.
-PATHS=(
-    data/tasks
-    src
-    scripts
-    tests
-    jureca
-    pyproject.toml
-    uv.lock
-)
-
-EXCLUDES=(
-    --exclude '__pycache__/'
-    --exclude '*.pyc'
-    --exclude '.venv/'
-    --exclude '.venv-ttbench/'
-    --exclude '.cache/'
-    --exclude '.guide-cache/'
-    --exclude 'benchmark_results/'
-    --exclude 'slurm_logs/'
-    --exclude '.env'
-)
-
-banner "Plan"
-echo "  from : $PROJECT_ROOT"
-echo "  to   : $JURECA_HOST:$REMOTE_DIR"
-echo "  paths: ${PATHS[*]}"
-$GO && warn "LIVE transfer (mirrors deletions)" || ok "dry run — nothing will be written"
-
-banner "Local corpus"
-for d in data/tasks/*/; do
-    printf "  %6s tasks  %s\n" "$(find "$d" -name '*.json' | wc -l)" "$d"
-done
-
-RSYNC_OPTS=(-az --human-readable --itemize-changes --delete "${EXCLUDES[@]}")
-$GO || RSYNC_OPTS+=(--dry-run)
-
-banner "Transfer"
-if $GO; then
-    ssh "$JURECA_HOST" "mkdir -p '$REMOTE_DIR'" || {
-        fail "Could not reach $JURECA_HOST or create $REMOTE_DIR"; exit 1; }
-fi
-
-# --relative keeps each path under the same layout on the far side.
-rsync "${RSYNC_OPTS[@]}" --relative "${PATHS[@]}" "$JURECA_HOST:$REMOTE_DIR/" \
-    | tee /tmp/tt-bench-sync.$$ || { fail "rsync failed"; exit 1; }
-
-CHANGED=$(grep -cvE '^(sending|sent|total|$|created |\.d\.\.\.)' /tmp/tt-bench-sync.$$ || true)
-DELETED=$(grep -c '^deleting ' /tmp/tt-bench-sync.$$ || true)
-rm -f /tmp/tt-bench-sync.$$
-
-banner "Summary"
-echo "  entries changed: $CHANGED"
-echo "  entries deleted: $DELETED"
-if $GO; then
-    ok "Synced to $JURECA_HOST:$REMOTE_DIR"
-    echo ""
-    echo "  Next, on the JURECA login node:"
-    echo "    cd $REMOTE_DIR"
-    echo "    bash jureca/setup.sh          # only if the venv is not built yet"
-    echo "    TIERS=2 bash jureca/submit_all.sh"
+REMOTE_DIRTY=$(sed -n 's/^DIRTY=//p' <<<"$REMOTE_INFO")
+if [ "${REMOTE_DIRTY:-0}" -gt 0 ]; then
+    warn "$REMOTE_DIRTY uncommitted entries on JURECA — results and logs live there"
+    echo "    Commit or stash them there before pulling; do not overwrite them."
 else
-    warn "Dry run only. Re-run with --go to transfer."
+    ok "remote working tree clean"
 fi
+
+banner "To deploy"
+cat <<EOF
+  1. locally:
+       git push -u origin $BRANCH
+
+  2. on $HOST, in $REMOTE_DIR:
+       git stash -u            # only if the remote tree is dirty
+       git fetch origin
+       git checkout $BRANCH
+       git pull --ff-only origin $BRANCH
+
+  3. run tier 2 (submit_all.sh takes a --tiers flag):
+       bash jureca/submit_all.sh -n -t 2      # dry run first
+       bash jureca/submit_all.sh -t 2
+EOF
+warn "Nothing was changed on either side by this script."
