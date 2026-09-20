@@ -7,32 +7,41 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
         "type": "ramp_right",
         "x": 3,
-        "y": 1
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 0
       },
       {
         "type": "ramp_right",
         "x": 4,
-        "y": 2
+        "y": 1
       },
       {
         "type": "ramp_left",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
         "x": 5,
-        "y": 3
+        "y": 2
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 1
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 1
       }
     },
@@ -48,8 +57,8 @@
     }
   },
   "available_parts": {
-    "ramp_right": 8,
-    "ramp_left": 0,
+    "ramp_right": 4,
+    "ramp_left": 3,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -61,50 +70,45 @@
     "placed_components": [
       {
         "type": "ramp_left",
-        "x": 4,
+        "x": 6,
         "y": 3
       },
       {
-        "type": "ramp_left",
-        "x": 3,
+        "type": "ramp_right",
+        "x": 5,
         "y": 4
       },
       {
         "type": "ramp_left",
-        "x": 2,
+        "x": 6,
         "y": 5
       },
       {
-        "type": "ramp_left",
-        "x": 1,
+        "type": "ramp_right",
+        "x": 5,
         "y": 6
       },
       {
-        "type": "ramp_right",
-        "x": 2,
+        "type": "ramp_left",
+        "x": 6,
         "y": 7
       },
       {
         "type": "ramp_right",
-        "x": 3,
+        "x": 5,
         "y": 8
       },
       {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 5,
+        "type": "ramp_right",
+        "x": 6,
         "y": 9
       }
     ],
     "explanation": "The 8 ramps make a path down to the right lever. When the blue ball is released, it lands on the right lever, releasing the red ball.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
-      "blue",
+      "red",
       "red"
     ]
   },
@@ -112,7 +116,17 @@
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 0,
+    "right_catcher": 2,
+    "intercepted": 0
+  },
+  "required_output": [
+    "blue",
+    "red"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 11,
+    "checked": "simulation reproduces the guide's printed required output"
   }
 }

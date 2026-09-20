@@ -7,79 +7,36 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
-        "type": "ramp_right",
-        "x": 2,
-        "y": 0
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
+        "type": "bit",
+        "x": 5,
         "y": 2
       },
       {
         "type": "bit",
         "x": 5,
-        "y": 3,
-        "state": 0
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
         "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 4
-      },
-      {
-        "type": "bit",
-        "x": 5,
-        "y": 5,
-        "state": 0
-      },
-      {
-        "type": "ramp_left",
-        "x": 7,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 6
       },
       {
         "type": "interceptor",
         "x": 3,
-        "y": 7
+        "y": 6
       },
       {
         "type": "interceptor",
         "x": 7,
-        "y": 7
+        "y": 6
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -95,8 +52,8 @@
     }
   },
   "available_parts": {
-    "ramp_right": 0,
-    "ramp_left": 0,
+    "ramp_right": 5,
+    "ramp_left": 2,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -105,24 +62,124 @@
     "trigger": 0
   },
   "solution": {
-    "placed_components": [],
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 5
+      }
+    ],
     "explanation": "",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": []
+    "verified": true,
+    "position_verified": true
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+  "expected_output": {},
+  "trials": [
+    {
+      "name": "00",
+      "hoppers": {
+        "blue": 1,
+        "red": 1
+      },
+      "initial_bit_states": {
+        "bit_5_2": 0,
+        "bit_5_4": 0
+      },
+      "expect": {
+        "intercepted_at": [
+          7,
+          6
+        ]
+      }
+    },
+    {
+      "name": "10",
+      "hoppers": {
+        "blue": 1,
+        "red": 1
+      },
+      "initial_bit_states": {
+        "bit_5_2": 1,
+        "bit_5_4": 0
+      },
+      "expect": {
+        "intercepted_at": [
+          7,
+          6
+        ]
+      }
+    },
+    {
+      "name": "01",
+      "hoppers": {
+        "blue": 1,
+        "red": 1
+      },
+      "initial_bit_states": {
+        "bit_5_2": 0,
+        "bit_5_4": 1
+      },
+      "expect": {
+        "intercepted_at": [
+          7,
+          6
+        ]
+      }
+    },
+    {
+      "name": "11",
+      "hoppers": {
+        "blue": 1,
+        "red": 1
+      },
+      "initial_bit_states": {
+        "bit_5_2": 1,
+        "bit_5_4": 1
+      },
+      "expect": {
+        "intercepted_at": [
+          3,
+          6
+        ]
+      }
+    }
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 75,
+    "checked": "simulation reproduces all four rows of the AND truth table, with T=(3, 6)"
   }
 }

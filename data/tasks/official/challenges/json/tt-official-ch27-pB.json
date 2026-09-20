@@ -7,35 +7,31 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
-        "type": "gear_bit",
-        "x": 3,
-        "y": 4,
-        "state": 0
+        "type": "bit",
+        "x": 1,
+        "y": 4
       },
       {
-        "type": "gear_bit",
+        "type": "bit",
         "x": 5,
-        "y": 4,
-        "state": 0
+        "y": 4
       },
       {
-        "type": "gear_bit",
-        "x": 7,
-        "y": 4,
-        "state": 0
+        "type": "bit",
+        "x": 9,
+        "y": 4
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 2
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 1
       }
     },
@@ -51,11 +47,11 @@
     }
   },
   "available_parts": {
-    "ramp_right": 999,
-    "ramp_left": 0,
+    "ramp_right": 14,
+    "ramp_left": 10,
     "crossover": 0,
-    "bit": 0,
-    "gear_bit": 1,
+    "bit": 1,
+    "gear_bit": 0,
     "gear": 0,
     "interceptor": 0,
     "trigger": 0
@@ -64,123 +60,264 @@
     "placed_components": [
       {
         "type": "ramp_right",
-        "x": 1,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
         "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 3
+        "y": 0
       },
       {
         "type": "ramp_right",
         "x": 7,
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 1
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 2,
+        "state": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 9,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
         "y": 3
       },
       {
         "type": "ramp_right",
-        "x": 9,
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
         "y": 3
       },
       {
         "type": "ramp_right",
-        "x": 1,
+        "x": 0,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
         "y": 5
       },
       {
         "type": "ramp_right",
-        "x": 3,
+        "x": 4,
         "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 10,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 6
       },
       {
         "type": "ramp_right",
         "x": 5,
-        "y": 5
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 8,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 8
       },
       {
         "type": "ramp_right",
         "x": 7,
-        "y": 5
+        "y": 8
       },
       {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
+        "type": "ramp_left",
+        "x": 2,
         "y": 9
       },
       {
         "type": "ramp_right",
-        "x": 7,
+        "x": 8,
         "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 10
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 10
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 10
       }
     ],
     "explanation": "We have one bit to split the path of the blue balls. That allows us to flip two of the bits, but how can we flip the third bit? Use the second blue ball to trigger the release of a red ball that flips that third bit. NOTE - fixed_components positions are estimates pending simulator verification",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": [
-      "..."
-    ]
+    "verified": true,
+    "position_verified": true
   },
   "input_sequence": [
-    "blue",
     "blue"
   ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+  "expected_output": {},
+  "trials": [
+    {
+      "name": "000",
+      "initial_bit_states": {
+        "bit_1_4": 0,
+        "bit_5_4": 0,
+        "bit_9_4": 0
+      },
+      "expect": {
+        "final_bit_states": {
+          "bit_1_4": 1,
+          "bit_5_4": 1,
+          "bit_9_4": 1
+        }
+      }
+    },
+    {
+      "name": "100",
+      "initial_bit_states": {
+        "bit_1_4": 1,
+        "bit_5_4": 0,
+        "bit_9_4": 0
+      },
+      "expect": {
+        "final_bit_states": {
+          "bit_1_4": 0,
+          "bit_5_4": 1,
+          "bit_9_4": 1
+        }
+      }
+    },
+    {
+      "name": "010",
+      "initial_bit_states": {
+        "bit_1_4": 0,
+        "bit_5_4": 1,
+        "bit_9_4": 0
+      },
+      "expect": {
+        "final_bit_states": {
+          "bit_1_4": 1,
+          "bit_5_4": 0,
+          "bit_9_4": 1
+        }
+      }
+    },
+    {
+      "name": "110",
+      "initial_bit_states": {
+        "bit_1_4": 1,
+        "bit_5_4": 1,
+        "bit_9_4": 0
+      },
+      "expect": {
+        "final_bit_states": {
+          "bit_1_4": 0,
+          "bit_5_4": 0,
+          "bit_9_4": 1
+        }
+      }
+    },
+    {
+      "name": "001",
+      "initial_bit_states": {
+        "bit_1_4": 0,
+        "bit_5_4": 0,
+        "bit_9_4": 1
+      },
+      "expect": {
+        "final_bit_states": {
+          "bit_1_4": 1,
+          "bit_5_4": 1,
+          "bit_9_4": 0
+        }
+      }
+    },
+    {
+      "name": "101",
+      "initial_bit_states": {
+        "bit_1_4": 1,
+        "bit_5_4": 0,
+        "bit_9_4": 1
+      },
+      "expect": {
+        "final_bit_states": {
+          "bit_1_4": 0,
+          "bit_5_4": 1,
+          "bit_9_4": 0
+        }
+      }
+    },
+    {
+      "name": "011",
+      "initial_bit_states": {
+        "bit_1_4": 0,
+        "bit_5_4": 1,
+        "bit_9_4": 1
+      },
+      "expect": {
+        "final_bit_states": {
+          "bit_1_4": 1,
+          "bit_5_4": 0,
+          "bit_9_4": 0
+        }
+      }
+    },
+    {
+      "name": "111",
+      "initial_bit_states": {
+        "bit_1_4": 1,
+        "bit_5_4": 1,
+        "bit_9_4": 1
+      },
+      "expect": {
+        "final_bit_states": {
+          "bit_1_4": 0,
+          "bit_5_4": 0,
+          "bit_9_4": 0
+        }
+      }
+    }
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 105,
+    "checked": "simulation reverses the 3 starting bits from every one of their 8 starting configurations"
   }
 }

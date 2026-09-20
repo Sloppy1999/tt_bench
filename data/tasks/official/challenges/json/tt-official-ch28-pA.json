@@ -7,27 +7,53 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
-        "type": "gear",
+        "type": "ramp_right",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
         "x": 4,
-        "y": 2
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "type": "gear_bit",
+        "x": 5,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "gear_bit",
+        "x": 4,
+        "y": 3,
+        "state": 0
       },
       {
         "type": "gear",
-        "x": 6,
-        "y": 4
+        "x": 5,
+        "y": 3
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -43,94 +69,84 @@
     }
   },
   "available_parts": {
-    "ramp_right": 13,
-    "ramp_left": 0,
-    "crossover": 0,
+    "ramp_right": 5,
+    "ramp_left": 6,
+    "crossover": 1,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
-    "interceptor": 1,
+    "interceptor": 0,
     "trigger": 0
   },
   "solution": {
     "placed_components": [
       {
-        "type": "ramp_right",
-        "x": 1,
+        "type": "ramp_left",
+        "x": 6,
         "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 5
       },
       {
         "type": "ramp_right",
         "x": 3,
-        "y": 3
+        "y": 6
       },
       {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 7,
-        "y": 3
+        "y": 6
       },
       {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
+        "type": "ramp_left",
+        "x": 4,
         "y": 7
       },
       {
         "type": "ramp_right",
-        "x": 9,
+        "x": 6,
         "y": 7
       },
       {
         "type": "ramp_right",
-        "x": 1,
+        "x": 3,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
         "y": 9
       },
       {
         "type": "ramp_right",
-        "x": 9,
-        "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 10
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 10
-      },
-      {
-        "type": "interceptor",
-        "x": 5,
+        "x": 6,
         "y": 9
       }
     ],
     "explanation": "Two gear bits connected together make a permanent latch. After being flipped once, they can't be flipped back again. The first blue ball flips the latch. The second blue ball and all the rest of the red balls are sent to the red lever by the flipped latch. Ball 1, Ball 2, Ball 3, Ball 4, Ball 5. Actually, there is a way to flip the latch back to the original position. Can you figure out how? Send a ball onto the lower bit only. NOTE - interceptor position is an estimate pending simulator verification",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
-      "blue",
+      "red",
       "red",
       "red",
       "red",
@@ -142,17 +158,28 @@
     ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 1,
+    "right_catcher": 9,
+    "intercepted": 0
+  },
+  "required_output": [
+    "blue",
+    "blue",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red",
+    "red"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 109,
+    "checked": "simulation reproduces the guide's printed required output"
   }
 }

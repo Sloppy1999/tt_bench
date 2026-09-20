@@ -3,32 +3,16 @@
   "challenge_number": 23,
   "tier": 4,
   "title": "Tetrad",
-  "objective": "Let only one blue ball reach the end. Intercept the 2nd ball.",
+  "objective": "Let exactly one blue ball reach the end. (Intercept the 2nd ball.)",
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
-        "type": "interceptor",
-        "x": 2,
-        "y": 9
-      },
-      {
         "type": "bit",
         "x": 3,
-        "y": 1,
-        "state": 1
-      },
-      {
-        "type": "bit",
-        "x": 3,
-        "y": 3,
-        "state": 0
-      },
-      {
-        "type": "bit",
-        "x": 3,
-        "y": 5,
+        "y": 0,
         "state": 0
       },
       {
@@ -37,9 +21,20 @@
         "y": 1
       },
       {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
         "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 2,
+        "state": 0
       },
       {
         "type": "ramp_left",
@@ -47,9 +42,20 @@
         "y": 3
       },
       {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
         "y": 4
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 4,
+        "state": 0
       },
       {
         "type": "ramp_left",
@@ -57,8 +63,13 @@
         "y": 5
       },
       {
-        "type": "ramp_right",
+        "type": "interceptor",
         "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
         "y": 6
       },
       {
@@ -68,19 +79,22 @@
       },
       {
         "type": "ramp_right",
-        "x": 4,
+        "x": 1,
         "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -93,7 +107,21 @@
         "x": 8,
         "y": 11
       }
-    }
+    },
+    "editable_bit_states": [
+      [
+        3,
+        0
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        3,
+        4
+      ]
+    ]
   },
   "available_parts": {
     "ramp_right": 0,
@@ -106,23 +134,49 @@
     "trigger": 0
   },
   "solution": {
-    "placed_components": [],
+    "placed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 0,
+        "state": 1
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 2,
+        "state": 0
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 4,
+        "state": 0
+      }
+    ],
     "explanation": "This time, set the register to a value of 1 before starting the computer. It will let one ball through and capture the next ball. NOTE - Solution is initial bit configuration only (register=1). No parts to place. Component positions are estimates pending simulator verification.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
-      "blue"
+      "intercepted"
     ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
-  ]
+  ],
+  "expected_output": {
+    "left_catcher": 1,
+    "right_catcher": 0,
+    "intercepted": 1
+  },
+  "required_output": [
+    "blue",
+    "intercepted"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 91,
+    "checked": "simulation reproduces the guide's stated output once the 3 editable bits start as the solution page draws them"
+  }
 }

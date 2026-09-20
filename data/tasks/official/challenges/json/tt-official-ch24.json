@@ -3,17 +3,17 @@
   "challenge_number": 24,
   "tier": 4,
   "title": "Enmend",
-  "objective": "Let exactly 9 blue balls reach the end(Intercept the 10th.)",
+  "objective": "Let exactly 9 blue balls reach the end. (Intercept the 10th.)",
   "board": {
     "width": 11,
     "height": 11,
-    "hopper_entry_mode": "column",
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
         "type": "bit",
         "x": 3,
         "y": 0,
-        "state": 0
+        "state": 1
       },
       {
         "type": "bit",
@@ -31,22 +31,22 @@
         "type": "bit",
         "x": 3,
         "y": 6,
-        "state": 0
+        "state": 1
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "count": 8
+        "count": 12
       },
       "red": {
         "x": 8,
-        "count": 8
+        "count": 12
       }
     },
     "trigger_levers": {
       "left": {
-        "x": 1,
+        "x": 2,
         "y": 11
       },
       "right": {
@@ -144,16 +144,18 @@
       "blue",
       "blue",
       "blue",
-      "blue"
+      "blue",
+      "blue",
+      "intercepted"
     ]
   },
   "input_sequence": [
     "blue"
   ],
   "expected_output": {
-    "left_catcher": 8,
+    "left_catcher": 9,
     "right_catcher": 0,
-    "intercepted": 0
+    "intercepted": 1
   },
   "required_output": [
     "blue",
@@ -163,7 +165,9 @@
     "blue",
     "blue",
     "blue",
-    "blue"
+    "blue",
+    "blue",
+    "intercepted"
   ],
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",

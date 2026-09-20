@@ -151,6 +151,18 @@ TEMPLATE_SOURCES = [
     # A bit drawn with arrows both ways: the puzzle leaves its start state open.
     ("bit_either", 52, 5, 2),
     ("interceptor", 48, 5, 8),
+    # Gear bits were missing entirely, so every board built on them came out
+    # without its logic: challenge 28's "two gear bits connected together make a
+    # permanent latch" extracted as ramps alone. Page 110 is that solution, and
+    # the cog is sourced from it. The glyph does not say which way the bit
+    # points, so the direction is left open and settled by simulation, the same
+    # way an undirected plain bit already is.
+    ("gear_bit_either", 110, 4, 3),
+    # A plain gear carries no arrow -- a pinwheel hub instead of the gear bit's
+    # diagonal one -- and it is what meshes two gear bits into a latch. Without
+    # it challenges 28 and 29 lost the connector and their gear bits turned
+    # independently, so no setup could reproduce the printed output.
+    ("gear", 114, 3, 1),
 ]
 WINDOW = 1.55  # crop size in lattice units
 RISE = 0.28    # glyphs are drawn above the peg they sit on
@@ -280,8 +292,14 @@ def classify(blob: dict, unit: float) -> tuple[str, float] | None:
 
 def parts_on_page(page_no: int, cache: Path,
                   templates: dict[str, np.ndarray] | None = None,
-                  threshold: float = 0.65) -> list[Part]:
-    """Every part on one page, by matching each peg against the part artwork."""
+                  threshold: float = 0.62) -> list[Part]:
+    """Every part on one page, by matching each peg against the part artwork.
+
+    The threshold was 0.65, which cut off challenge 28's second gear bit at
+    0.648 and left its latch as a single gear bit that nothing could reproduce.
+    0.60 starts inventing parts (a phantom bit on challenge 29's solution), so
+    0.62 is the gap between the last real part and the first spurious one.
+    """
     templates = templates if templates is not None else build_templates(cache)
     page = render(page_no, cache)
 
@@ -311,7 +329,9 @@ def parts_on_page(page_no: int, cache: Path,
             kind, score = best_at(page, x0, y0, unit, col, row, templates)
             if score < threshold:
                 continue
-            if kind == "bit_either":
+            if kind == "gear_bit_either":
+                found.append(Part("gear_bit", col, row, None))
+            elif kind == "bit_either":
                 found.append(Part("bit", col, row, None))
             elif kind.startswith("bit_"):
                 found.append(Part("bit", col, row, 0 if kind.endswith("left") else 1))
