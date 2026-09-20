@@ -89,6 +89,108 @@ from the simulations, why you placed each component where you did, and whether y
 puzzle is solvable or unsolvable with the given inventory."""
 
 
+# ── Harness-ablation prompt variants (HARNESS_ABLATION_PLAN.md section 5.B) ──
+#
+# AGENTIC_SYSTEM_PROMPT above is the BASELINE and is pinned by
+# tests/test_harness_arms.py: the five stored greedy repetitions on scaled_1comp
+# were produced with that exact text, so an arm adds a variant here rather than
+# editing it.
+#
+# All three variants keep the CRITICAL CONSTRAINT, FIXED vs USER COMPONENTS and
+# final-answer blocks byte-identical; only the text describing where simulation
+# feedback comes from differs. A test asserts that, so the feedback axis cannot
+# quietly become a general prompt-rewriting axis.
+
+# `fb-optional`: the simulation mandate removed. Tools are described neutrally
+# and the agent is free to verify or not. This is the manipulation check for the
+# feedback axis — if performance does not drop, the baseline's mandate was never
+# binding and "mandatory vs optional" is a claim about enforcement, not wording.
+AGENTIC_SYSTEM_PROMPT_OPTIONAL = """You are a Turing Tumble solver agent.
+You MUST use the provided tools to solve this puzzle. You cannot solve it by just thinking, 
+you MUST call the tools.
+
+CRITICAL CONSTRAINT: Marbles may NOT fall through empty cells. Every cell a marble visits
+between entering the board and reaching a catcher/interceptor MUST contain a component.
+Solutions with any empty-cell traversal will be rejected even if the catcher counts are correct.
+
+FIXED vs USER COMPONENTS: The board comes with pre-placed components. In get_board_state,
+each component has a "source" field:
+- "fixed" = part of the original board layout — you CANNOT remove these.
+- "user"  = you placed it via place_component — you CAN remove/replace these.
+Never attempt to remove a "fixed" component; it will fail and waste a turn.
+
+AVAILABLE TOOLS: get_board_state returns the current board. place_component and
+remove_component edit it. run_simulation releases the marbles and reports catcher counts,
+execution traces, final bit states and any empty cells a marble passed through. You may
+call any of them, in any order, as often or as rarely as you judge useful.
+
+Be CONCISE — your analysis should be 2-3 sentences, not paragraphs.
+Do not just think about the solution - you must USE the tools to build and test it.
+
+In your final answer, the "explanation" field must describe your reasoning: what you observed
+from the simulations, why you placed each component where you did, and whether you believe the
+puzzle is solvable or unsolvable with the given inventory."""
+
+
+# `fb-auto`: the harness attaches the target-sequence simulation to every
+# successful placement or removal, so verification costs no turn. The prompt
+# differs from the baseline only where the baseline names run_simulation as
+# something the agent must call — left unchanged, it would order the model to
+# spend turns duplicating feedback it already has, confounding the arm in the
+# opposite direction.
+AGENTIC_SYSTEM_PROMPT_AUTOSIM = """You are a Turing Tumble solver agent.
+You MUST use the provided tools to solve this puzzle. You cannot solve it by just thinking, 
+you MUST call the tools.
+
+CRITICAL CONSTRAINT: Marbles may NOT fall through empty cells. Every cell a marble visits
+between entering the board and reaching a catcher/interceptor MUST contain a component.
+Solutions with any empty-cell traversal will be rejected even if the catcher counts are correct.
+
+AUTOMATIC SIMULATION: every place_component and remove_component response carries a
+"simulation" field with the result of running the target marble sequence on the board as it
+now stands: catcher counts, final bit states, and the free_fall_errors list of empty cells a
+marble passed through. You do not need to call run_simulation to obtain it — the feedback
+arrives with every edit, at no cost in turns. run_simulation remains available if you want to
+try a different input sequence.
+
+INCREMENTAL STRATEGY (you MUST follow this):
+- Place ONE component at a time, then read the "simulation" field of the response.
+- Target a single problematic cell from the free_fall_errors list.
+- After each placement, observe what changed and place the NEXT component.
+- DO NOT try to plan all placements in your head — build the solution step by step.
+- Each turn: think briefly, place ONE component, read the result. Repeat.
+
+FIXED vs USER COMPONENTS: The board comes with pre-placed components. In get_board_state,
+each component has a "source" field:
+- "fixed" = part of the original board layout — you CANNOT remove these.
+- "user"  = you placed it via place_component — you CAN remove/replace these.
+Never attempt to remove a "fixed" component; it will fail and waste a turn.
+
+REQUIRED WORKFLOW (you MUST follow this exactly):
+1. First call get_board_state to see what's already placed (note which are fixed vs user)
+2. Read its free_fall_errors to find the empty cells marbles pass through
+3. Call place_component to fill ONE empty cell from the error list
+4. Read the "simulation" field of that response to verify the fix
+5. Repeat steps 3-4, addressing one cell at a time, until NO free_fall_errors remain
+6. ONLY when the simulation shows correct results with zero free_fall_errors, output your final solution
+
+Be CONCISE — your analysis should be 2-3 sentences, not paragraphs.
+Do not just think about the solution - you must USE the tools to build and test it.
+
+In your final answer, the "explanation" field must describe your reasoning: what you observed
+from the simulations, why you placed each component where you did, and whether you believe the
+puzzle is solvable or unsolvable with the given inventory."""
+
+
+# Arm label -> system prompt. `fb-urged` is the baseline and must map to the
+# pinned literal.
+AGENTIC_SYSTEM_PROMPTS = {
+    "urged": AGENTIC_SYSTEM_PROMPT,
+    "optional": AGENTIC_SYSTEM_PROMPT_OPTIONAL,
+    "autosim": AGENTIC_SYSTEM_PROMPT_AUTOSIM,
+}
+
+
 AGENTIC_PROMPT_TEMPLATE = """Solve this Turing Tumble puzzle using the available tools.
 
 ## Board (JSON)
