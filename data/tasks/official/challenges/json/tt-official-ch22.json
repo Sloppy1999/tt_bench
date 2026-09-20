@@ -3,116 +3,95 @@
   "challenge_number": 22,
   "tier": 3,
   "title": "Depletion",
-  "objective": "Register A starts at 15. Substract the number of blue balls from the register. (Use 15 or less balls)",
+  "objective": "Register A starts at 15. Subtract the number of blue balls from the register. (Use 15 or less balls.)",
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 0,
-        "state": 0
+        "state": 1
       },
       {
         "type": "ramp_left",
-        "x": 1,
+        "x": 2,
         "y": 1
       },
       {
         "type": "ramp_left",
-        "x": 3,
+        "x": 4,
         "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 2
       },
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 2,
-        "state": 0
+        "state": 1
       },
       {
         "type": "ramp_left",
-        "x": 1,
+        "x": 2,
         "y": 3
       },
       {
         "type": "ramp_left",
-        "x": 3,
+        "x": 4,
         "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 4
       },
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 4,
-        "state": 0
+        "state": 1
       },
       {
         "type": "ramp_left",
-        "x": 1,
+        "x": 2,
         "y": 5
       },
       {
         "type": "ramp_left",
-        "x": 3,
+        "x": 4,
         "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 6
       },
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 6,
-        "state": 0
+        "state": 1
       },
       {
         "type": "ramp_left",
-        "x": 1,
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
         "y": 7
       },
       {
         "type": "ramp_left",
         "x": 3,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
         "y": 8
       },
       {
         "type": "ramp_left",
         "x": 2,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
         "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
-        "count": 8
+        "count": 15
       },
       "red": {
         "x": 8,
-        "y": -1,
-        "count": 8
+        "count": 0
       }
     },
     "trigger_levers": {
@@ -127,7 +106,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 0,
+    "ramp_right": 4,
     "ramp_left": 0,
     "crossover": 0,
     "bit": 0,
@@ -137,24 +116,109 @@
     "trigger": 0
   },
   "solution": {
-    "placed_components": [],
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 2
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 8
+      }
+    ],
     "explanation": "",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": []
+    "verified": true,
+    "position_verified": true
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+  "expected_output": {},
+  "registers": {
+    "A": [
+      "bit_3_6",
+      "bit_3_4",
+      "bit_3_2",
+      "bit_3_0"
+    ]
+  },
+  "trials": [
+    {
+      "name": "x1",
+      "hoppers": {
+        "blue": 1,
+        "red": 0
+      },
+      "input_sequence": [
+        "blue"
+      ],
+      "expect": {
+        "registers": {
+          "A": 14
+        }
+      }
+    },
+    {
+      "name": "x4",
+      "hoppers": {
+        "blue": 4,
+        "red": 0
+      },
+      "input_sequence": [
+        "blue"
+      ],
+      "expect": {
+        "registers": {
+          "A": 11
+        }
+      }
+    },
+    {
+      "name": "x10",
+      "hoppers": {
+        "blue": 10,
+        "red": 0
+      },
+      "input_sequence": [
+        "blue"
+      ],
+      "expect": {
+        "registers": {
+          "A": 5
+        }
+      }
+    },
+    {
+      "name": "x15",
+      "hoppers": {
+        "blue": 15,
+        "red": 0
+      },
+      "input_sequence": [
+        "blue"
+      ],
+      "expect": {
+        "registers": {
+          "A": 0
+        }
+      }
+    }
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 87,
+    "checked": "simulation reproduces all 4 rows of the guide's register table, reading the column with top-is-ones"
   }
 }

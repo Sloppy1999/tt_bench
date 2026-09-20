@@ -160,7 +160,13 @@ def objective_target(objective: str) -> list[str] | None:
     colour = "red" if "red ball" in text else "blue"
 
     # "Let only N <colour> balls reach the bottom/end ... intercept the (N+1)th"
-    m = re.search(r"let (?:only )?(\w+) (?:blue |red )?balls? reach the (?:bottom|end)", text)
+    # "Let exactly 4 blue balls reach the end. (Intercept the 5th.)" -- challenge
+    # 23 drops the word "ball" after the ordinal, so the fallback below cannot
+    # read it and the count has to come from here, past the adverb.
+    m = re.search(
+        r"let (?:only |exactly )*(\w+) (?:blue |red )?balls? reach the (?:bottom|end)",
+        text,
+    )
     if m:
         n = _count(m.group(1))
         if n is not None:
@@ -173,6 +179,121 @@ def objective_target(objective: str) -> list[str] | None:
         if n is not None and n >= 1:
             return [colour] * (n - 1) + ["intercepted"]
     return None
+
+
+def guide_examples(page_no: int) -> list[tuple[int, int]] | None:
+    """The guide's printed ``x<balls> => A = <value>`` table, if it prints one.
+
+    Challenges 21 and 22 state their goal as a worked table rather than a ball
+    strip: "x5 => A = 5", "x 14 => A = 14". Each row is one trial, so the table
+    is the ground truth a register board is scored against. Challenge 30 prints
+    its examples as register drawings and yields nothing here, which is the
+    honest answer -- a guessed table would score a board against fiction.
+    """
+    text = subprocess.run(
+        ["pdftotext", "-layout", "-f", str(page_no), "-l", str(page_no),
+         str(GUIDE), "-"], capture_output=True, text=True).stdout
+    pairs = [
+        (int(balls), int(value))
+        for balls, value in re.findall(r"x\s*(\d+)\s*=>\s*A\s*=\s*(\d+)", text)
+    ]
+    # Sorted and de-duplicated so the trial order does not depend on how the
+    # two columns happen to be laid out on the page.
+    unique = sorted(set(pairs))
+    return unique or None
+
+
+def overflow_goal(objective: str) -> int | None:
+    """The threshold in "count the blue balls ... if there are more than N".
+
+    Challenge 30 draws its examples as register pictures, so the text is the
+    only ground truth -- but it is a complete one: the count goes into the
+    register, and the flag flips once the count passes N.
+    """
+    text = " ".join((objective or "").split()).lower()
+    if "register" not in text or "more than" not in text:
+        return None
+    if not re.search(r"gear bit \w+ must fl", text):
+        return None
+    m = re.search(r"more than (\d+)", text)
+    return int(m.group(1)) if m else None
+
+
+def overflow_examples(page_no: int) -> list[int]:
+    """The ball counts the guide works through, as "x7 =>", "x 15 =>".
+
+    Only counts followed by an arrow are examples; the available-parts column
+    prints bare counts on the same page and must not be mistaken for one.
+    """
+    text = subprocess.run(
+        ["pdftotext", "-layout", "-f", str(page_no), "-l", str(page_no),
+         str(GUIDE), "-"], capture_output=True, text=True).stdout
+    return sorted({int(n) for n in re.findall(r"x\s*(\d+)\s*=>", text)})
+
+
+def reversal_goal(objective: str) -> int | None:
+    """How many starting bits a "reverse each bit" objective covers.
+
+    "Reverse the direction of each of the 9 starting bits, regardless of the
+    direction they point to start" is quantified over every way those bits can
+    start, so the goal is a trial per starting configuration -- the drawn
+    examples add nothing the sentence does not already fix.
+    """
+    text = " ".join((objective or "").split()).lower()
+    if "reverse the direction" not in text or "regardless" not in text:
+        return None
+    m = re.search(r"each of the (\w+) starting bits", text)
+    if not m:
+        return None
+    return _count(m.group(1))
+
+
+def logic_goal(objective: str) -> tuple[str, bool] | None:
+    """A two-bit AND/OR goal that routes a ball to one of two interceptors.
+
+    Returns the operator and whether the named ("T") interceptor is the one
+    taken when the condition HOLDS. Which interceptor on the board is T is not
+    stated in the text -- the fit searches both and keeps the one that
+    reproduces the whole truth table.
+    """
+    text = " ".join((objective or "").split()).lower()
+    if "interceptor" not in text or "otherwise" not in text:
+        return None
+    if not re.search(r"start(?:s|ing)? pointed to the right", text):
+        return None
+    if " and " in text.split("start")[0] or "both bits" in text:
+        operator = "and"
+    elif " or " in text.split("start")[0]:
+        operator = "or"
+    else:
+        return None
+    return operator, True
+
+
+def starting_bits(fixed: list[dict]) -> list[dict]:
+    """The bits already on the board before the solver places anything."""
+    return sorted(
+        (c for c in fixed if c["type"] in ("bit", "gear_bit")),
+        key=lambda c: (c["y"], c["x"]),
+    )
+
+
+def register_column(components: list[dict]) -> list[dict] | None:
+    """The column of bits holding a register, read top to bottom.
+
+    A register is drawn as a vertical stack, unlike the labelled ROW that
+    ``labelled_bits`` finds for the "flip bits 2 and 5" objectives.
+    """
+    bits = [c for c in components if c["type"] in ("bit", "gear_bit")]
+    if len(bits) < 2:
+        return None
+    columns: dict[int, list[dict]] = {}
+    for bit in bits:
+        columns.setdefault(bit["x"], []).append(bit)
+    tallest = max(columns.values(), key=len)
+    if len(tallest) < 2:
+        return None
+    return sorted(tallest, key=lambda c: c["y"])
 
 
 def is_state_goal(objective: str) -> bool:
@@ -190,8 +311,36 @@ def guide_objective(page_no: int) -> str | None:
     text = subprocess.run(
         ["pdftotext", "-layout", "-f", str(page_no), "-l", str(page_no),
          str(GUIDE), "-"], capture_output=True, text=True).stdout
-    m = re.search(r"Objective:\s*(.+)", text)
-    return " ".join(m.group(1).split()) if m else None
+    # The objective wraps, and `.+` stopped at the first newline -- which cut
+    # challenge 27's goal at "regard-" and challenge 18's before it ever
+    # mentioned an interceptor, so anything reading the whole sentence saw
+    # nothing. Read on until the line runs out or the next section starts.
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        match = re.search(r"Objective:\s*(.*)", line)
+        if not match:
+            continue
+        parts = [match.group(1).strip()]
+        for following in lines[index + 1:]:
+            stripped = following.strip()
+            if not stripped or re.match(
+                r"(Examples?|Required output|Starting setup|Available parts)\b", stripped
+            ):
+                break
+            parts.append(stripped)
+        # pdftotext keeps the guide's hyphenation, so "intercep- tor" has to be
+        # rejoined rather than left as two words.
+        joined = ""
+        for part in parts:
+            joined = joined[:-1] + part if joined.endswith("-") else (joined + " " + part)
+        # The guide sets "flip" and "overflow" with an fl LIGATURE, so every
+        # pattern spelling them out plainly missed -- which is why objectives
+        # naming bits to flip looked like they named none.
+        for ligature, plain in (("ﬀ", "ff"), ("ﬁ", "fi"), ("ﬂ", "fl"),
+                                ("ﬃ", "ffi"), ("ﬄ", "ffl")):
+            joined = joined.replace(ligature, plain)
+        return " ".join(joined.split())
+    return None
 
 
 def labelled_bits(components: list[dict]) -> list[dict]:
@@ -403,6 +552,329 @@ def fit_configuration(original: dict, fixed: list[dict], placed: list[dict],
     return None
 
 
+def _finish(task: dict, objective: str, page: int,
+            *, checked: str) -> tuple[dict | None, str]:
+    """Reject a puzzle that needs none of its parts, then stamp provenance."""
+    stripped = deepcopy(task)
+    stripped["solution"]["placed_components"] = []
+    try:
+        if verify_task(stripped):
+            return None, "puzzle solves itself without the placed parts"
+    except Exception:
+        pass
+
+    task["objective"] = objective
+    task["solution"]["verified"] = True
+    task["solution"]["position_verified"] = True
+    task["provenance"] = {
+        "board": "transcribed from practice-guide-2021.pdf",
+        "page": page,
+        "checked": checked,
+    }
+    return task, "OK"
+
+
+def fit_register(original: dict, fixed: list[dict], placed: list[dict],
+                 examples: list[tuple[int, int]]) -> tuple[dict | None, str]:
+    """Find the setup under which the board reproduces the guide's whole table.
+
+    The same search as fit_configuration, against the trial table instead of one
+    printed strip, and over one extra unknown: the guide draws the register as a
+    column without saying which end is the ones place, so both readings are
+    tried and the one that reproduces EVERY example is the order the board
+    actually uses. A table of four rows is a strong check -- an accidental fit
+    would have to agree on all of them.
+
+    A counter feeds itself through the trigger lever, so a trial varies the
+    hopper load rather than the input sequence: one marble is released and the
+    board pulls the rest down on its own.
+    """
+    column = register_column(fixed + placed)
+    if column is None:
+        return None, ""
+    keys = [f'{c["type"]}_{c["x"]}_{c["y"]}' for c in column]
+    most = max(balls for balls, _ in examples)
+
+    placements = sorted(
+        ((lx, rx) for lx in range(GRID) for rx in range(GRID) if lx < rx),
+        key=lambda p: abs(p[0] - 2) + abs(p[1] - 8),
+    )
+    orders = (("top-is-ones", list(reversed(keys))), ("top-is-highest", keys))
+
+    for entry in ("inward", "column"):
+        for left_x, right_x in placements:
+            for reading, order in orders:
+                task = _task(original, fixed, placed, entry=entry,
+                             left_x=left_x, right_x=right_x, first="blue",
+                             target=["blue"], counts=(most, 0))
+                # A register goal has no printed strip. Leaving the single-run
+                # targets in place would score the board against a second,
+                # unrelated contract that nothing in the guide asks for.
+                task.pop("required_output", None)
+                task["expected_output"] = {}
+                task["solution"].pop("final_marble_state", None)
+                task["registers"] = {"A": order}
+                task["trials"] = [
+                    {
+                        "name": f"x{balls}",
+                        "hoppers": {"blue": balls, "red": 0},
+                        "input_sequence": ["blue"],
+                        "expect": {"registers": {"A": value}},
+                    }
+                    for balls, value in examples
+                ]
+                try:
+                    if verify_task(task):
+                        return task, reading
+                except Exception:
+                    continue
+    return None, ""
+
+
+def _lever_placements() -> list[tuple[int, int]]:
+    return sorted(
+        ((lx, rx) for lx in range(GRID) for rx in range(GRID) if lx < rx),
+        key=lambda p: abs(p[0] - 2) + abs(p[1] - 8),
+    )
+
+
+def fit_reversal(original: dict, fixed: list[dict], placed: list[dict],
+                 how_many: int, counts: tuple[int, int]) -> dict | None:
+    """Find the setup under which every starting configuration is reversed.
+
+    The goal quantifies over starting configurations, so the trial table is the
+    full truth table: 2^n rows, each pointing the starting bits one way and
+    requiring all of them to end pointing the other. Bits the SOLUTION adds are
+    left unconstrained -- the objective speaks only of the starting bits.
+    """
+    bits = starting_bits(fixed)
+    if len(bits) != how_many:
+        return None
+    keys = [f'{c["type"]}_{c["x"]}_{c["y"]}' for c in bits]
+
+    trials = []
+    for mask in range(2 ** len(keys)):
+        start = {k: (mask >> i) & 1 for i, k in enumerate(keys)}
+        trials.append({
+            "name": "".join(str(start[k]) for k in keys),
+            "initial_bit_states": start,
+            "expect": {"final_bit_states": {k: 1 - v for k, v in start.items()}},
+        })
+
+    for entry in ("inward", "column"):
+        for first in ("blue", "red"):
+            for left_x, right_x in _lever_placements():
+                task = _task(original, fixed, placed, entry=entry,
+                             left_x=left_x, right_x=right_x, first=first,
+                             target=["blue"], counts=counts)
+                task.pop("required_output", None)
+                task["expected_output"] = {}
+                task["solution"].pop("final_marble_state", None)
+                task["trials"] = trials
+                try:
+                    if verify_task(task):
+                        return task
+                except Exception:
+                    continue
+    return None
+
+
+def fit_overflow(original: dict, fixed: list[dict], placed: list[dict],
+                 threshold: int, examples: list[int]) -> tuple[dict | None, str]:
+    """Find the setup reproducing a counter-with-overflow-flag table.
+
+    Two things are asserted per example count: the register holds the count
+    (modulo its width, which is what a counter of that width can hold), and the
+    flag gear bit is right exactly when the count passed the threshold. The flag
+    is a latch of meshed gear bits, so naming them all states the goal without
+    having to work out which one the guide labels OV.
+    """
+    column = register_column(fixed + placed)
+    flags = sorted((c["x"], c["y"]) for c in fixed + placed if c["type"] == "gear_bit")
+    if column is None or not flags or not examples:
+        return None, ""
+    keys = [f'{c["type"]}_{c["x"]}_{c["y"]}' for c in column]
+    flag_keys = [f"gear_bit_{x}_{y}" for x, y in flags]
+    modulus = 2 ** len(keys)
+    most = max(examples)
+
+    orders = (("top-is-ones", list(reversed(keys))), ("top-is-highest", keys))
+    for entry in ("inward", "column"):
+        for left_x, right_x in _lever_placements():
+            for reading, order in orders:
+                task = _task(original, fixed, placed, entry=entry,
+                             left_x=left_x, right_x=right_x, first="blue",
+                             target=["blue"], counts=(most, 0))
+                task.pop("required_output", None)
+                task["expected_output"] = {}
+                task["solution"].pop("final_marble_state", None)
+                task["registers"] = {"A": order}
+                task["trials"] = [
+                    {
+                        "name": f"x{n}",
+                        "hoppers": {"blue": n, "red": 0},
+                        "input_sequence": ["blue"],
+                        "expect": {
+                            "registers": {"A": n % modulus},
+                            "final_bit_states": {
+                                k: (1 if n > threshold else 0) for k in flag_keys
+                            },
+                        },
+                    }
+                    for n in examples
+                ]
+                try:
+                    if verify_task(task):
+                        return task, reading
+                except Exception:
+                    continue
+    return None, ""
+
+
+def fit_bit_states(original: dict, fixed: list[dict], solution_states: dict,
+                   target: list[str], objective: str,
+                   counts: tuple[int, int]) -> dict | None:
+    """The solution is which way the fixed bits start, not a part to place.
+
+    Challenge 23's family draws the SAME board on both pages and differs only in
+    the direction of three bits: the puzzle is to choose where the counter
+    starts so the interceptor fires on the right ball. The guide leaves those
+    bits undirected in the starting setup, so the board declares them editable
+    and the solution is their states.
+
+    The starting direction written into fixed_components is a placeholder the
+    guide does not supply, so it is chosen to be a configuration that does NOT
+    already meet the goal. Otherwise practice puzzle A -- whose answer is "all
+    bits left" -- would ship already solved.
+    """
+    positions = sorted(solution_states)
+    keys = [(x, y) for x, y in positions]
+    placed = [{"type": "bit", "x": x, "y": y, "state": solution_states[(x, y)]}
+              for x, y in keys]
+
+    def build(entry, left_x, right_x, first, default):
+        task = deepcopy(original)
+        fixed_now = []
+        for comp in deepcopy(fixed):
+            if (comp["x"], comp["y"]) in solution_states:
+                comp["state"] = default[(comp["x"], comp["y"])]
+            fixed_now.append(comp)
+        task["board"] = {
+            "width": GRID,
+            "height": GRID,
+            "hopper_entry_mode": entry,
+            "fixed_components": fixed_now,
+            "ball_hoppers": {"blue": {"x": 2, "count": counts[0]},
+                             "red": {"x": 8, "count": counts[1]}},
+            "trigger_levers": {"left": {"x": left_x, "y": GRID},
+                               "right": {"x": right_x, "y": GRID}},
+            "editable_bit_states": [[x, y] for x, y in keys],
+        }
+        # Nothing is placed, so nothing is spent: the whole decision is which
+        # way the bits point.
+        task["available_parts"] = {t: 0 for t in ALL_PART_TYPES}
+        task.setdefault("solution", {})
+        task["solution"]["placed_components"] = deepcopy(placed)
+        task["input_sequence"] = [first]
+        task.pop("required_output", None)
+        task["expected_output"] = {}
+        task["solution"]["final_marble_state"] = list(target)
+        return task
+
+    defaults = []
+    for mask in range(2 ** len(keys)):
+        defaults.append({pos: (mask >> i) & 1 for i, pos in enumerate(keys)})
+    # Prefer all-left, so the placeholder is the plainest board that works.
+    defaults.sort(key=lambda d: sum(d.values()))
+
+    for entry in ("inward", "column"):
+        for first in ("blue", "red"):
+            for left_x, right_x in _lever_placements():
+                for default in defaults:
+                    if default == solution_states:
+                        continue
+                    task = build(entry, left_x, right_x, first, default)
+                    try:
+                        board = Board.from_task_dict(task)
+                        results = board.run(task["input_sequence"])
+                    except Exception:
+                        continue
+                    if not matches_printed(ball_colours(results), target, objective):
+                        continue
+                    task["solution"]["final_marble_state"] = catcher_colours(results)
+                    task["required_output"] = ball_colours(results)
+                    task["expected_output"] = {
+                        "left_catcher": sum(1 for r in results if r.caught_by == "left_catcher"),
+                        "right_catcher": sum(1 for r in results if r.caught_by == "right_catcher"),
+                        "intercepted": sum(1 for r in results if r.caught_by == "interceptor"),
+                    }
+                    try:
+                        if not verify_task(task):
+                            continue
+                        # The placeholder must not already be an answer.
+                        undecided = deepcopy(task)
+                        undecided["solution"]["placed_components"] = []
+                        if verify_task(undecided):
+                            continue
+                    except Exception:
+                        continue
+                    return task
+    return None
+
+
+def fit_logic(original: dict, fixed: list[dict], placed: list[dict],
+              operator: str, counts: tuple[int, int]) -> tuple[dict | None, str]:
+    """Find the setup reproducing a two-bit AND/OR truth table.
+
+    Two unknowns are searched together: the usual catcher setup, and which of
+    the board's two interceptors the guide labels T. A four-row table pins both
+    -- three of its rows take the "otherwise" branch, so an assignment that
+    merely fits one row cannot survive.
+    """
+    bits = starting_bits(fixed)
+    interceptors = sorted(
+        ((c["x"], c["y"]) for c in fixed + placed if c["type"] == "interceptor")
+    )
+    if len(bits) != 2 or len(interceptors) != 2:
+        return None, ""
+    keys = [f'{c["type"]}_{c["x"]}_{c["y"]}' for c in bits]
+
+    def table(true_at, false_at):
+        rows = []
+        for mask in range(4):
+            start = {k: (mask >> i) & 1 for i, k in enumerate(keys)}
+            values = list(start.values())
+            holds = all(values) if operator == "and" else any(values)
+            rows.append({
+                "name": "".join(str(start[k]) for k in keys),
+                "hoppers": {"blue": 1, "red": 1},
+                "initial_bit_states": start,
+                "expect": {"intercepted_at": list(true_at if holds else false_at)},
+            })
+        return rows
+
+    for entry in ("inward", "column"):
+        for first in ("blue", "red"):
+            for left_x, right_x in _lever_placements():
+                for label, (true_at, false_at) in (
+                    ("T=" + str(interceptors[0]), (interceptors[0], interceptors[1])),
+                    ("T=" + str(interceptors[1]), (interceptors[1], interceptors[0])),
+                ):
+                    task = _task(original, fixed, placed, entry=entry,
+                                 left_x=left_x, right_x=right_x, first=first,
+                                 target=["blue"], counts=counts)
+                    task.pop("required_output", None)
+                    task["expected_output"] = {}
+                    task["solution"].pop("final_marble_state", None)
+                    task["trials"] = table(true_at, false_at)
+                    try:
+                        if verify_task(task):
+                            return task, label
+                    except Exception:
+                        continue
+    return None, ""
+
+
 def transcribe(stem: str, page: int, cache: Path, templates) -> tuple[dict | None, str]:
     path = CHALLENGE_DIR / f"{stem}.json"
     if not path.exists():
@@ -422,13 +894,84 @@ def transcribe(stem: str, page: int, cache: Path, templates) -> tuple[dict | Non
     setup_keys = {(p.type, p.x, p.y) for p in setup}
     fixed = [p.to_dict() for p in setup]
     placed = [p.to_dict() for p in whole if (p.type, p.x, p.y) not in setup_keys]
+
+    objective_early = guide_objective(page) or original.get("objective", "")
     if not placed:
+        # Same parts on both pages: the solution is not a part but the DIRECTION
+        # the drawn bits start in, which the key (type, x, y) deliberately
+        # ignores. Challenge 23's family is decided entirely this way.
+        setup_states = {(p.x, p.y): p.to_dict().get("state") for p in setup
+                        if p.type in ("bit", "gear_bit")}
+        solution_states = {(p.x, p.y): p.to_dict().get("state") for p in whole
+                           if p.type in ("bit", "gear_bit")}
+        undirected = [pos for pos, state in setup_states.items() if state is None]
+        decided = {pos: state for pos, state in solution_states.items()
+                   if state is not None and pos in setup_states}
+        target = objective_target(objective_early)
+        if undirected and len(decided) == len(setup_states) and target:
+            task = fit_bit_states(original, fixed, decided, target,
+                                  objective_early, counts)
+            if task is None:
+                return None, "no setup reproduces the target from those bit states"
+            return _finish(task, objective_early, page, checked=(
+                "simulation reproduces the guide's stated output once the "
+                f"{len(decided)} editable bits start as the solution page draws them"
+            ))
         return None, "no parts to place"
 
     # An interception objective is the more precise of the two: the printed ball
     # strip shows only the balls that reach the bottom, not the one caught.
     # The guide's own wording is authoritative for the goal.
     objective = guide_objective(page) or original.get("objective", "")
+
+    # A printed "x5 => A = 5" table is the whole goal, and it is scored over
+    # several runs, so it short-circuits the single-strip search below.
+    examples = guide_examples(page)
+    if examples:
+        task, reading = fit_register(original, fixed, placed, examples)
+        if task is None:
+            return None, f"no setup reproduces the {len(examples)}-row register table"
+        return _finish(task, objective, page, checked=(
+            f"simulation reproduces all {len(examples)} rows of the guide's "
+            f"register table, reading the column with {reading}"
+        ))
+
+    # "Reverse each starting bit, regardless of how it starts" and the two-bit
+    # AND/OR routings are both quantified over starting configurations, so the
+    # trial table is the goal and the single-strip search below cannot state it.
+    # Checked before the state-goal path below, which would otherwise accept
+    # whatever this board happens to do on one run as its target.
+    threshold = overflow_goal(objective)
+    if threshold is not None:
+        examples = overflow_examples(page)
+        task, reading = fit_overflow(original, fixed, placed, threshold, examples)
+        if task is None:
+            return None, f"no setup reproduces the overflow table for {examples}"
+        return _finish(task, objective, page, checked=(
+            f"simulation counts into the register and raises the flag past "
+            f"{threshold} for every worked count {examples}, "
+            f"reading the column with {reading}"
+        ))
+
+    how_many = reversal_goal(objective)
+    if how_many:
+        task = fit_reversal(original, fixed, placed, how_many, counts)
+        if task is None:
+            return None, f"no setup reverses all {2 ** how_many} starting configurations"
+        return _finish(task, objective, page, checked=(
+            f"simulation reverses the {how_many} starting bits from every one "
+            f"of their {2 ** how_many} starting configurations"
+        ))
+
+    logic = logic_goal(objective)
+    if logic:
+        task, label = fit_logic(original, fixed, placed, logic[0], counts)
+        if task is None:
+            return None, f"no setup reproduces the two-bit {logic[0].upper()} table"
+        return _finish(task, objective, page, checked=(
+            f"simulation reproduces all four rows of the {logic[0].upper()} "
+            f"truth table, with {label}"
+        ))
 
     candidates: list[tuple[list[str], str | None]] = []
     from_objective = objective_target(objective)
@@ -449,7 +992,8 @@ def transcribe(stem: str, page: int, cache: Path, templates) -> tuple[dict | Non
 
     # A bit drawn with arrows both ways has no start state in the guide, so try
     # each possibility and keep the one that satisfies the challenge.
-    open_bits = [c for c in fixed + placed if c["type"] == "bit" and c.get("state") is None]
+    open_bits = [c for c in fixed + placed
+                 if c["type"] in ("bit", "gear_bit") and c.get("state") is None]
     assignments = [dict()]
     for comp in open_bits:
         assignments = [{**a, (comp["x"], comp["y"]): v} for a in assignments for v in (0, 1)]
@@ -472,27 +1016,11 @@ def transcribe(stem: str, page: int, cache: Path, templates) -> tuple[dict | Non
             f"intercepting a {w} ball" if w else f"{len(t)} balls" for t, w in candidates)
         return None, f"no setup reproduces {shapes}"
 
-    stripped = deepcopy(task)
-    stripped["solution"]["placed_components"] = []
-    try:
-        if verify_task(stripped):
-            return None, "puzzle solves itself without the placed parts"
-    except Exception:
-        pass
-
-    task["objective"] = objective
-    task["solution"]["verified"] = True
-    task["solution"]["position_verified"] = True
-    task["provenance"] = {
-        "board": "transcribed from practice-guide-2021.pdf",
-        "page": page,
-        "checked": (
-            "simulation leaves the bits the objective names pointing right"
-            if state_goal else
-            "simulation reproduces the guide's printed required output"
-        ),
-    }
-    return task, "OK"
+    return _finish(task, objective, page, checked=(
+        "simulation leaves the bits the objective names pointing right"
+        if state_goal else
+        "simulation reproduces the guide's printed required output"
+    ))
 
 
 def main() -> None:
@@ -517,8 +1045,12 @@ def main() -> None:
         done += 1
         n_fixed = len(task["board"]["fixed_components"])
         n_placed = len(task["solution"]["placed_components"])
+        if task.get("trials"):
+            shape = f"{len(task['trials'])} trials"
+        else:
+            shape = f"output={len(task['solution']['final_marble_state'])} balls"
         print(f"  {stem:24s} page {page:3d}  OK  fixed={n_fixed:2d} place={n_placed:2d} "
-              f"output={len(task['solution']['final_marble_state'])} balls")
+              f"{shape}")
         if args.write:
             (CHALLENGE_DIR / f"{stem}.json").write_text(json.dumps(task, indent=2) + "\n")
 

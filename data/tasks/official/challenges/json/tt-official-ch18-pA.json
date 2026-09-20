@@ -7,27 +7,51 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
-        "type": "interceptor",
-        "x": 8,
+        "type": "ramp_right",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 4,
         "y": 3
       },
       {
+        "type": "bit",
+        "x": 3,
+        "y": 4
+      },
+      {
         "type": "interceptor",
-        "x": 8,
-        "y": 7
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "interceptor",
+        "x": 5,
+        "y": 6
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -43,8 +67,8 @@
     }
   },
   "available_parts": {
-    "ramp_right": 3,
-    "ramp_left": 0,
+    "ramp_right": 1,
+    "ramp_left": 1,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -55,40 +79,97 @@
   "solution": {
     "placed_components": [
       {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 5,
-        "y": 3
+        "y": 4
       },
       {
         "type": "ramp_right",
-        "x": 7,
-        "y": 3
+        "x": 4,
+        "y": 5
       }
     ],
     "explanation": "When both bits point right, it's a straight shot to interceptor T. Your job is to add ramps to get the ball to interceptor F when either one of the bits start pointed left.",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": [
-      "blue"
-    ]
+    "verified": true,
+    "position_verified": true
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+  "expected_output": {},
+  "trials": [
+    {
+      "name": "00",
+      "hoppers": {
+        "blue": 1,
+        "red": 1
+      },
+      "initial_bit_states": {
+        "bit_4_3": 0,
+        "bit_3_4": 0
+      },
+      "expect": {
+        "intercepted_at": [
+          5,
+          6
+        ]
+      }
+    },
+    {
+      "name": "10",
+      "hoppers": {
+        "blue": 1,
+        "red": 1
+      },
+      "initial_bit_states": {
+        "bit_4_3": 1,
+        "bit_3_4": 0
+      },
+      "expect": {
+        "intercepted_at": [
+          5,
+          6
+        ]
+      }
+    },
+    {
+      "name": "01",
+      "hoppers": {
+        "blue": 1,
+        "red": 1
+      },
+      "initial_bit_states": {
+        "bit_4_3": 0,
+        "bit_3_4": 1
+      },
+      "expect": {
+        "intercepted_at": [
+          5,
+          6
+        ]
+      }
+    },
+    {
+      "name": "11",
+      "hoppers": {
+        "blue": 1,
+        "red": 1
+      },
+      "initial_bit_states": {
+        "bit_4_3": 1,
+        "bit_3_4": 1
+      },
+      "expect": {
+        "intercepted_at": [
+          2,
+          5
+        ]
+      }
+    }
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 73,
+    "checked": "simulation reproduces all four rows of the AND truth table, with T=(2, 5)"
   }
 }

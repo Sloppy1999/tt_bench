@@ -30,6 +30,7 @@ from tt_bench.analytics import metrics as complexity_metrics
 from tt_bench.benchmark.prompts import (
     AGENTIC_PROMPT_TEMPLATE,
     AGENTIC_SYSTEM_PROMPT,
+    AGENTIC_SYSTEM_PROMPTS,
     COMPONENT_RULES,
     UNDERSTANDING_PROMPT_TEMPLATE,
     UNDERSTANDING_SYSTEM_PROMPT,
@@ -106,12 +107,45 @@ class TuringTumbleBenchmark:
         compute_complexity: bool = False,
         declare_zero_parts: bool = False,
         observable_inventory: bool = False,
+        auto_simulate: bool = False,
+        revision_style: str = "off",
+        revision_rounds: int = 0,
+        prompt_variant: str = "urged",
+        executor_factory=None,
     ):
         self.llm = llm_client
         # Ablation switches, both off by default so results stay comparable with
         # earlier runs. See --declare-zero-parts and --observable-inventory.
         self.declare_zero_parts = declare_zero_parts
         self.observable_inventory = observable_inventory
+        # Harness-ablation arms (HARNESS_ABLATION_PLAN.md). All default to the
+        # baseline, which is pinned by tests/test_harness_arms.py.
+        self.auto_simulate = auto_simulate
+        self.revision_style = revision_style
+        self.revision_rounds = revision_rounds
+        self.prompt_variant = prompt_variant
+        self.executor_factory = executor_factory or tool_executor_.create_executor_from_task
+
+        if prompt_variant not in AGENTIC_SYSTEM_PROMPTS:
+            raise ValueError(
+                f"Unknown prompt_variant {prompt_variant!r}; "
+                f"expected one of {sorted(AGENTIC_SYSTEM_PROMPTS)}"
+            )
+        if revision_style not in ("off", "retry", "structured"):
+            raise ValueError(
+                f"Unknown revision_style {revision_style!r}; "
+                "expected off, retry or structured"
+            )
+        # The revision hook lives in VLLMClient.generate_with_tools. Every other
+        # client absorbs the keyword into **kwargs and ignores it, which would
+        # run a revision arm as the baseline and report it under the arm's
+        # label. Fail here rather than after a 12-hour job.
+        if revision_style != "off" and not isinstance(self.llm, llm_client_.VLLMClient):
+            raise ValueError(
+                f"revision_style={revision_style!r} needs the vllm provider; "
+                f"{type(self.llm).__name__} ignores the revision hook and would "
+                "silently produce baseline results under an arm label."
+            )
         self.challenges_dir = challenges_dir
         self.output_dir = output_dir
         self.print_board = print_board
@@ -179,9 +213,11 @@ class TuringTumbleBenchmark:
             "solution": data.get("solution", {}),
             "expected_output": data.get("expected_output", {}),
             "required_output": data.get("required_output"),
+            "trials": data.get("trials"),
+            "registers": data.get("registers"),
             "input_sequence": data.get(
                 "input_sequence", ["blue"]
-            ),  
+            ),
         }
 
         return task_info, data
@@ -291,16 +327,17 @@ class TuringTumbleBenchmark:
             left_catcher_x=levers.get("left", {}).get("x"),
             right_catcher_x=levers.get("right", {}).get("x"),
         )
+        board.editable_bit_states = {tuple(p) for p in board_data.get('editable_bit_states', [])}
         for comp_dict in board_data.get("fixed_components", []):
             comp = tt_sim.Component.from_dict(comp_dict)
             board.place(comp.x, comp.y, comp)
         if include_solution:
             for comp_dict in task_info.get("solution", {}).get("placed_components", []):
                 comp = tt_sim.Component.from_dict(comp_dict)
-                board.place(comp.x, comp.y, comp)
+                board.place_solution_component(comp)
         for comp_dict in placements or []:
             comp = tt_sim.Component.from_dict(self._normalize_placement(comp_dict))
-            board.place(comp.x, comp.y, comp)
+            board.place_solution_component(comp)
         tt_sim.build_gear_connections(board)
         return board
 
@@ -332,6 +369,8 @@ class TuringTumbleBenchmark:
             lines = [f"  - {part}: {count}" for part, count in avail.items()]
         else:
             lines = [f"  - {part}: {count}" for part, count in avail.items() if count > 0]
+        if 'ramp' in avail:
+            lines.append('  ramp is a shared pool: ramp_left and ramp_right each consume one ramp.')
         return "\n".join(lines) if lines else "  (none)"
 
     def _print_board(
@@ -371,14 +410,100 @@ class TuringTumbleBenchmark:
     def build_agentic_prompt(self, task_info: Dict[str, Any]) -> str:
         """Build an agentic synthesis prompt with tools."""
         board = self._board_for_prompt(task_info, include_solution=False)
+        state_hint = ''
+        if board.editable_bit_states:
+            state_hint = ('\nChoose initial states for the fixed bits listed in editable_bit_states. '
+                          'Call place_component with the same bit type and coordinates to set its state; '
+                          'this consumes no part and does not move the fixed bit.')
         return AGENTIC_PROMPT_TEMPLATE.format(
             board_json=self._format_board_json(board),
             available_parts=self._format_available_parts(
                 task_info["available_parts"], getattr(self, "declare_zero_parts", False)
             ),
-            target_behavior=task_info["objective"],
+            target_behavior=task_info["objective"] + state_hint + self._format_trials(task_info),
             COMPONENT_RULES=COMPONENT_RULES,
         )
+
+    @staticmethod
+    def _format_trials(task_info: Dict[str, Any]) -> str:
+        """Render the trial table that a trial-scored goal is judged on.
+
+        The objective sentence alone cannot state it. "Count the blue balls in
+        register A" is scored over several runs with different ball counts, and
+        "reverse each bit regardless of how it starts" over several starting
+        configurations -- so the model has to be told which runs it will be
+        judged on, or the task is unanswerable rather than hard.
+        """
+        trials = task_info.get("trials") or []
+        if not trials:
+            return ""
+
+        def direction(state: int) -> str:
+            return "right" if state else "left"
+
+        lines = [
+            "",
+            "",
+            "This task is scored over several trials. Each one runs on a fresh board "
+            "with the hoppers loaded and the bits pointed as stated, and every trial "
+            "must pass. A board that trips its own trigger lever keeps running until "
+            "its hopper is empty, so the load sets how many balls a trial delivers.",
+        ]
+        for name, bits in (task_info.get("registers") or {}).items():
+            lines.append(
+                f"Register {name} is read from {', '.join(bits)} "
+                f"as a binary number, most significant bit first."
+            )
+        lines.append("")
+
+        for index, trial in enumerate(trials):
+            given = []
+            hoppers = trial.get("hoppers")
+            if hoppers:
+                given.append(
+                    "load " + ", ".join(f"{c} x{n}" for c, n in sorted(hoppers.items()))
+                )
+            sequence = trial.get("input_sequence", task_info.get("input_sequence"))
+            if sequence:
+                counts = Counter(sequence)
+                given.append(
+                    "release " + ", ".join(f"{n} x{c}" for n, c in sorted(counts.items()))
+                )
+            initial = trial.get("initial_bit_states") or {}
+            if initial:
+                given.append(
+                    "starting "
+                    + ", ".join(f"{k} {direction(v)}" for k, v in sorted(initial.items()))
+                )
+
+            expect = trial.get("expect") or {}
+            wanted = [
+                f"register {n} = {v}" for n, v in (expect.get("registers") or {}).items()
+            ]
+            wanted += [
+                f"{k} points {direction(v)}"
+                for k, v in (expect.get("final_bit_states") or {}).items()
+            ]
+            wanted += [
+                f"{f} = {expect[f]}"
+                for f in ("left_catcher", "right_catcher", "intercepted")
+                if f in expect
+            ]
+            if expect.get("intercepted_at"):
+                x, y = expect["intercepted_at"]
+                wanted.append(f"ball caught by the interceptor at ({x},{y})")
+            if expect.get('intercepted_colours'):
+                wanted.append('intercepted colours: ' + ', '.join(expect['intercepted_colours']))
+            if expect.get("required_output"):
+                wanted.append("output " + ", ".join(expect["required_output"]))
+            if expect.get("final_marble_state"):
+                wanted.append("catchers " + ", ".join(expect["final_marble_state"]))
+
+            lines.append(
+                f"  trial {trial.get('name', index)}: "
+                f"{'; '.join(given)} -> {'; '.join(wanted)}"
+            )
+        return "\n".join(lines)
 
     def _validate_available_parts(
         self,
@@ -396,7 +521,8 @@ class TuringTumbleBenchmark:
         reference = self._normalize_placements(
             task_info.get("solution", {}).get("placed_components", [])
         )
-        reference_used = Counter(p["type"] for p in reference)
+        from tt_bench.simulator.inventory import used_inventory
+        reference_used = used_inventory(reference, available, task_info.get('board'))
         reference_exceeds_inventory = any(
             count > available.get(component_type, 0)
             for component_type, count in reference_used.items()
@@ -404,7 +530,7 @@ class TuringTumbleBenchmark:
         if reference_exceeds_inventory:
             return True, "Inventory check skipped: reference solution exceeds declared inventory"
 
-        used = Counter(p["type"] for p in placements)
+        used = used_inventory(placements, available, task_info.get('board'))
         for component_type, count in used.items():
             allowed = available.get(component_type, 0)
             if count > allowed:
@@ -432,16 +558,32 @@ class TuringTumbleBenchmark:
                 colours.append("intercepted")
         return colours
 
-    @staticmethod
+    @classmethod
     def _detect_free_fall(
-        board: tt_sim.Board, results: List[tt_sim.MarbleResult]
+        cls, board: tt_sim.Board, results: List[tt_sim.MarbleResult]
     ) -> Tuple[bool, str]:
         """Detect illegal in-board movement through empty cells.
 
         The simulator can physically continue a marble through empty cells, but
         Turing Tumble puzzle solutions are only legal when a marble lands on a
         component at every in-board step after it enters from the hopper.
+
+        Reports the first offending cell only, which is what scoring needs.
+        ``_free_fall_cells`` shares the predicate and returns all of them, so the
+        revision critique cannot disagree with the rejection about what is legal.
         """
+        cells = cls._free_fall_cells(board, results)
+        if cells:
+            marble_idx, cell = cells[0]
+            return True, f"marble {marble_idx} traversed empty cell {cell}"
+        return False, ""
+
+    @staticmethod
+    def _free_fall_cells(
+        board: tt_sim.Board, results: List[tt_sim.MarbleResult]
+    ) -> List[Tuple[int, Tuple[int, int]]]:
+        """Every (marble index, cell) pair that traverses an empty in-board cell."""
+        offending: List[Tuple[int, Tuple[int, int]]] = []
         for marble_idx, result in enumerate(results, start=1):
             path = result.path or []
             for path_idx, curr in enumerate(path[1:], start=1):
@@ -466,8 +608,8 @@ class TuringTumbleBenchmark:
                     continue
 
                 if 0 <= x < board.cols and 0 <= y < board.rows and curr not in board.components:
-                    return True, f"marble {marble_idx} traversed empty cell {curr}"
-        return False, ""
+                    offending.append((marble_idx, tuple(curr)))
+        return offending
 
     def _validate_simulation_results(
         self,
@@ -514,6 +656,159 @@ class TuringTumbleBenchmark:
 
         except Exception as e:
             return False, f"Validation error: {e}"
+
+    # Harness arm `rev-retry`: the compute-matched control for rev-structured.
+    # It continues the loop on exactly the same trigger but says nothing
+    # task-specific, so rev-structured minus rev-retry isolates the grounded
+    # content of the critique from the mere fact of not stopping.
+    REVISION_RETRY_MESSAGE = (
+        "Your submitted solution was rejected. Try again."
+    )
+
+    # A 15x15 board with 8 marbles can free-fall through dozens of cells; naming
+    # all of them would crowd out the rest of the critique.
+    REVISION_MAX_FREE_FALL_CELLS = 12
+
+    def build_revision_critique(
+        self,
+        task_info: Dict[str, Any],
+        placements: List[Dict[str, Any]],
+    ) -> Optional[str]:
+        """Simulator-grounded diagnosis of a rejected solution, or None if valid.
+
+        Used by the `rev-structured` arm. The verdict and the headline reason come
+        from ``validate_synthesis`` itself rather than from a parallel set of
+        checks: a critique that described a different rule from the one that
+        rejected the answer would be feeding the model misinformation, and the
+        arm would measure that instead of structured revision.
+
+        ``placements`` must be the executor's board (``get_placed_components()``).
+        ``VLLMClient`` returns the final answer as ``{"content": "<raw text>"}``
+        and never parses a ``final_solution`` field, so validating a parsed
+        answer field would reject every vLLM submission regardless of content.
+        """
+        is_valid, reason = self.validate_synthesis(task_info, placements)
+        if is_valid:
+            return None
+
+        lines = [
+            "Your submitted solution was REJECTED by the scorer.",
+            f"Reason: {reason}",
+        ]
+
+        normalized = self._normalize_placements(placements)
+        try:
+            board = self._build_board(task_info, placements=normalized)
+            input_seq = self._normalize_input_sequence(
+                task_info.get("input_sequence", ["blue"])
+            )
+            results = board.run(input_seq)
+        except Exception as e:
+            lines.append(f"The board could not be simulated: {e}")
+            return "\n".join(lines)
+
+        # Group by unique cell, as the run_simulation tool already does: eight
+        # marbles down the same path are one gap to fill, not eight, and listing
+        # the repeat crowds out the rest of the critique.
+        by_cell: Dict[Tuple[int, int], int] = {}
+        for _marble, cell in self._free_fall_cells(board, results):
+            by_cell[cell] = by_cell.get(cell, 0) + 1
+        if by_cell:
+            ordered = sorted(by_cell.items())
+            shown = ordered[: self.REVISION_MAX_FREE_FALL_CELLS]
+            listed = ", ".join(
+                f"{cell} (traversed by {count} marble(s))" for cell, count in shown
+            )
+            omitted = len(ordered) - len(shown)
+            lines.append("")
+            lines.append(
+                f"Empty cells a marble traversed ({len(ordered)} distinct; every one "
+                f"must hold a component): {listed}"
+                + (f", and {omitted} more" if omitted else "")
+            )
+
+        counts = Counter(r.caught_by for r in results)
+        lines.append("")
+        lines.append("Observed for input_sequence " + json.dumps(input_seq) + ":")
+        lines.append(
+            f"  catchers: left={counts['left_catcher']} right={counts['right_catcher']} "
+            f"interceptor={counts['interceptor']}"
+        )
+        lines.append(
+            "  catcher sequence: "
+            + json.dumps(self._caught_colour_sequence(results))
+        )
+        lines.append("  final bit states: " + json.dumps(board.get_all_states()))
+
+        declared = {
+            "solution.final_marble_state": task_info.get("solution", {}).get(
+                "final_marble_state"
+            ),
+            "required_output": task_info.get("required_output"),
+            "expected_output": task_info.get("expected_output") or None,
+        }
+        stated = {k: v for k, v in declared.items() if v}
+        if stated:
+            lines.append("")
+            lines.append("Declared targets:")
+            for key, value in stated.items():
+                lines.append(f"  {key}: {json.dumps(value)}")
+
+        available = task_info.get("available_parts", {}) or {}
+        if available:
+            from tt_bench.simulator.inventory import used_inventory
+            used = used_inventory(normalized, available, task_info.get('board'))
+            remaining = {k: available[k] - used.get(k, 0) for k in sorted(available)}
+            lines.append("")
+            lines.append("Remaining inventory: " + json.dumps(remaining))
+
+        lines.append("")
+        lines.append(
+            "Components you have placed: "
+            + (json.dumps(normalized) if normalized else "none")
+        )
+        lines.append("")
+        lines.append(
+            "Fix the board with the tools, verify with run_simulation, and submit "
+            "again. Do not repeat the rejected solution."
+        )
+        return "\n".join(lines)
+
+    def _build_revision_hook(
+        self,
+        task_info: Dict[str, Any],
+        executor: "tool_executor_.TuringTumbleToolExecutor",
+        is_unsolvable: bool,
+    ) -> Tuple[Optional[Any], List[int]]:
+        """(callback, mutable round counter) for the revision arms, or (None, [0]).
+
+        Both arms fire on exactly the same trigger — a submitted answer that
+        ``build_revision_critique`` rejects — and differ only in the message.
+        That is what makes rev-structured minus rev-retry a measurement of the
+        critique's content rather than of when the loop continues.
+        """
+        counter = [0]
+        if self.revision_style == "off" or is_unsolvable:
+            # Undefined on unsolvable variants: there the correct answer is a
+            # refusal, and "fix the board and submit again" argues against it.
+            return None, counter
+
+        def hook(content: str) -> Optional[str]:
+            # A declared unsolvability is a different answer type, not a
+            # rejected board; scoring handles it separately.
+            if self._model_declares_unsolvable({"content": content}):
+                return None
+            critique = self.build_revision_critique(
+                task_info, executor.get_placed_components()
+            )
+            if critique is None:
+                return None
+            counter[0] += 1
+            if self.revision_style == "structured":
+                return critique
+            return self.REVISION_RETRY_MESSAGE
+
+        return hook, counter
 
     def _validate_against_expected(
         self, board: tt_sim.Board, expected: Dict[str, Any], task_info: Dict[str, Any]
@@ -733,7 +1028,7 @@ class TuringTumbleBenchmark:
             # Create tool executor with fixed components
             fixed = board_data.get("fixed_components", [])
             available_parts = task_info.get("available_parts", {})
-            executor = tool_executor_.create_executor_from_task(
+            executor = self.executor_factory(
                 board_data,
                 fixed,
                 available_parts=available_parts,
@@ -741,15 +1036,28 @@ class TuringTumbleBenchmark:
                     task_info.get("input_sequence", ["blue"])
                 ),
                 expose_inventory=getattr(self, "observable_inventory", False),
+                auto_simulate=self.auto_simulate,
                 target_final_state=task_info.get("solution", {}).get(
                     "final_marble_state"
                 ),
                 expected_output=task_info.get("expected_output", {}),
                 required_output=task_info.get("required_output"),
+                trials=task_info.get("trials"),
+                registers=task_info.get("registers"),
             )
 
             # Build prompt
             prompt = self.build_agentic_prompt(task_info)
+
+            # ── Determine if this is an unsolvable variant ──────────────────
+            # Read before the loop: the revision arms must not badger a model
+            # off a correct unsolvability declaration.
+            task_meta = raw_data.get("_meta", {}) if isinstance(raw_data, dict) else {}
+            is_unsolvable = task_meta.get("variant_type") == "unsolvable"
+
+            revision_hook, revision_counter = self._build_revision_hook(
+                task_info, executor, is_unsolvable
+            )
 
             # Run agent with tools
             final_result, error, tool_calls, tool_results, usage, turn_logprobs = self.llm.generate_with_tools(
@@ -759,18 +1067,31 @@ class TuringTumbleBenchmark:
                         board_data.get("width", 11),
                     ),
                     tool_executor=executor,
-                    system_prompt=AGENTIC_SYSTEM_PROMPT,
+                    system_prompt=AGENTIC_SYSTEM_PROMPTS[self.prompt_variant],
                     max_turns=self.max_turns,
                     max_tokens=self.max_tokens,
+                    **(
+                        {
+                            "on_final_answer": revision_hook,
+                            "revision_rounds": self.revision_rounds,
+                        }
+                        if revision_hook is not None
+                        else {}
+                    ),
                 )
-
-            # ── Determine if this is an unsolvable variant ──────────────────
-            task_meta = raw_data.get("_meta", {}) if isinstance(raw_data, dict) else {}
-            is_unsolvable = task_meta.get("variant_type") == "unsolvable"
 
             placed = executor.get_placed_components()
             solution_used = placed
             unsolvable_detected: Optional[bool] = None
+            # How a success was CREDITED (plan section 4.4). Only the first two
+            # mean the agent submitted a solution it believed in; `ceiling-valid`
+            # means the budget expired on a board that happened to validate, and
+            # `fallback` that the agent built a correct board and then removed
+            # it. An arm whose gain sits in the last two shifted scoring credit
+            # rather than capability, and cannot be inferred after the fact —
+            # the per-task record does not keep the executor's final board
+            # alongside the credited one.
+            credit_route: Optional[str] = None
 
             if is_unsolvable:
                 # For unsolvable tasks, success = model correctly declares
@@ -782,6 +1103,7 @@ class TuringTumbleBenchmark:
                 if declared_unsolvable:
                     is_valid = True
                     msg = "Correctly identified task as unsolvable"
+                    credit_route = "unsolvable-declared"
                 else:
                     is_valid = False
                     msg = "Model did not recognize task as unsolvable"
@@ -796,6 +1118,15 @@ class TuringTumbleBenchmark:
                 # exhausts its turn budget before emitting a final_solution.
                 if final_result or placed:
                     is_valid, msg = self.validate_synthesis(task_info, placed)
+                    if is_valid:
+                        if isinstance(final_result, dict) and final_result.get(
+                            "solution_found"
+                        ):
+                            credit_route = "early-stop"
+                        elif final_result is not None:
+                            credit_route = "submitted"
+                        else:
+                            credit_route = "ceiling-valid"
 
                 # Fall back to the best board state recorded during successful
                 # simulation runs — handles the case where the LLM places a
@@ -806,6 +1137,7 @@ class TuringTumbleBenchmark:
                         is_valid, msg = self.validate_synthesis(task_info, best)
                         if is_valid:
                             solution_used = best
+                            credit_route = "fallback"
 
             # Compute component-level accuracy against ground truth.
             # For unsolvable tasks where the model correctly refused, the
@@ -866,6 +1198,11 @@ class TuringTumbleBenchmark:
                     # analysis tooling uses for "this run generated nothing".
                     "turns": len(turn_logprobs) if turn_logprobs else len(tool_calls),
                     "turns_source": "api_calls" if turn_logprobs else "tool_calls",
+                    # Rejected answers fed back to the model. 0 under the
+                    # baseline; under a revision arm it separates tasks the arm
+                    # actually touched from those it never fired on.
+                    "revisions": revision_counter[0],
+                    "credit_route": credit_route,
                     "component_score": comp_score,
                     "component_correct": comp_correct,
                     "component_placed": comp_placed,
@@ -1332,6 +1669,19 @@ class TuringTumbleBenchmark:
                 "seed": getattr(self.llm.config, "seed", None),
                 "max_turns": self.max_turns,
             },
+            # Harness-ablation arm settings. Recorded here for the same reason
+            # the decoding configuration is: a directory name is not provenance,
+            # and an arm mislabelled by a stale environment variable is
+            # indistinguishable from a real effect once the run is over.
+            "harness": {
+                "prompt_variant": self.prompt_variant,
+                "auto_simulate": self.auto_simulate,
+                "revision_style": self.revision_style,
+                "revision_rounds": self.revision_rounds,
+                "declare_zero_parts": self.declare_zero_parts,
+                "observable_inventory": self.observable_inventory,
+                "max_tokens": self.max_tokens,
+            },
             "total_tasks": report.total_tasks,
             "successful": report.successful,
             "failed": report.failed,
@@ -1385,6 +1735,39 @@ def main():
         help="ABLATION: report the REMAINING inventory from get_board_state. By "
         "default it is declared once in the initial prompt and never again, so the "
         "agent must track consumption from memory across up to 25 turns.",
+    )
+    parser.add_argument(
+        "--auto-simulate",
+        action="store_true",
+        help="ARM fb-auto: attach the target-sequence simulation to every "
+        "successful placement or removal, so verifying costs the agent no turn. "
+        "Implies --prompt-variant autosim unless one is given explicitly.",
+    )
+    parser.add_argument(
+        "--prompt-variant",
+        choices=["urged", "optional", "autosim"],
+        default=None,
+        help="ARM fb-optional / fb-auto: agentic system prompt. 'urged' is the "
+        "baseline (simulation commanded but unenforced); 'optional' removes the "
+        "mandate; 'autosim' describes the injected feedback. Defaults to "
+        "'autosim' with --auto-simulate and 'urged' otherwise.",
+    )
+    parser.add_argument(
+        "--revision-style",
+        choices=["off", "retry", "structured"],
+        default="off",
+        help="ARM rev-retry / rev-structured: what to do when a submitted "
+        "solution fails scoring. 'off' ends the episode (baseline); 'retry' "
+        "says only that it was rejected; 'structured' returns the scorer's "
+        "reason plus the simulator state. Revisions draw on --max-turns. "
+        "Requires --provider vllm.",
+    )
+    parser.add_argument(
+        "--revision-rounds",
+        type=int,
+        default=3,
+        help="Maximum rejected answers fed back per task (default: 3). Only "
+        "meaningful with --revision-style.",
     )
     parser.add_argument(
         "--temperature",
@@ -1491,6 +1874,17 @@ def main():
         print_board=args.print_board,
         declare_zero_parts=args.declare_zero_parts,
         observable_inventory=args.observable_inventory,
+        auto_simulate=args.auto_simulate,
+        # --auto-simulate without a variant would leave the prompt ordering the
+        # model to call run_simulation after every placement, spending turns to
+        # re-derive feedback it already has — the arm would then measure that.
+        prompt_variant=(
+            args.prompt_variant
+            if args.prompt_variant is not None
+            else ("autosim" if args.auto_simulate else "urged")
+        ),
+        revision_style=args.revision_style,
+        revision_rounds=args.revision_rounds,
         max_turns=args.max_turns,
         max_tokens=args.max_tokens,
         compute_complexity=args.compute_complexity,

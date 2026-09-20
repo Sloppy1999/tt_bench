@@ -54,11 +54,16 @@ def board_status(challenge: dict) -> str:
             if prev[1] < 0 and y >= 0:
                 continue
             nxt = path[i + 1] if i + 1 < len(path) else None
+            # A marble leaves the bottom row wherever the last ramp drops it, and
+            # the catcher it counts for is decided by side, not by an exact column
+            # match. Requiring x to equal a catcher column condemned four boards
+            # that verify_task accepts; the marble having been caught at all is
+            # the condition that actually distinguishes an exit from a fall.
             if (
                 y == board.rows - 1
                 and nxt is not None
                 and nxt[1] >= board.rows
-                and x in (board.left_catcher_x, board.right_catcher_x)
+                and result.caught_by is not None
             ):
                 continue
             if 0 <= x < board.cols and 0 <= y < board.rows and curr not in board.components:
@@ -79,6 +84,14 @@ def board_status(challenge: dict) -> str:
 
 def target_status(challenge: dict) -> str:
     """Whether there is a complete output to score against."""
+    # A trial table is the whole target for a goal that one run cannot decide,
+    # and such a board carries no ball strip on purpose.
+    trials = challenge.get("trials")
+    if trials:
+        if any(not (t.get("expect") or {}) for t in trials):
+            return "placeholder"
+        return "OK"
+
     fms = challenge.get("solution", {}).get("final_marble_state")
     if not fms:
         expected = challenge.get("expected_output") or {}
