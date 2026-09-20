@@ -835,10 +835,12 @@ the roster.**
 
 ---
 
-## 13. Reconciling §1–9 with §10–12
+## 13. Reconciling §1–9 with §10–12 and §14
 
-§1–9 and §10–12 describe two different eras of this project, and their numbers
-should not be read as one continuous series without the following caveats.
+§1–9, §10–12 and §14 describe three different eras of this project, and their
+numbers should not be read as one continuous series without the following
+caveats. §14.1 states separately why its tier-1 and tier-2 columns do not match
+§11.2's cell for cell.
 
 **The corpus has grown.** §1–9's `scaled` set held 1 013 Tier-1 tasks;
 today's holds 1 397 for the same tier — a ~38 % increase from dataset generation
@@ -878,3 +880,287 @@ found by direct construction of a failing case (a board whose reference solution
 provably matches the guide's printed output and was still rejected) and confirmed
 by an independent audit process, not inferred statistically. Their fix is not
 something a future re-run could contradict.
+
+---
+
+## 14. All four tiers on the repaired official corpus
+
+### 14.1 What changed since §11
+
+§11 compared Tier 1 and Tier 2 because those were the only tiers whose boards
+verified. Tiers 3 and 4 were not withheld for lack of interest — they were
+unscoreable, and in a way that would have quietly produced a *wrong* answer to
+the question they exist to ask.
+
+**The failures were concentrated exactly where the difficulty was meant to be
+measured.** Applying §10's gate — the board runs, and it has a complete target
+to score against — to all 58 official boards:
+
+| Tier | Before | After | Boards scored in §14 |
+|---|---|---|---|
+| 1 | 10 / 11 | 10 / 11 | 11 |
+| 2 | 22 / 22 | 22 / 22 | 22 |
+| 3 | **4 / 10** | **8 / 10** | 8 |
+| 4 | **3 / 15** | **14 / 15** | 14 |
+| **Total** | **39 / 58** | **54 / 58** | **55** |
+
+Had §14 been run before this repair, tier 3 would have scored ~40 % of its
+boards and tier 4 ~80 % of its boards as automatic zeros for every model. The
+resulting "tiers 3 and 4 are much harder" would have been a measurement of
+corpus decay, not of capability — the precise confound this section exists to
+avoid.
+
+Three things account for the repair:
+
+- **An audit false positive.** The free-fall check required a marble to exit on
+  the *exact* catcher column, but the catcher is decided by side. Four boards
+  that `verify_task` already accepted were being condemned. This is why the
+  "before" column reads 39 rather than the 35 an earlier run of the same audit
+  reported; 4 of those 23 failures were never real.
+- **A multi-trial scoring contract.** Tiers 3 and 4 state goals a single
+  simulation cannot decide: *"use register A to count the number of blue
+  balls"* is judged over several ball counts, and *"reverse the direction of
+  each bit, regardless of the direction they point to start"* over every
+  starting configuration. `validate_targets` could express one run against one
+  target. A task may now declare `registers` and `trials`; when trials are
+  present the board is re-run once per trial and **every** trial must pass.
+  Eight boards use it, with tables of 3 to 512 rows.
+- **Three transcription defects**, each found by construction rather than
+  inference: the guide's objective line was read only to the first newline,
+  truncating 28 of 57 objectives mid-sentence and sometimes mid-word; the guide
+  sets *flip* and *overflow* with an `fl` ligature, which no pattern spelling
+  them plainly could match; and the part-template set contained no `gear` or
+  `gear_bit`, so challenge 28's *"two gear bits connected together make a
+  permanent latch"* extracted as ramps alone.
+
+**Four boards remain unrepaired, and they are not all unscoreable.** Three —
+`ch29`, `ch21-pA`, `ch22-pA` — carry a target that is an empty list or the
+literal placeholder `"..."`, which no submission can satisfy; they are excluded
+from every number in §14. The fourth, `ch01-pA`, fails the audit only because
+its *stored reference solution* free-falls; its target is well-formed, the task
+is genuinely posed, and one model solved it with a routing that avoids the gap.
+It is therefore scored. This is why §14 reports 55 boards while the audit gate
+passes 54.
+
+**Which tiers are cell-comparable with §11.2, and which are not.** Seventeen
+board files changed in the repair, and they are not spread evenly:
+
+| Tier | Boards changed | Comparable with §11.2? |
+|---|---|---|
+| 1 | 1 of 11 (`ch03-pA`) | Nearly — ten of eleven boards identical |
+| 2 | **0 of 22** | **Yes — the same 22 boards** |
+| 3 | 4 of 10 | No |
+| 4 | 12 of 15 | No |
+
+Tiers 3 and 4 are substantially new and have no §11 counterpart. Tier 1 differs
+by a single board. **Tier 2 is the identical corpus**, run at the same
+temperature, turn budget and vLLM version, which makes §14's Tier-2 column an
+unplanned second repeat of §11.2's — see §14.2.
+
+### 14.2 An unplanned repeat measurement, and it widens §11.5's rule
+
+Because no Tier-2 board changed, §11.2's and §14's Tier-2 `official` columns are
+two runs of the same seven models over the same 22 boards under the same
+settings. Everything separating them is run-to-run noise:
+
+| Model | §11.2 | §14 | Δ tasks |
+|---|---|---|---|
+| qwen3.8-flash-next-awq4 | 14 / 22 (63.6 %) | 16 / 22 (72.7 %) | **+2** |
+| gemma-4-31B-it | 4 / 22 (18.2 %) | 6 / 22 (27.3 %) | **+2** |
+| qwen3.6-35B-A3B | 5 / 22 (22.7 %) | 5 / 22 (22.7 %) | 0 |
+| gpt-oss-120b | 5 / 22 (22.7 %) | 5 / 22 (22.7 %) | 0 |
+| gemma-4-26B-A4B-it | 4 / 22 (18.2 %) | 1 / 22 (4.5 %) | **−3** |
+| Qwen2.5-Coder-7B | 0 / 22 (0.0 %) | 0 / 22 (0.0 %) | 0 |
+| DeepSeek-Coder-V2-Lite | 0 / 22 (0.0 %) | 0 / 22 (0.0 %) | 0 |
+
+Four of seven models are unchanged and three move, over a range of **−3 to +2
+tasks (−13.6 to +9.1 pp)** on n = 22. Two observations follow, and the second is
+uncomfortable:
+
+- The stability is concentrated at the ends of the scale. The two models at
+  0.0 % and the two mid-table models reproduce exactly; the movement is in
+  `qwen3.8`, `gemma-4-31B-it` and `gemma-4-26B-A4B-it`.
+- **`gemma-4-26B-A4B-it`'s −3 falls outside the ±2-task band** that §11.5
+  carried forward as a practical rule, and which was derived from a single
+  model's four repeats. One model exceeding it in the first independent test of
+  that band means the band was set too narrow. §14.6 uses ±3 accordingly, and
+  §11.2's Tier-2 ordering among the four models below `qwen3.8` should be read
+  as unresolved rather than as the ranking it appears to give.
+
+This is a byproduct, not a designed experiment: two runs is not a variance
+estimate, and it does not disentangle decoding noise from batching-order
+effects. It does establish that the existing ±2 rule is optimistic.
+
+### 14.3 Success by tier
+
+Single run per cell, temperature 0, 25-turn budget, vLLM 0.29.0 — the §11
+configuration, not §7's five-repetition design. §14.6 states what that limits.
+
+| Model | Tier 1 (11) | Tier 2 (22) | Tier 3 (8) | Tier 4 (14) | All (55) |
+|---|---|---|---|---|---|
+| **qwen3.8-flash-next-awq4** | 100.0 % | 72.7 % | 62.5 % | 57.1 % | **72.7 %** |
+| gemma-4-31B-it | 45.5 % | 27.3 % | 37.5 % | 7.1 % | **27.3 %** |
+| qwen3.6-35B-A3B | 45.5 % | 22.7 % | 12.5 % | 7.1 % | **21.8 %** |
+| gpt-oss-120b | 9.1 % | 22.7 % | 0.0 % | 7.1 % | **12.7 %** |
+| gemma-4-26B-A4B-it | 18.2 % | 4.5 % | 25.0 % | 7.1 % | **10.9 %** |
+| Qwen2.5-Coder-7B | 9.1 % | 0.0 % | 25.0 % | 0.0 % | **5.5 %** |
+| DeepSeek-Coder-V2-Lite | 0.0 % | 0.0 % | 0.0 % | 0.0 % | **0.0 %** |
+
+Pooled over all seven models, one row per model-board pair:
+
+| Tier | Solved / attempted | Rate |
+|---|---|---|
+| 1 | 25 / 77 | 32.5 % |
+| 2 | 33 / 154 | 21.4 % |
+| 3 | 13 / 56 | 23.2 % |
+| 4 | **12 / 98** | **12.2 %** |
+
+**Tier 4 is the hardest tier, by a factor of 2.7 over Tier 1.** The ladder is
+not strictly monotonic — pooled Tier 3 (23.2 %) sits marginally above Tier 2
+(21.4 %) — but Tier 3 rests on 8 boards, where one board moves the pooled rate
+by 1.8 pp, and the two are well inside each other's noise. The defensible claim
+is the endpoints: Tier 4 is clearly harder than Tiers 1–2, and Tier 3 is not
+separable from Tier 2 at this sample size.
+
+Read per model rather than pooled, **Tier 4 is the hardest or joint-hardest tier
+for five of the six models that score above the floor** (`DeepSeek-Coder-V2-Lite`
+is at 0.0 % everywhere and orders nothing). The exception is `gpt-oss-120b`,
+whose Tier 3 is 0.0 % against Tier 4's 7.1 % — a one-board difference on an
+eight-board set, which §14.6's practical rule declines to call.
+
+The reference solutions get larger with tier, which is the obvious mechanism and
+is consistent with §11's finding that board size, not component count, drives
+difficulty:
+
+| Tier | Mean parts the solver must place |
+|---|---|
+| 1 | 6.1 |
+| 2 | 9.8 |
+| 3 | 11.1 |
+| 4 | 12.9 |
+
+### 14.4 The limitation this exposes: failure moves from physics to logic
+
+§5 identified an axis on the failure taxonomy that mattered more than the rate:
+an **incomplete path** — the marble crosses a cell the model never filled — is a
+failure to finish, whereas a **complete but wrong output** is a board that runs
+and computes the wrong thing. §5 found gpt-oss and qwen3.6 reaching the second
+category in 11–13 % of failures against gemma-4-31B-it's 0.7 %, and called it
+"a qualitatively more advanced failure than not finishing at all."
+
+Across all four tiers that axis now separates the roster completely:
+
+| Family | qwen3.8 | gemma-4-31B | qwen3.6-35B | gpt-oss-120b | gemma-4-26B | Qwen2.5-7B | DeepSeek-Lite |
+|---|---|---|---|---|---|---|---|
+| Incomplete path (*illegal free fall*) | **5 (33 %)** | 22 (55 %) | 35 (81 %) | 38 (79 %) | 38 (78 %) | 40 (77 %) | 51 (93 %) |
+| **Complete but wrong output** | **10 (67 %)** | 14 (35 %) | 8 (19 %) | 9 (19 %) | 4 (8 %) | 6 (12 %) | 4 (7 %) |
+| Marble lost | 0 | 1 (2 %) | 0 | 0 | 4 (8 %) | 5 (10 %) | 0 |
+| Trial table mismatch | 0 | 3 (8 %) | 0 | 1 (2 %) | 1 (2 %) | 1 (2 %) | 0 |
+| No solution submitted | 0 | 0 | 0 | 0 | 2 (4 %) | 0 | 0 |
+
+**`qwen3.8-flash-next-awq4` is the only model whose failure profile is
+inverted.** Two thirds of its failures are boards that run to completion and
+produce the wrong answer; only a third are unfinished paths. Every other model
+is 55–93 % unfinished paths. The strongest model in the roster has largely
+stopped failing at the *physical* task — filling every cell the marble visits —
+and now fails at the *computational* one.
+
+This sharpens what the benchmark is measuring, and it is the substantive
+limitation finding of this section:
+
+- **For six of seven models, the binding constraint is still spatial
+  completion, not reasoning.** A model that cannot reliably close a marble path
+  is not yet being tested on whether it understands a binary counter. Their
+  tier-3 and tier-4 scores are therefore only weakly a measure of procedural
+  reasoning; they are mostly a measure of whether a larger board can be filled
+  in without leaving a hole, and the tier ladder in §14.3 partly reflects board
+  size (11–13 parts at tiers 3–4 against 6 at tier 1) rather than conceptual
+  depth.
+- **Only `qwen3.8-flash-next-awq4` is being tested on the intended axis**, and
+  there the failures are informative: it builds a working machine that computes
+  the wrong function. Its tier-4 rate of 57.1 % is the only cell in the table
+  where the residual 43 % is plausibly about reasoning rather than construction.
+- **The multi-trial boards are where this bites hardest.** No model solved
+  `ch27` (reverse nine bits, 512 starting configurations) or `ch27-pB`
+  (three bits, 8 configurations). `qwen3.8` solved `ch27-pA` (two bits, 4
+  configurations) and `ch30` (count with an overflow flag, 3 worked counts), and
+  did so with placements that differ from the reference — alternate routings
+  verified by re-simulation, not memorised solutions. Generalising a board
+  across *every* starting configuration, rather than satisfying the one run in
+  front of it, remains out of reach for the entire roster above two bits.
+
+A caveat on the denominators: `qwen3.8` has only 15 failures, so its 67 % rests
+on 10 boards and a two-board swing moves it by 13 pp. The direction of the
+contrast against the 77–93 % cluster is not in doubt at that size; the exact
+share is.
+
+### 14.5 Budget exhaustion replicates a third time
+
+`fail_at_ceiling` — failures whose `turns` equals the 25-turn budget — over all
+four tiers:
+
+| Model | Ceiling / failed | Median turns to failure |
+|---|---|---|
+| gemma-4-31B-it | 36 / 40 (**90.0 %**) | 25 |
+| gemma-4-26B-A4B-it | 44 / 49 (**89.8 %**) | 25 |
+| Qwen2.5-Coder-7B | 11 / 52 (21.2 %) | 9 |
+| qwen3.8-flash-next-awq4 | 3 / 15 (20.0 %) | 11 |
+| gpt-oss-120b | 9 / 48 (18.8 %) | 5 |
+| qwen3.6-35B-A3B | 4 / 43 (9.3 %) | 9 |
+| DeepSeek-Coder-V2-Lite | 0 / 55 (0.0 %) | 2 |
+
+§4's two-regime split holds for a third corpus. Both Gemma models sit on the
+ceiling for ~90 % of failures and remain bounded by the turn budget rather than
+by capability; every other model terminates at a median of 2–11 turns, well
+inside it. Note that this run does **not** reproduce §11.4's divergence between
+the two Gemma models — there `gemma-4-26B-A4B-it` fell to 12.0 % on `scaled`
+while `gemma-4-31B-it` held at 80.5 %. On `official` across four tiers they are
+indistinguishable (90.0 % and 89.8 %), which is consistent with §11.4's own
+suggestion that the divergence was a property of the `scaled` set rather than of
+the models.
+
+The practical consequence is unchanged and worth restating for the two Gemma
+models specifically: **their tier-3 and tier-4 scores are lower bounds
+conditioned on a 25-turn budget.** Tiers 3–4 need 11–13 parts placed; at one
+placement plus one verification per turn, 25 turns is close to the minimum a
+careful agent would need, so for these two models the budget is plausibly the
+binding constraint at the higher tiers rather than an incidental limit.
+
+### 14.6 What a single run supports
+
+This section inherits §11.5's limits and **loosens one of them**:
+
+- One run per model per board, no repetitions, no confidence intervals, no
+  significance tests.
+- Two repeats now exist at comparable settings: §11.5's `gemma-4-31B-it` on 22
+  Tier-2 `official` boards (6, 4, 5, 4 solved — ±2 tasks), and §14.2's
+  seven-model repeat over those same 22 boards (−3 to +2 tasks).
+- **Revised rule:** on these sets a gap under ~**3** tasks is unresolved by a
+  single run — widened from §11.5's ~2 because `gemma-4-26B-A4B-it` moved 3
+  tasks between two runs of an identical corpus. At n = 8 (Tier 3) that is
+  37 pp and at n = 14 (Tier 4) it is 21 pp, so *no* pairwise model comparison
+  within a single tier column of §14.3 is resolved except
+  `qwen3.8-flash-next-awq4` against the field.
+- What survives that rule: the pooled Tier-1-to-Tier-4 drop (25/77 against
+  12/98, a 20-pp gap on 175 model-board pairs); `qwen3.8`'s lead in Tiers 1, 2
+  and 4 (6, 10 and 7 tasks clear of the runner-up); the Gemma
+  budget-exhaustion split (~90 % against ≤ 21 %); and the inverted failure
+  profile in §14.4, which is a difference of kind across a 55–93 % versus 33 %
+  contrast rather than a marginal rate difference.
+- What does not: the Tier-2 versus Tier-3 ordering; every within-tier ranking
+  below the leader; `gpt-oss-120b`'s Tier-3 zero; and — under the widened
+  band — **`qwen3.8`'s Tier-3 lead as well**, which is only 2 tasks (5/8
+  against `gemma-4-31B-it`'s 3/8). Tier 3, at n = 8, resolves almost nothing
+  on its own and carries the tier ladder in §14.3 only in combination with
+  Tier 4.
+
+Reproduce with:
+
+```
+PROJECT_DIR=/p/scratch/westai0070/$USER/tt_bench_official \
+  bash jureca/submit_all.sh -t "1 2 3 4" --sets official
+```
+
+Boards `ch29`, `ch21-pA` and `ch22-pA` must be filtered from the reports before
+aggregating; they are in the `tt-official-ch*.json` glob and score 0 for every
+model by construction.
