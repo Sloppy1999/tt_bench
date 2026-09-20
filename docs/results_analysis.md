@@ -126,6 +126,20 @@ but 15 pp for gemma-4-26B-A4B-it. Moving to 13×13 and 15×15 boards costs a
 further 27–29 pp for every model in tiers 1 and 2 — the dominant difficulty
 factor is board size, not component count.
 
+> **Read this section together with §11.3.** The `1 comp` and `2 comp` columns
+> above are aggregate success rates on `scaled_1comp` and `scaled_2comp`. In the
+> current corpus those two sets are about two-thirds *unsolvable variants*,
+> where success means declaring the task unsolvable rather than building a
+> board — so an aggregate rate over them blends two different abilities, and
+> §11.3 shows that blending reverses the model ranking. Whether the corpus
+> snapshot these particular numbers were computed on had the same composition
+> has **not** been re-verified (it predates the corpus growth described in §13,
+> and two of the rates here sit above the ceiling that today's composition would
+> impose, which suggests it did not). The figures above are therefore left as
+> recorded, and the compositional-depth claim should be taken as provisional
+> until it is recomputed on the corrected corpus with the two halves reported
+> separately.
+
 ---
 
 ## 4. Two distinct failure regimes
@@ -494,3 +508,373 @@ Two caveats remain. 18 of 2 121 files (0.85 %) carry a reference solution with a
 empty component list. And the `verified` flag is `False` on every file — but it
 is also `False` on all 58 official challenges, so it is dead metadata rather than
 a signal that this set is less trustworthy than the others.
+
+---
+
+## 10. Dataset scoring-contract defects (found and fixed after §1–9)
+
+The analysis above was written against a scorer with a defect that was found and
+fixed afterward. It is documented here rather than silently folded into revised
+numbers, because it changed what counted as a passing task, not merely how a task
+was measured.
+
+### 10.1 `required_output` was compared against the wrong reading of the run
+
+The benchmark declares two sequence-shaped targets. `solution.final_marble_state`
+names the **catcher** each marble reached (left → blue, right → red). But an
+official-challenge board can send a blue ball out the *right* side, so the guide's
+printed strip — `required_output`, the colour of each ball as it leaves — is not
+always the same sequence. Both the dataset-side check and the benchmark scorer
+compared `required_output` against the catcher-derived sequence, which rejects a
+correct board whenever a ball's colour and its exit side disagree.
+
+Independently of this session, a concurrent dataset-certification pass over the
+full corpus quantified the damage precisely: **1 819 of 1 842 (98.7 %) "reference
+solution rejected" quarantine reasons cited `required_output`.** The guide's own
+solutions — ground truth, not model output — were being marked wrong by the
+scorer that was supposed to check them. After each target was compared against
+its own correct reading of the run (`final_marble_state` against catchers,
+`required_output` against ball colour), that count fell to 20 on the same corpus,
+and the remaining 20 are genuine data issues, not a contract mismatch.
+
+Official-challenge verification: **16/58 → 38/58** boards. Tier 2 alone, the set
+used throughout §11 below, is now fully verified: **22/22.**
+
+### 10.2 Trigger levers are bars, not single cells
+
+The simulator's catcher check required a marble to land on the *exact* column of
+a lever. On the physical board a lever is a bar covering its half of the bottom
+row; on `ch09-pA` this meant a red ball landing at column 3 and a blue ball
+landing at column 4 *or* 6 could never both be caught, because no single column
+serves all three. The catcher was rewritten as a span, with the return chute at
+the midpoint **between the two lever columns** rather than at the middle of the
+board — the two coincide only on an unpadded board, and a first attempt using the
+board's midpoint silently broke 477 width-padded tasks whose levers stay where
+they were while the board grows. Caught by re-verifying the whole corpus before
+and after, not by inspection.
+
+### 10.3 Bit-state objectives were recorded but never scored
+
+Two challenges (`ch11`, `ch11-pA`) ask to "flip bits 2 and 5 to the right." Their
+target bit configuration was written into `solution.final_bit_state`, a field
+nothing reads; scoring saw only that both balls reached a catcher and accepted
+any board that did, regardless of the bits. Moved to
+`expected_output.final_bit_states`, the field the shared target contract actually
+checks; a board that reaches the same catchers with the wrong bits is now
+rejected. The repo's own recorded objective for `ch11` — "flip bits 1 and 4" — was
+also wrong; the guide (page 45) asks for bits 2 and 5, confirmed by simulating the
+transcribed board and reading which two bits it actually leaves flipped.
+
+### 10.4 Net effect
+
+Three previously-broken tier-2 boards (`ch09-pA`, `ch11`, `ch11-pA`) were
+re-transcribed once §10.1–10.3 were fixed, using ball counts and objective text
+read from the guide PDF rather than trusted from the task file (the guide prints
+`×10`/`×10` hoppers for `ch09-pA` and `×2`/`×0` for `ch11`; the task file had
+hard-coded 8/8, which makes a zero-red-ball puzzle unsolvable outright). **Tier 2
+official challenges are now 22/22 verified**, and every result quoted in §11
+below is measured against that fully-verified set.
+
+---
+
+## 11. Tier 2, the corrected corpus, and a matched tier-1 re-run
+
+### 11.1 What changed since §1–9
+
+- **Tier 2 exists in this analysis for the first time.** §1–9 covered Tier 1
+  only. All 22 Tier-2 official challenges now verify (§10), so a same-day,
+  same-stack Tier-1/Tier-2 comparison is possible for the first time.
+- **A sixth model was added: `qwen3.8-flash-next-awq4`**
+  (`cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4`). The originally-requested GGUF build
+  (`unsloth/Qwen3.8-Flash-Next-GGUF`) could not be used on any installable vLLM
+  release — 0.24.0 and 0.29.0 were both checked, and neither registers a `gguf`
+  quantization method. The model's architecture (`Qwen4ExpForConditionalGeneration`)
+  is also unknown to vLLM 0.24.0. This is the AWQ INT4 (`compressed-tensors`,
+  `pack-quantized`) repack of the same weights, ~176 GB on disk against
+  4 × 93.6 GiB of H100 memory, running under vLLM 0.29.0.
+- **vLLM was upgraded 0.24.0 → 0.29.0** to serve the new model. This changes the
+  serving stack under all seven models, not only the new one, so its effect was
+  checked directly rather than assumed away: `gemma-4-31B-it` was run four times
+  on the same 22 Tier-2 official boards at temperature 0 — three times on 0.24.0
+  (6, 4, 5 solved) and once on 0.29.0 (4 solved). The 0.29.0 result sits inside
+  the 0.24.0 spread; **the version bump is not a detectable confound at this
+  sample size,** though nothing here rules out a smaller effect than four single
+  runs can resolve.
+- **A harness startup bug was found and fixed in the same investigation.** Every
+  4-GPU (tensor-parallel) model on vLLM 0.29.0 initially failed to start: the
+  script's 600 s readiness wait expired while vLLM was still compiling, because
+  0.29.0 attempts a FlashInfer all-reduce workspace this node topology does not
+  support (no NVSwitch multicast) and falls back to a slower path mid-init. Two
+  models that would have failed under the old limit — `qwen2.5-coder-7b` (ready
+  at 840 s) and `gemma-4-31B-it` (ready at 920 s) — came up cleanly once the wait
+  was raised to 1 800 s.
+
+### 11.2 Overall performance, both tiers
+
+Single run per cell, temperature 0, 25-turn budget — **not** the five-repetition
+design of §7. §11.5 states exactly what that limits.
+
+> Every figure in §11 is generated from `results_summary.json` and
+> `unsolvable_breakdown.json` by `jureca/plot_summary.py`, so the figures and the
+> tables beside them are computed from the same two files and cannot drift
+> apart. Regenerate with `uv run python jureca/plot_summary.py`. The image files
+> themselves are not version-controlled — this repository's `.gitignore`
+> excludes `*.png`/`*.svg` — so run that command once after a fresh clone to
+> render them.
+
+Only the four sets in which **every task is solvable** appear here.
+`scaled_1comp` and `scaled_2comp` are roughly two-thirds unsolvable variants and
+their aggregate rate is not a like-for-like measure of the same thing; they are
+reported separately in §11.3.
+
+| Model | T1 official (11) | T1 1comp (5) | T1 2comp (5) | T1 scaled (1397) | T2 official (22) | T2 1comp (13) | T2 2comp (13) | T2 scaled (2170) |
+|---|---|---|---|---|---|---|---|---|
+| **qwen3.8-flash-next-awq4** | **90.9 %** | 100.0 % | 100.0 % | **99.6 %** | **63.6 %** | 100.0 % | 100.0 % | **98.3 %** |
+| gemma-4-31B-it | 36.4 % | 80.0 % | 80.0 % | 92.0 % | 18.2 % | 100.0 % | 100.0 % | 79.0 % |
+| qwen3.6-35B-A3B | 27.3 % | 100.0 % | 60.0 % | 90.2 % | 22.7 % | 92.3 % | 92.3 % | 82.5 % |
+| gpt-oss-120b | 45.5 % | 80.0 % | 80.0 % | 83.8 % | 22.7 % | 76.9 % | 69.2 % | 75.5 % |
+| gemma-4-26B-A4B-it | 27.3 % | 80.0 % | 60.0 % | 77.8 % | 18.2 % | 100.0 % | 84.6 % | 65.8 % |
+| Qwen2.5-Coder-7B | 0.0 % | 80.0 % | 40.0 % | 17.0 % | 0.0 % | 30.8 % | 15.4 % | 20.9 % |
+| DeepSeek-Coder-V2-Lite | 0.0 % | 20.0 % | 0.0 % | 3.2 % | 0.0 % | 7.7 % | 0.0 % | 1.7 % |
+
+![Success rate by model and challenge set, tier 1 and tier 2](assets/figures/success_matrix.png)
+
+**Figure 1.** The table above, read as a matrix. Rows are ordered by mean rate
+across the eight cells, and that order is reused in every figure below. The two
+sets excluded from this figure are the subject of §11.3.
+
+**The difficulty ladder now runs the right way, with one exception worth
+naming.** On `scaled` — the set that carries the weight, at 1 397 and 2 170
+tasks — six of the seven models score lower on Tier 2 than Tier 1. The seventh,
+`Qwen2.5-Coder-7B`, moves the other way (17.0 % → 20.9 %). On `official`, five of
+seven drop and the remaining two score **0.0 % on both tiers**, so they order
+nothing. The honest summary is therefore *not* that every model finds Tier 2
+harder: it is that every model scoring meaningfully above the floor does.
+
+![Tier 1 to Tier 2 success rate by model](assets/figures/tier_gap.png)
+
+**Figure 2.** Tier 1 and Tier 2 for each model on the two sets with no
+unsolvable variants. Where only one dot is visible the two tiers are equal
+(`Qwen2.5-Coder-7B` and `DeepSeek-Coder-V2-Lite` on `official`, both 0.0 %).
+
+This direction is itself the result of §10. The same models scored *higher* on
+the broken Tier-2 corpus in July, because the scorer was rejecting Tier 2's
+genuinely-correct solutions more often than Tier 1's — not because Tier 2 was
+easier.
+
+**`qwen3.8-flash-next-awq4` leads or ties for the lead in every column.** The
+margin is wide on `official` — 45.5 pp over `gpt-oss-120b` on Tier 1, 40.9 pp
+over `qwen3.6-35B-A3B` on Tier 2 — and much narrower on `scaled`, at 7.7 pp and
+15.8 pp over the runner-up, where the leaders are all compressed against the top
+of the scale. On `1comp`/`2comp` it only ties: four of the seven models reach
+100 % on at least one tier, which is what a 5- and 13-task set can resolve.
+
+`DeepSeek-Coder-V2-Lite` and `Qwen2.5-Coder-7B` sit at exactly 0.0 % on
+`official` on both tiers, consistent with the disengagement pattern in §6 and
+§8 — low token counts, few tool calls, an attempt that does not resemble serious
+engagement with the board.
+
+### 11.3 `scaled_1comp` / `scaled_2comp` measure two abilities, not one
+
+These two sets are **not** simply harder versions of `scaled`. Roughly two
+thirds of their tasks are *unsolvable variants*, built by removing from the
+inventory a component the board requires. On those, success does not mean
+building anything: it means recognising that no solution exists and saying so.
+The prompt asks for this in as many words — it instructs the model to determine
+"whether the puzzle is solvable or unsolvable with the given inventory," and to
+set `"success": false` with an explanation if it concludes the latter.
+
+| Set | Tier | Solvable | Unsolvable | Total | Aggregate ceiling if no unsolvable task is ever detected |
+|---|---|---|---|---|---|
+| `scaled_1comp` | 1 | 144 | 288 | 432 | 33.3 % |
+| `scaled_1comp` | 2 | 262 | 344 | 606 | 43.2 % |
+| `scaled_2comp` | 1 | 134 | 268 | 402 | 33.3 % |
+| `scaled_2comp` | 2 | 260 | 328 | 588 | 44.2 % |
+
+This composition makes the aggregate success rate on these sets very easy to
+misread, and the misreading is severe. Taken at face value, the aggregate says
+every model except `gpt-oss-120b` collapses by 30–70 pp moving from `scaled` to
+`scaled_1comp` — which invites the conclusion that completing a partial board is
+dramatically harder than building one from scratch. **That conclusion would be
+wrong.** Decomposing each set into its two halves shows why:
+
+| Model | 1comp·T1 solvable | 1comp·T1 detected | 1comp·T2 solvable | 1comp·T2 detected | 2comp·T1 solvable | 2comp·T1 detected | 2comp·T2 solvable | 2comp·T2 detected |
+|---|---|---|---|---|---|---|---|---|
+| qwen3.8-flash-next-awq4 | 100.0 % | 0.0 % | 98.9 % | 0.0 % | 97.8 % | 0.0 % | 98.5 % | 0.0 % |
+| gemma-4-31B-it | 86.8 % | 0.0 % | 93.9 % | 0.0 % | 74.6 % | 0.0 % | 86.2 % | 0.0 % |
+| qwen3.6-35B-A3B | 94.4 % | 0.0 % | 87.8 % | 0.0 % | 77.6 % | 0.0 % | 77.7 % | 0.0 % |
+| gpt-oss-120b | 88.2 % | **89.2 %** | 82.1 % | **79.1 %** | 64.9 % | **86.6 %** | 70.8 % | **79.3 %** |
+| gemma-4-26B-A4B-it | 68.8 % | 0.0 % | 86.3 % | 0.0 % | 45.5 % | 0.0 % | 71.2 % | 0.0 % |
+| Qwen2.5-Coder-7B | 29.9 % | 0.0 % | 30.5 % | 0.0 % | 6.7 % | 0.0 % | 21.9 % | 0.0 % |
+| DeepSeek-Coder-V2-Lite | 11.1 % | 4.5 % | 6.5 % | 0.0 % | 0.0 % | 4.9 % | 3.5 % | 0.3 % |
+
+![Solvable accuracy versus unsolvable detection on scaled_1comp and scaled_2comp](assets/figures/solvable_split.png)
+
+**Figure 3.** The same numbers, with the dashed line marking where a model's
+aggregate rate is pinned if it never declares a task unsolvable.
+
+**Five of the seven models never once declared a task unsolvable** — not in any
+of the four set/tier combinations, across 1 228 unsolvable tasks each. Their
+aggregate score on these sets is therefore capped at the solvable fraction by
+construction, and the apparent "collapse with compositional depth" is that cap,
+not a loss of building skill. `qwen3.8-flash-next-awq4` makes the point
+exactly: its Tier-1 `scaled_1comp` aggregate of 33.3 % is not an approximation
+of the 33.3 % ceiling, it *is* the ceiling — it solved **144 of 144** solvable
+tasks and **0 of 288** unsolvable ones.
+
+**`gpt-oss-120b` is the only model that detects unsolvability at all** (79–89 %
+across the four cells; `DeepSeek-Coder-V2-Lite` manages 0–5 %, which is closer to
+noise than to a capability). This, and not a talent for localised repair, is the
+whole of its apparent advantage on these two sets. Judged only on the tasks that
+*can* be solved, it is mid-pack: on `scaled_2comp` Tier 1 it solves 64.9 % of
+solvable tasks while `gemma-4-31B-it` solves 74.6 %, `qwen3.6-35B-A3B` 77.6 %,
+and `qwen3.8-flash-next-awq4` 97.8 % — yet `gpt-oss-120b` has the highest
+aggregate of any model on that set. An aggregate rate that inverts the ranking
+of the ability it appears to measure is a good reason to report the two halves
+separately, which is what §11.2 and this section now do.
+
+Two things follow for the benchmark itself. First, declaring a task unsolvable
+is a **near-binary trait** in this field rather than a graded skill: models score
+either ~0 % or ~80 %, with nothing in between. Second, any headline number
+computed over a corpus that mixes solvable and unsolvable tasks will rank models
+mostly by whether they possess that trait — so the unsolvable variants belong in
+their own reported metric, not blended into a single success rate.
+
+### 11.4 Budget exhaustion replicates on the new corpus
+
+`fail_at_ceiling` — failures whose turn count equals the 25-turn budget — on
+Tier-2 `official` and `scaled`:
+
+| Model | T2 official, ceiling / failed | T2 scaled, ceiling / failed |
+|---|---|---|
+| gemma-4-31B-it | 17 / 18 (**94.4 %**) | 367 / 456 (**80.5 %**) |
+| gemma-4-26B-A4B-it | 17 / 18 (**94.4 %**) | 89 / 743 (12.0 %) |
+| Qwen2.5-Coder-7B | 4 / 22 (18.2 %) | 43 / 1716 (2.5 %) |
+| qwen3.8-flash-next-awq4 | 3 / 8 (37.5 %) | 1 / 37 (2.7 %) |
+| qwen3.6-35B-A3B | 3 / 17 (17.6 %) | 10 / 379 (2.6 %) |
+| gpt-oss-120b | 4 / 17 (23.5 %) | 6 / 531 (1.1 %) |
+| DeepSeek-Coder-V2-Lite | 0 / 22 (0.0 %) | 0 / 2134 (0.0 %) |
+
+![Share of failures reaching the 25-turn ceiling, tier 2](assets/figures/budget_exhaustion.png)
+
+**Figure 4.** Running out of turns and getting it wrong early are different
+failure modes; the success rate alone cannot tell them apart.
+
+§4's two-regime split replicates: both Gemma models still exhaust the budget on
+the overwhelming majority of `official` failures, exactly as before. On `scaled`,
+however, `gemma-4-26B-A4B-it`'s ceiling share (12.0 %) is now far below
+`gemma-4-31B-it`'s (80.5 %) — a divergence between the two Gemma models that §4
+did not show on the smaller, earlier corpus. Whether this is a genuine capability
+difference or an artefact of the corpus having grown since §4 was written (§13)
+is not resolved by a single run and should not be read as a finding on its own.
+
+### 11.5 What a single run does and does not support
+
+This section reuses none of §7's machinery: no repeated runs, no confidence
+intervals, no significance tests. What licenses treating it as informative
+anyway is narrower than what §7 established for Tier 1's `scaled_1comp`:
+
+- The only measured repeat at this session's settings is `gemma-4-31B-it` on
+  Tier-2 `official` (n = 22): four runs gave 6, 4, 5, 4 solved — a spread of
+  ±2 tasks (±9 pp) at this sample size, from decoding noise, batching-order
+  effects, and the vLLM version change combined, not disentangled.
+- No equivalent repeat exists for `scaled`/`scaled_1comp`/`scaled_2comp`
+  (hundreds to thousands of tasks) under this session's settings. §7.2 showed
+  run-to-run noise is an order of magnitude smaller than the sampling interval
+  at n = 432; nothing here re-confirms that at the sizes used above, though it is
+  the same pipeline.
+- **Practical rule carried forward:** treat any gap under ~2 tasks on the small
+  sets (`official`, `1comp`, `2comp`) as unresolved by a single run. The gaps
+  reported in §11.2–11.4 that exceed this — `qwen3.8-flash-next-awq4`'s lead
+  everywhere, `gpt-oss-120b`'s unsolvable-detection gap over every other model,
+  the Gemma budget-exhaustion split — are well outside that band. The
+  unsolvable-detection gap in particular is not a marginal call: it separates
+  ~0 % from ~80 % on sets of 268–344 tasks.
+
+---
+
+## 12. Context-length and truncation audit
+
+Two distinct signals were checked, because the run logs surfaced both a hard API
+error and a softer mid-turn warning, and they carry very different weight.
+
+**Hard `400` context-length errors are negligible.** Only `qwen2.5-coder-7b`
+produces them, and only 1–2 tasks out of thousands per set. No other model in
+the roster hits this at all.
+
+**Mid-turn truncation (`finish_reason=length`, "`max_tokens=32768` may be too
+low") is common for two models** and near-absent for the rest:
+
+| Model | Truncation warnings across the sweep |
+|---|---|
+| qwen3.6-35B-A3B | **2 388** |
+| Qwen2.5-Coder-7B | 379 |
+| qwen3.8-flash-next-awq4 | 81 |
+| gemma-4-26B-A4B-it | 78 |
+| DeepSeek-Coder-V2-Lite | 4 |
+| gpt-oss-120b, gemma-4-31B-it | 0 |
+
+The real question is whether this measurably suppresses a score. For
+`qwen3.6-35B-A3B`, checked directly: 2 295 distinct tasks showed at least one
+truncation warning during their episode; of those, 914 (**39.8 %**) still
+succeeded — *higher* than the ~33 % baseline rate on the comparable
+`scaled_1comp`/`scaled_2comp` sets. Truncation-affected tasks are not failing
+more than average. (Both figures are aggregates over sets that are ~2/3
+unsolvable variants, per §11.3. The comparison is still like-for-like — the same
+tasks under both readings — but it does not separate truncation's effect on
+building a board from its effect on declaring a task unsolvable, and
+`qwen3.6-35B-A3B` never does the latter.) The more plausible reading is that
+`qwen3.6-35B-A3B`, an
+explicit reasoning model (§6), emits longer responses on harder tasks it often
+still solves, and the warning is a symptom of that verbosity rather than a
+capability bottleneck the harness is imposing on it.
+
+**Conclusion: the `official`/`1comp`/`2comp`/`scaled` numbers in §11 are not
+meaningfully distorted by context or generation-length limits for any model in
+the roster.**
+
+---
+
+## 13. Reconciling §1–9 with §10–12
+
+§1–9 and §10–12 describe two different eras of this project, and their numbers
+should not be read as one continuous series without the following caveats.
+
+**The corpus has grown.** §1–9's `scaled` set held 1 013 Tier-1 tasks;
+today's holds 1 397 for the same tier — a ~38 % increase from dataset generation
+that happened independently of §10's contract fixes. The specific task files
+behind §1–9's numbers no longer constitute the current corpus, so those numbers
+cannot be reproduced against it and describe a corpus snapshot rather than the
+current one.
+
+**§1–9's statistical rigour has not been re-applied to the corrected corpus or
+the expanded roster.** The five-repetition design, the Wilson intervals, the
+two-proportion z-tests, and the temperature-sensitivity analysis in §7 all
+belong to the Tier-1-only, five-model, vLLM-0.24.0 configuration. Re-running that
+design — five repetitions per model per set, at both decoding temperatures, on
+the corrected corpus, across all seven models and both tiers — is the natural
+next step before the two eras of results can be merged into a single table with
+one consistent standard of evidence. §11.5 states plainly what the single-run
+numbers in §11 can and cannot support in the meantime.
+
+**The unsolvable-variant composition cuts across both eras.** §11.3's finding —
+that `scaled_1comp` and `scaled_2comp` are ~2/3 unsolvable variants, and that an
+aggregate rate over them ranks models mostly by whether they ever declare a task
+unsolvable — is a property of the *sets*, not of this session's runs. Every
+earlier result computed as a bare aggregate over those two sets inherits it,
+which includes §3's compositional-depth table and §7's five-repetition variance
+and significance work, both of which use `scaled_1comp` as their primary set.
+Nothing here says those numbers are miscomputed; it says the quantity they
+compute is a blend of two abilities that §11.3 shows can rank in opposite
+directions. Re-reporting them as a solvable/unsolvable split belongs in the same
+re-run described above. §3 carries a note to this effect; §7 has not been
+revised, because re-deciding which of its significance results survive the split
+requires the per-task data from those five repetitions, not a re-reading of the
+summary.
+
+**What is not in question.** The scoring-contract defects in §10 are
+independent of both the corpus-growth and the repetition-design gaps: they were
+found by direct construction of a failing case (a board whose reference solution
+provably matches the guide's printed output and was still rejected) and confirmed
+by an independent audit process, not inferred statistically. Their fix is not
+something a future re-run could contradict.
