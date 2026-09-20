@@ -20,7 +20,7 @@ from copy import deepcopy
 from pathlib import Path
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
 from dotenv import load_dotenv
@@ -2124,9 +2124,22 @@ class VLLMClient(LLMClient):
         tool_executor,
         system_prompt: Optional[str] = None,
         max_turns: int = 10,
+        *,
+        on_final_answer: Optional[Callable[[str], Optional[str]]] = None,
+        revision_rounds: int = 0,
         **kwargs,
     ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
-        """Generate using vLLM / OpenAI-compatible tool calling."""
+        """Generate using vLLM / OpenAI-compatible tool calling.
+
+        ``on_final_answer`` implements the harness revision arms. When given, a
+        submitted answer is passed to it instead of ending the episode; if it
+        returns a message, that message is appended and the loop continues, for
+        at most ``revision_rounds`` rounds and always inside ``max_turns``.
+        Returning ``None`` accepts the answer and returns as usual. Validation
+        lives in the caller, beside the scorer, so this loop never decides
+        whether an answer is correct.
+        """
+        revisions_left = revision_rounds if on_final_answer is not None else 0
         messages: List[Dict[str, Any]] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -2172,7 +2185,7 @@ class VLLMClient(LLMClient):
                 # +1 attempt covers the tool_choice=required fallback.
                 for attempt in range(4):
                     try:
-                        response = requests.post(
+                        response = getattr(self, "http_post", requests.post)(
                             f"{self.base_url}/v1/chat/completions",
                             json=payload,
                             headers=headers,
@@ -2348,6 +2361,25 @@ class VLLMClient(LLMClient):
                             f"exhausted before content could be generated."
                         )
                         logger.warning("vLLM turn %d: %s", turn, error_msg)
+
+                    # Harness arms rev-retry / rev-structured: an answer the
+                    # scorer would reject does not end the episode. Revisions
+                    # draw on the same turn budget, so the arm is not
+                    # compute-matched against the baseline — which is what
+                    # rev-retry exists to control for.
+                    if content and revisions_left > 0:
+                        critique = on_final_answer(content)
+                        if critique:
+                            revisions_left -= 1
+                            messages.append({"role": "assistant", "content": content})
+                            messages.append({"role": "user", "content": critique})
+                            logger.info(
+                                "vLLM turn %d: submitted answer rejected — "
+                                "injected critique, %d revision round(s) left.",
+                                turn,
+                                revisions_left,
+                            )
+                            continue
 
                     return (
                         {"content": content},

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from tt_bench.benchmark.runner import TuringTumbleBenchmark
 from tt_bench.simulator import verify_task
+from tt_bench.simulator.inventory import used_inventory
 
 KNOWN = {'ramp_left', 'ramp_right', 'bit', 'gear_bit', 'gear', 'crossover', 'interceptor', 'trigger'}
 
@@ -38,16 +39,18 @@ def classify(path: Path, root: Path) -> dict:
         if not isinstance(seq, list) or not seq or any(c not in ('blue', 'red') for c in seq):
             reasons.append('invalid_input_sequence')
         board = task['board']; placed = task['solution']['placed_components']
-        components = board['fixed_components'] + placed
+        editable = {tuple(p) for p in board.get('editable_bit_states', [])}
+        components = board['fixed_components'] + [p for p in placed if (p['x'],p['y']) not in editable]
         cells = [(c['x'], c['y']) for c in components]
         if len(set(cells)) != len(cells): reasons.append('overlapping_components')
         if any(c['type'] not in KNOWN or not 0 <= c['x'] < board['width']
                or not 0 <= c['y'] < board['height'] for c in components):
             reasons.append('invalid_component')
         inventory = task['available_parts']
-        if set(inventory) != KNOWN or any(type(n) is not int or n < 0 for n in inventory.values()):
+        pooled = KNOWN - {'ramp_left','ramp_right'} | {'ramp'}
+        if set(inventory) not in (KNOWN, pooled) or any(type(n) is not int or n < 0 for n in inventory.values()):
             reasons.append('invalid_inventory')
-        for kind, count in Counter(c['type'] for c in placed).items():
+        for kind, count in used_inventory(placed, inventory, board).items():
             if type(inventory.get(kind)) is not int or inventory[kind] < count:
                 reasons.append('insufficient_inventory:' + kind)
         for label, count in [('challenges_1comp', 1), ('challenges_2comp', 2)]:
@@ -68,6 +71,7 @@ def build(root: Path) -> dict:
     source_root = Path(__file__).resolve().parents[1]
     sources = ['src/tt_bench/simulator/targets.py', 'src/tt_bench/simulator/validation.py',
                'src/tt_bench/simulator/board.py', 'src/tt_bench/simulator/components.py',
+               'src/tt_bench/simulator/inventory.py',
                'src/tt_bench/benchmark/runner.py', 'src/tt_bench/tools/executor.py',
                'scripts/build_dataset_manifest.py']
     source_hashes = {s: hashlib.sha256((source_root / s).read_bytes()).hexdigest() for s in sources}
