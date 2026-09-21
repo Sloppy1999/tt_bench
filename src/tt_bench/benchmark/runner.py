@@ -396,14 +396,24 @@ class TuringTumbleBenchmark:
         question_type: str,
         question: str,
         answer_format: str,
+        options: Optional[List[Any]] = None,
+        hints: Optional[List[Any]] = None,
     ) -> str:
         """Build an understanding prompt from task info."""
         board = self._board_for_prompt(task_info, include_solution=True)
+        options_block = ""
+        if options:
+            options_block = "\n## Options\n" + "\n".join(f"- {o}" for o in options) + "\n"
+        hints_block = ""
+        if hints:
+            hints_block = "\n## Hints\n" + "\n".join(f"- {h}" for h in hints) + "\n"
         return UNDERSTANDING_PROMPT_TEMPLATE.format(
             board_json=self._format_board_json(board),
             COMPONENT_RULES=COMPONENT_RULES,
             question_type=question_type,
             question=question,
+            options_block=options_block,
+            hints_block=hints_block,
             answer_format=answer_format,
         )
 
@@ -905,6 +915,8 @@ class TuringTumbleBenchmark:
                         question_type=q_type,
                         question=question,
                         answer_format=self._get_answer_format(q_type),
+                        options=q.get("options") or q.get("choices"),
+                        hints=q.get("hints"),
                     )
 
                     # Query LLM
@@ -930,16 +942,8 @@ class TuringTumbleBenchmark:
                             llm_response=str(predicted.get("answer", "")),
                             predicted=predicted,
                             expected=validation_result["expected"],
-                            metrics={
-                                "trace_accuracy": validation_result.get(
-                                    "trace_accuracy", 0.0
-                                ),
-                                "state_precision": validation_result.get(
-                                    "state_precision", 0.0
-                                ),
-                                **cx_metrics,
-                            },
-                            error=validation_result.get("error", error),
+                            metrics={**cx_metrics},
+                            error=validation_result.get("error") or error,
                             latency_ms=int((time.time() - start_time) * 1000),
                             tokens_used=total_tokens,
                             logprobs=logprobs,

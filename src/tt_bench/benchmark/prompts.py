@@ -40,7 +40,7 @@ UNDERSTANDING_PROMPT_TEMPLATE = """Analyze this Turing Tumble board configuratio
 ## Question Type: {question_type}
 
 ## Question: {question}
-
+{options_block}{hints_block}
 ## Expected Answer Format
 {answer_format}
 

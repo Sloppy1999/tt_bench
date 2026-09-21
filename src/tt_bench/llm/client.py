@@ -167,6 +167,7 @@ class LLMClient(ABC):
         else:
             system_prompt += " Output valid JSON only. No markdown."
 
+        last_error = ""
         for attempt in range(self.config.max_retries):
             content = None
             usage = {}
@@ -180,6 +181,7 @@ class LLMClient(ABC):
                     logger.warning(
                         f"Empty or too-short response (len={len(raw_content)})"
                     )
+                    last_error = "empty content returned by provider"
                     time.sleep(1 * (attempt + 1))
                     continue
 
@@ -223,6 +225,7 @@ class LLMClient(ABC):
 
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON parse attempt {attempt + 1} failed: {e}")
+                last_error = f"no valid JSON in response: {e}"
                 preview = (
                     content[:500]
                     if content and len(content) > 500
@@ -234,9 +237,10 @@ class LLMClient(ABC):
                 time.sleep(1 * (attempt + 1))
             except Exception as e:
                 logger.warning(f"LLM call attempt {attempt + 1} failed: {e}")
+                last_error = str(e)
                 time.sleep(1 * (attempt + 1))
 
-        return (None, f"Failed after {self.config.max_retries} attempts",
+        return (None, last_error or f"Failed after {self.config.max_retries} attempts",
                 {"prompt_tokens": 0, "completion_tokens": 0}, None)
 
     def generate_with_tools(
@@ -1360,11 +1364,11 @@ class DeepSeekClient(LLMClient):
             reasoning = msg.get("reasoning_content", "")
             if reasoning:
                 logger.warning(
-                    "DeepSeek: content is empty but reasoning_content has %d chars. "
-                    "Using reasoning_content as fallback.",
+                    "DeepSeek: empty content with %d chars of reasoning_content "
+                    "(finish_reason=%s). Not substituting reasoning for the answer.",
                     len(reasoning),
+                    choice.get("finish_reason", ""),
                 )
-                content = reasoning
 
         # Extract logprobs when available
         logprobs_list: Optional[List[Dict[str, Any]]] = None
