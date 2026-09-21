@@ -306,6 +306,8 @@ def _build_example_prompt(target_dir: Path) -> Path:
         COMPONENT_RULES=COMPONENT_RULES,
         question_type=question_type,
         question=question_text,
+        options_block="",
+        hints_block="",
         answer_format='{{"answer": "...", "reasoning": "..."}}',
     )
 

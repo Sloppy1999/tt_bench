@@ -120,6 +120,29 @@ def test_understanding_validation_rejects_partial_trace_answers():
     assert wrong_select["correct"] is False
 
 
+def test_understanding_prompt_includes_options_and_hints():
+    benchmark = TuringTumbleBenchmark.__new__(TuringTumbleBenchmark)
+    benchmark._board_for_prompt = lambda *a, **k: Board()
+
+    with_extras = benchmark.build_understanding_prompt(
+        {"task_id": "x"},
+        "select",
+        "Where does the 2nd ball go?",
+        "Return the selected option exactly.",
+        options=["bottom (output)", "interceptor"],
+        hints=["Each bit represents 1, 2, 4, 8"],
+    )
+    assert "## Options" in with_extras
+    assert "- interceptor" in with_extras
+    assert "## Hints" in with_extras
+
+    without_extras = benchmark.build_understanding_prompt(
+        {"task_id": "x"}, "numeric", "How many?", "Provide a number."
+    )
+    assert "## Options" not in without_extras
+    assert "## Hints" not in without_extras
+
+
 def test_verify_task_reuses_single_simulation_result():
     task = {
         "board": {

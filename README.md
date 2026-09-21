@@ -160,7 +160,9 @@ Given a complete board configuration, the model answers questions that probe its
 | **Abstraction** | "Which logical operation does this board implement?" |
 | **Counterfactual** | "If bit (2,3) were flipped to state 1, how would the output sequence change?" |
 
-**Metrics:** Trace accuracy (fraction of correct coordinates), state precision (component state match).
+**Metrics:** per-item answer correctness (binary). The earlier `trace_accuracy`
+and `state_precision` fields were never computed and have been removed; item-level
+trace scoring is future work.
 
 ### 2. Agentic Synthesis
 
