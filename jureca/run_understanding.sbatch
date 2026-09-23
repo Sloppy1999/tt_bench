@@ -227,6 +227,12 @@ mkdir -p "$OUT_DIR"
 # `reasoning` fields turned budget into a confound). --workers is higher than
 # the deepseek study's 4: that was chosen for a rate-limited external API, and
 # this is a local vLLM server this job already reserved the whole node for.
+#
+# WORKERS is the client-side concurrency, and 8 leaves the node idle: a slow
+# reasoning model served in eager mode sat at 2% KV-cache use with 8 requests
+# running and an empty queue, so the client, not the GPU, set the pace. Raise it
+# for such a model — but it is a SERVING CONDITION, so a run that changes it is
+# not directly comparable to one that does not, and PROVENANCE.txt records it.
 BENCH_LOG="$PROJECT_DIR/slurm_logs/bench_understand_${MODEL_NAME}_${JOB_TAG}.log"
 set +e
 uv run tt-benchmark \
@@ -239,7 +245,7 @@ uv run tt-benchmark \
     --pattern 'tt-official-ch*.json' \
     --temperature 0.0 \
     --max-tokens 8192 \
-    --workers 8 \
+    --workers "${WORKERS:-8}" \
     --output-dir "$OUT_DIR" \
     --save-report 2>&1 | tee "$BENCH_LOG"
 EXIT_CODE=$?
@@ -262,7 +268,7 @@ fi
   echo "gpu_count=$GPU_COUNT"
   echo "temperature=0.0"
   echo "max_tokens=8192"
-  echo "workers=8"
+  echo "workers=${WORKERS:-8}"
   echo "task_type=understanding"
   echo "pattern=tt-official-ch*.json"
   echo "job_id=$JOB_TAG"
