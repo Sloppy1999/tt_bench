@@ -82,7 +82,17 @@ mkdir -p "$XDG_CACHE_HOME" "$VLLM_CACHE_DIR" "$TRITON_CACHE_DIR" \
 module load CUDA/13 2>/dev/null || module load CUDA 2>/dev/null || true
 
 RUNS_DIR="$PROJECT_DIR/review/understanding_study/runs"
-OUT_DIR="$RUNS_DIR/$MODEL_NAME"
+
+# Output budget per call. 8192 is the study's default, fixed by Amendment A1
+# (PLAN.md) after 4096 truncated the JSON `reasoning` field mid-string. A run at
+# any other budget lands in its own directory — analyze.py treats every
+# subdirectory of runs/ as a separate run, so writing a second budget into the
+# same directory would silently supersede the first rather than contrast with
+# it. The naming follows the study's own precedent, deepseek-reasoner_32k.
+MAX_TOKENS="${MAX_TOKENS:-8192}"
+OUT_SUFFIX=""
+[ "$MAX_TOKENS" != "8192" ] && OUT_SUFFIX="_$((MAX_TOKENS / 1024))k"
+OUT_DIR="$RUNS_DIR/${MODEL_NAME}${OUT_SUFFIX}"
 VLLM_PORT=8000
 VLLM_LOG="$PROJECT_DIR/slurm_logs/vllm_understand_${MODEL_NAME}_${JOB_TAG}.log"
 
@@ -222,9 +232,10 @@ cd "$PROJECT_DIR"
 mkdir -p "$OUT_DIR"
 
 # Same call shape as review/understanding_study/run_all.sh (the deepseek runs):
-# task-type understanding, official pattern, temperature 0.0, max-tokens 8192
-# (raised from 4096 by Amendment A1 — see PLAN.md — after truncated JSON
-# `reasoning` fields turned budget into a confound). --workers is higher than
+# task-type understanding, official pattern, temperature 0.0, and MAX_TOKENS
+# defaulting to 8192 (raised from 4096 by Amendment A1 — see PLAN.md — after
+# truncated JSON `reasoning` fields turned budget into a confound; A2 then found
+# 32768 did not rescue the pilot's reasoning model). --workers is higher than
 # the deepseek study's 4: that was chosen for a rate-limited external API, and
 # this is a local vLLM server this job already reserved the whole node for.
 #
@@ -244,7 +255,7 @@ uv run tt-benchmark \
     --challenges-dir data/tasks/official/challenges/json \
     --pattern 'tt-official-ch*.json' \
     --temperature 0.0 \
-    --max-tokens 8192 \
+    --max-tokens "$MAX_TOKENS" \
     --workers "${WORKERS:-8}" \
     --output-dir "$OUT_DIR" \
     --save-report 2>&1 | tee "$BENCH_LOG"
@@ -267,7 +278,7 @@ fi
   echo "model_id=$MODEL_ID"
   echo "gpu_count=$GPU_COUNT"
   echo "temperature=0.0"
-  echo "max_tokens=8192"
+  echo "max_tokens=$MAX_TOKENS"
   echo "workers=${WORKERS:-8}"
   echo "task_type=understanding"
   echo "pattern=tt-official-ch*.json"
