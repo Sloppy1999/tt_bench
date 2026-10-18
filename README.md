@@ -216,7 +216,7 @@ All providers implement a unified interface in `src/tt_bench/llm/client.py`.
 │   ├── llm/               #   LLM client (multi-provider)
 │   ├── benchmark/         #   Runner, prompts, task dispatch
 │   ├── tools/             #   Tool executor (place, remove, run, inspect)
-│   ├── analytics/         #   Metrics, logprob analysis
+│   ├── analytics/         #   Board complexity metrics
 │   └── cli/               #   CLI entry points (tt-benchmark, tt-simulate)
 ├── data/tasks/            # Challenge sets
 │   ├── official/          #   58 official challenges + 176 questions
