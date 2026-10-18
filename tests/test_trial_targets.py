@@ -439,3 +439,24 @@ def test_overflow_board_rejects_a_flag_that_never_rises():
         }
     board = Board.from_task_dict(broken)
     assert not validate_targets(broken, board, [])[0]
+
+
+def test_trials_allow_an_empty_entry_cell_like_a_single_run():
+    """The cell a marble drops into from the hopper may be empty in both scorers."""
+    task = {
+        "input_sequence": ["blue"],
+        "board": {"width": 5, "height": 3, "hopper_entry_mode": "column",
+                  "fixed_components": [{"type": "ramp_left", "x": 2, "y": 1},
+                                       {"type": "ramp_left", "x": 1, "y": 2}],
+                  "ball_hoppers": {"blue": {"x": 2, "count": 1}, "red": {"x": 4, "count": 0}},
+                  "trigger_levers": {"left": {"x": 1}, "right": {"x": 3}}},
+        "solution": {"placed_components": []},
+        "expected_output": {"left_catcher": 1},
+    }
+    assert (2, 0) not in Board.from_task_dict(task).components
+    assert verify_task(task)
+
+    trial_task = deepcopy(task)
+    trial_task["trials"] = [{"expect": {"left_catcher": 1}}]
+    ok, why = validate_targets(trial_task, Board.from_task_dict(trial_task), [])
+    assert ok, why

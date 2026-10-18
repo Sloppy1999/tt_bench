@@ -27,7 +27,7 @@ from matplotlib.lines import Line2D
 from matplotlib.image import imread
 import numpy as np
 
-from tt_bench.simulator import Board, Component, Side, build_gear_connections
+from tt_bench.simulator import Board, Side
 
 # ---------------------------------------------------------------------------
 # Load component assets
@@ -779,40 +779,23 @@ def _grid_to_axes(gx: int, gy: int) -> tuple[float, float]:
 
 def _build_board_from_task(
     task: dict,
-    hopper_entry_mode: str = "column",
+    hopper_entry_mode: Optional[str] = None,
 ) -> tuple[Board, dict[tuple[int, int], str]]:
-    """Build a simulator Board from task JSON and return component origin labels."""
-    board_data = task.get("board", {})
-    hoppers = board_data.get("ball_hoppers", {})
-    levers = board_data.get("trigger_levers", {})
+    """Build a simulator Board from task JSON and return component origin labels.
 
-    board = Board(
-        rows=board_data.get("height", 11),
-        cols=board_data.get("width", 11),
-        blue_hopper_x=hoppers.get("blue", {}).get("x", 2),
-        red_hopper_x=hoppers.get("red", {}).get("x", 8),
-        blue_hopper_count=hoppers.get("blue", {}).get("count", 8),
-        red_hopper_count=hoppers.get("red", {}).get("count", 8),
-        hopper_entry_mode=hopper_entry_mode,
-        left_catcher_x=levers.get("left", {}).get("x"),
-        right_catcher_x=levers.get("right", {}).get("x"),
-    )
+    The board is the scorer's own (``Board.from_task_dict``), so the animation
+    shows the run that is scored. ``hopper_entry_mode`` overrides the task's.
+    """
+    if hopper_entry_mode is not None:
+        task = {**task, "board": {**task.get("board", {}), "hopper_entry_mode": hopper_entry_mode}}
+    board = Board.from_task_dict(task)
 
     origins: dict[tuple[int, int], str] = {}
-
-    for comp_dict in board_data.get("fixed_components", []):
-        comp = Component.from_dict(comp_dict)
-        board.place(comp.x, comp.y, comp)
-        origins[(comp.x, comp.y)] = "fixed"
-
+    for comp_dict in task.get("board", {}).get("fixed_components", []):
+        origins[(comp_dict["x"], comp_dict["y"])] = "fixed"
+    # An editable fixed bit is listed in the solution only to set its state.
     for comp_dict in task.get("solution", {}).get("placed_components", []):
-        comp = Component.from_dict(comp_dict)
-        board.place(comp.x, comp.y, comp)
-        origins[(comp.x, comp.y)] = "placed"
-
-    # Ensure connected gear bits flip together during simulation.
-    build_gear_connections(board)
-
+        origins.setdefault((comp_dict["x"], comp_dict["y"]), "placed")
     for pos in board.components:
         origins.setdefault(pos, "derived")
 
@@ -853,7 +836,7 @@ def _snapshot_frame(
 def _build_animation_frames(
     task: dict,
     sequence: list[Side],
-    hopper_entry_mode: str = "column",
+    hopper_entry_mode: Optional[str] = None,
 ) -> tuple[list[dict], dict[tuple[int, int], str]]:
     """Simulate the task and capture frame-by-frame states."""
     board, origins = _build_board_from_task(task, hopper_entry_mode=hopper_entry_mode)
@@ -1038,7 +1021,7 @@ def render_simulation_mp4(
     sequence: Optional[str] = None,
     fps: int = 10,
     hold_frames: int = 6,
-    hopper_entry_mode: str = "column",
+    hopper_entry_mode: Optional[str] = None,
 ) -> str:
     """Render an MP4 animation of marble simulation for a single task."""
     hoppers = task.get("board", {}).get("ball_hoppers", {})
@@ -1157,8 +1140,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--hopper-entry-mode",
         choices=["column", "inward"],
-        default="column",
-        help="Marble entry semantics for simulation MP4s (default: column to match benchmark tooling)",
+        default=None,
+        help="Override marble entry semantics for simulation MP4s (default: the task's hopper_entry_mode, else inward, as the benchmark scores it)",
     )
     args = parser.parse_args()
 
