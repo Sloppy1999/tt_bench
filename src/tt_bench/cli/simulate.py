@@ -153,7 +153,6 @@ def run_cli():
                     remaining = trigger_releases + remaining
 
                     if result.terminated and result.termination_reason in (
-                        "infinite_loop",
                         "max_steps_exceeded",
                         "fell_off_side",
                     ):
