@@ -21,7 +21,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from tt_bench.simulator.targets import validate_targets
+from tt_bench.simulator.targets import (
+    free_fall_cells,
+    lost_marbles,
+    normalize_sequence,
+    validate_targets,
+)
 from tt_bench.llm import client as llm_client_
 from tt_bench.tools import executor as tool_executor_
 
@@ -237,11 +242,7 @@ class TuringTumbleBenchmark:
     @staticmethod
     def _normalize_input_sequence(input_seq: Any) -> List[str]:
         """Normalize input_sequence from JSON/string into a list of side names."""
-        if isinstance(input_seq, str):
-            return [s.strip() for s in input_seq.split(",") if s.strip()]
-        if isinstance(input_seq, list):
-            return [str(s).strip() for s in input_seq if str(s).strip()]
-        return ["blue"]
+        return normalize_sequence(input_seq)
 
     @staticmethod
     def _normalize_placement(placement: Dict[str, Any]) -> Dict[str, Any]:
@@ -598,33 +599,7 @@ class TuringTumbleBenchmark:
         board: tt_sim.Board, results: List[tt_sim.MarbleResult]
     ) -> List[Tuple[int, Tuple[int, int]]]:
         """Every (marble index, cell) pair that traverses an empty in-board cell."""
-        offending: List[Tuple[int, Tuple[int, int]]] = []
-        for marble_idx, result in enumerate(results, start=1):
-            path = result.path or []
-            for path_idx, curr in enumerate(path[1:], start=1):
-                prev = path[path_idx - 1]
-                x, y = curr
-
-                # The hopper-to-board transition may enter an empty coordinate;
-                # subsequent in-board motion may not.
-                if prev[1] < 0 and y >= 0:
-                    continue
-
-                next_pos = path[path_idx + 1] if path_idx + 1 < len(path) else None
-                if (
-                    y == board.rows - 1
-                    and next_pos is not None
-                    and next_pos[1] >= board.rows
-                    and board.catcher_at(x) is not None
-                ):
-                    # The final coordinate just above a trigger lever is a
-                    # catcher approach slot in several official encodings, not
-                    # an illegal mid-board gap.
-                    continue
-
-                if 0 <= x < board.cols and 0 <= y < board.rows and curr not in board.components:
-                    offending.append((marble_idx, tuple(curr)))
-        return offending
+        return free_fall_cells(board, results)
 
     def _validate_simulation_results(
         self,
@@ -637,12 +612,7 @@ class TuringTumbleBenchmark:
         if has_free_fall:
             return False, f"Illegal free fall: {free_fall_msg}"
 
-        lost = [
-            r
-            for r in results
-            if r.caught_by is None
-            and r.termination_reason not in ("no_blue_balls", "no_red_balls")
-        ]
+        lost = lost_marbles(results)
         if lost:
             reasons = Counter(r.termination_reason or "unknown" for r in lost)
             summary = ", ".join(f"{k}: {v}" for k, v in sorted(reasons.items()))

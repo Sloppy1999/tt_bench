@@ -11,7 +11,7 @@ from pathlib import Path
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from tt_bench.simulator.targets import validate_targets
+from tt_bench.simulator.targets import free_fall_cells, lost_marbles, validate_targets
 from tt_bench.simulator.inventory import inventory_key
 from tt_bench.simulator import (
     Board,
@@ -387,33 +387,8 @@ class TuringTumbleToolExecutor:
             # per (marble, cell) pair — when 8 identical marbles follow
             # the same path, the LLM only needs to see each empty cell once.
             cell_errors: dict[tuple[int, int], list[int]] = {}
-            for marble_idx, result in enumerate(results, start=1):
-                path = result.path or []
-                for path_idx, curr in enumerate(path[1:], start=1):
-                    prev = path[path_idx - 1]
-                    x, y = curr
-
-                    # Hopper-to-board entry may be empty; subsequent cells
-                    # inside the board may not.
-                    if prev[1] < 0 and y >= 0:
-                        continue
-
-                    # Last cell just above a catcher is a valid approach slot.
-                    next_pos = path[path_idx + 1] if path_idx + 1 < len(path) else None
-                    if (
-                        y == self.board.rows - 1
-                        and next_pos is not None
-                        and next_pos[1] >= self.board.rows
-                        and self.board.catcher_at(x) is not None
-                    ):
-                        continue
-
-                    if (
-                        0 <= x < self.board.cols
-                        and 0 <= y < self.board.rows
-                        and curr not in self.board.components
-                    ):
-                        cell_errors.setdefault(curr, []).append(marble_idx)
+            for marble_idx, cell in free_fall_cells(self.board, results):
+                cell_errors.setdefault(cell, []).append(marble_idx)
 
             free_fall_errors: List[str] = []
             for cell, marble_indices in sorted(cell_errors.items()):
@@ -494,11 +469,7 @@ class TuringTumbleToolExecutor:
             return False
         if free_fall_errors:
             return False
-        if any(
-            result.caught_by is None
-            and result.termination_reason not in ("no_blue_balls", "no_red_balls")
-            for result in results
-        ):
+        if lost_marbles(results):
             return False
 
         task = {

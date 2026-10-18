@@ -87,29 +87,16 @@ def _run_trials(trials: list, task: dict, board, registers: dict) -> tuple[bool,
         if not ok:
             return False, f"trial {label}: {why}"
 
-        sequence = _sequence(trial.get("input_sequence", default_sequence))
+        sequence = normalize_sequence(trial.get("input_sequence", default_sequence))
         results = board.run(sequence)
 
         # Each trial must be physically legal, including branches not taken
         # by the task's default state. An output match cannot excuse a gap.
-        for result in results:
-            path = result.path or []
-            for i, (x, y) in enumerate(path):
-                if not (0 <= x < board.cols and 0 <= y < board.rows):
-                    continue
-                if (x, y) in board.components:
-                    continue
-                if (y == board.rows - 1 and i + 1 < len(path)
-                        and path[i + 1][1] >= board.rows and result.caught_by is not None):
-                    continue
-                return False, f'trial {label}: free fall at ({x}, {y})'
+        cells = free_fall_cells(board, results)
+        if cells:
+            return False, f"trial {label}: free fall at {cells[0][1]}"
 
-        lost = [
-            r
-            for r in results
-            if r.caught_by is None
-            and r.termination_reason not in ("no_blue_balls", "no_red_balls")
-        ]
+        lost = lost_marbles(results)
         if lost:
             return False, f"trial {label}: {len(lost)} marble(s) reached no catcher"
 
@@ -347,10 +334,56 @@ def _parse_bit_key(key) -> tuple[int, int] | None:
         return None
 
 
-def _sequence(raw) -> list[str] | None:
-    """Normalise an input sequence the way the rest of the contract expects."""
-    if raw is None:
-        return None
+def normalize_sequence(raw) -> list[str]:
+    """Normalise an input sequence; a missing one releases a single blue ball."""
     if isinstance(raw, str):
         return [s.strip() for s in raw.split(",") if s.strip()]
-    return [str(s).strip() for s in raw if str(s).strip()]
+    if isinstance(raw, list):
+        return [str(s).strip() for s in raw if str(s).strip()]
+    return ["blue"]
+
+
+def free_fall_cells(board, results: list) -> list[tuple[int, tuple[int, int]]]:
+    """Every (marble index, cell) pair that traverses an empty in-board cell.
+
+    The simulator can carry a marble through empty cells, but a Turing Tumble
+    solution is only legal when the marble lands on a component at every
+    in-board step after it enters from the hopper.
+    """
+    offending: list[tuple[int, tuple[int, int]]] = []
+    for marble_idx, result in enumerate(results, start=1):
+        path = result.path or []
+        for path_idx, curr in enumerate(path[1:], start=1):
+            prev = path[path_idx - 1]
+            x, y = curr
+
+            # The hopper-to-board transition may enter an empty coordinate;
+            # subsequent in-board motion may not.
+            if prev[1] < 0 and y >= 0:
+                continue
+
+            next_pos = path[path_idx + 1] if path_idx + 1 < len(path) else None
+            if (
+                y == board.rows - 1
+                and next_pos is not None
+                and next_pos[1] >= board.rows
+                and board.catcher_at(x) is not None
+            ):
+                # The final coordinate just above a trigger lever is a
+                # catcher approach slot in several official encodings, not
+                # an illegal mid-board gap.
+                continue
+
+            if 0 <= x < board.cols and 0 <= y < board.rows and curr not in board.components:
+                offending.append((marble_idx, tuple(curr)))
+    return offending
+
+
+def lost_marbles(results: list) -> list:
+    """Marbles that stopped without reaching a catcher or interceptor."""
+    return [
+        r
+        for r in results
+        if r.caught_by is None
+        and r.termination_reason not in ("no_blue_balls", "no_red_balls")
+    ]
