@@ -74,6 +74,8 @@ class TaskResult:
     """Token-level log probabilities from the LLM.  For understanding tasks
     this is a single list of per-token logprob dicts.  For agentic tasks it is
     a list of per-turn logprob lists.  ``None`` when not captured."""
+    tier: Optional[int] = None
+    """Tier of the challenge the result belongs to; ``None`` if it never loaded."""
 
 
 @dataclass
@@ -87,8 +89,12 @@ class BenchmarkReport:
     successful: int
     failed: int
     task_results: List[TaskResult]
-    per_tier: Dict[int, Dict[str, int]] = field(default_factory=dict)
+    # tier -> task_type -> {total, successful, failed, ungraded}
+    per_tier: Dict[int, Dict[str, Dict[str, int]]] = field(default_factory=dict)
     error: Optional[str] = None
+    ungraded: int = 0
+    """Results with ``success=None`` (provider error, manual review); excluded
+    from ``successful`` and ``failed``."""
 
 
 # ============================================================================
@@ -815,18 +821,27 @@ class TuringTumbleBenchmark:
         """
         if not isinstance(final_result, dict):
             return False
-        for candidate in (final_result,):
-            if "success" in candidate:
-                return candidate.get("success") is False
-        content = final_result.get("content", "")
-        if isinstance(content, str) and content.strip():
+        if "success" in final_result:
+            return final_result.get("success") is False
+        # Raw text arrives as {"content": ...} (vLLM) or {"final_answer": ...}
+        # (clients whose json.loads failed), possibly fenced or inside prose.
+        for key in ("content", "final_answer"):
+            text = final_result.get(key)
+            if not isinstance(text, str) or not text.strip():
+                continue
             try:
-                inner = json.loads(content)
-                if isinstance(inner, dict) and "success" in inner:
-                    return inner.get("success") is False
-            except (json.JSONDecodeError, TypeError):
-                pass
+                inner = llm_client_.parse_json_text(text)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(inner, dict) and "success" in inner:
+                return inner.get("success") is False
         return False
+
+    @staticmethod
+    def _is_provider_error(error: Optional[str]) -> bool:
+        """True if the client reported a transport/API failure, not a model answer."""
+        # Every client prefixes transport failures this way; keep new clients in line.
+        return bool(error) and error.startswith(("API error", "Exception"))
 
     def run_understanding_task(self, task_path: Path) -> List[TaskResult]:
         """Run procedural understanding tasks for a challenge.
@@ -883,6 +898,7 @@ class TuringTumbleBenchmark:
                 if not question:
                     continue
 
+                q_start = time.time()
                 try:
                     # Build prompt
                     prompt = self.build_understanding_prompt(
@@ -898,7 +914,10 @@ class TuringTumbleBenchmark:
                     predicted, error, usage, logprobs = self.llm.generate_json(
                         prompt=prompt,
                         system_prompt=UNDERSTANDING_SYSTEM_PROMPT,
+                        max_tokens=self.max_tokens,
                     )
+                    # No answer because the provider failed: ungraded, not wrong.
+                    provider_failed = predicted is None and self._is_provider_error(error)
                     total_tokens = usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
 
                     # Validate by running actual simulation or comparing to expected answer
@@ -913,15 +932,18 @@ class TuringTumbleBenchmark:
                         TaskResult(
                             task_id=f"{task_id}_{qid}",
                             task_type="understanding",
-                            success=validation_result["correct"],
+                            success=None if provider_failed else validation_result["correct"],
                             llm_response=str(predicted.get("answer", "")),
                             predicted=predicted,
                             expected=validation_result["expected"],
                             metrics={**cx_metrics},
-                            error=validation_result.get("error") or error,
-                            latency_ms=int((time.time() - start_time) * 1000),
+                            error="; ".join(
+                                e for e in (validation_result.get("error"), error) if e
+                            ) or None,
+                            latency_ms=int((time.time() - q_start) * 1000),
                             tokens_used=total_tokens,
                             logprobs=logprobs,
+                            tier=task_info["tier"],
                         )
                     )
 
@@ -929,14 +951,15 @@ class TuringTumbleBenchmark:
                     logger.warning(f"Error in understanding task {q_type}: {e}")
                     results.append(
                         TaskResult(
-                            task_id=f"{task_id}_{q_type}",
+                            task_id=f"{task_id}_{qid}",
                             task_type="understanding",
                             success=False,
                             llm_response="",
                             predicted={},
                             expected={},
                             error=str(e),
-                            latency_ms=int((time.time() - start_time) * 1000),
+                            latency_ms=int((time.time() - q_start) * 1000),
+                            tier=task_info["tier"],
                         )
                     )
 
@@ -1146,10 +1169,14 @@ class TuringTumbleBenchmark:
                     }
                 )
 
+            # A run cut short by the provider is ungraded unless the board
+            # already validates; either way keep the scorer's and client's reasons.
+            provider_failed = not is_valid and self._is_provider_error(error)
+
             return TaskResult(
                 task_id=task_id,
                 task_type="agentic_synthesis",
-                success=is_valid,
+                success=None if provider_failed else is_valid,
                 llm_response=json.dumps(final_result) if final_result is not None else "",
                 predicted={
                     "final_solution": solution_used,
@@ -1189,11 +1216,14 @@ class TuringTumbleBenchmark:
                     "unsolvable_detected": float(unsolvable_detected) if unsolvable_detected is not None else None,
                     **cx_metrics,
                 },
-                error=msg if not is_valid else error,
+                error="; ".join(
+                    e for e in (None if is_valid else msg, error) if e
+                ) or None,
                 latency_ms=int((time.time() - start_time) * 1000),
                 tokens_used=usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0),
                 component_score=comp_score,
                 logprobs=turn_logprobs,
+                tier=task_info["tier"],
             )
 
         except Exception as e:
@@ -1208,14 +1238,6 @@ class TuringTumbleBenchmark:
                 error=str(e),
                 latency_ms=int((time.time() - start_time) * 1000),
             )
-
-    def _find_component_position(self, components: List[Dict]) -> Tuple[int, int]:
-        """Find position of first interesting component (bit/gear)."""
-        for comp in components:
-            comp_type = comp.get("type", "")
-            if "bit" in comp_type:
-                return comp.get("x", 0), comp.get("y", 0)
-        return 3, 3  # Default
 
     def _get_answer_format(self, question_type: str) -> str:
         """Get expected answer format for a question type."""
@@ -1265,12 +1287,37 @@ class TuringTumbleBenchmark:
         text = str(value).lower().replace("_", " ")
         return " ".join(re.findall(r"[a-z0-9+-]+", text))
 
+    _OPPOSING_MARKERS = (("left", "right"), ("right", "left"), ("blue", "red"), ("red", "blue"))
+
+    @classmethod
+    def _hedges(cls, predicted: str, expected: str) -> bool:
+        """True if the prediction offers both an expected marker and its opposite.
+
+        "left or right" contains "left"; without this it scores as "left".
+        Only an explicit alternative counts: a trace that mentions the other
+        side elsewhere ("goes left; the right bit stays") is not a hedge.
+        """
+        pred_norm = cls._normalise_answer_text(predicted)
+        exp_norm = cls._normalise_answer_text(expected)
+
+        def has(word: str, text: str) -> bool:
+            return re.search(rf"\b{word}\b", text) is not None
+
+        gap = r"(?:\s+\w+){0,2}\s+(?:or|and/or|either)\s+(?:\w+\s+)?"
+        return any(
+            has(a, exp_norm) and not has(b, exp_norm)
+            and re.search(rf"\b{a}\w*{gap}{b}\b|\b{b}\w*{gap}{a}\b", pred_norm) is not None
+            for a, b in cls._OPPOSING_MARKERS
+        )
+
     @classmethod
     def _text_answer_matches(cls, predicted: str, expected: str) -> bool:
         """Compare free-form answers while allowing concise paraphrases."""
         pred_norm = cls._normalise_answer_text(predicted)
         exp_norm = cls._normalise_answer_text(expected)
         if not pred_norm or not exp_norm:
+            return False
+        if cls._hedges(pred_norm, exp_norm):
             return False
         if pred_norm == exp_norm or exp_norm in pred_norm:
             return True
@@ -1351,7 +1398,11 @@ class TuringTumbleBenchmark:
                         all(kw in predicted_text for kw in outcome_checks)
                         if outcome_checks else self._text_answer_matches(predicted_text, expected_answer)
                     )
-                    matched = coords_match and markers_match
+                    matched = (
+                        coords_match
+                        and markers_match
+                        and not self._hedges(predicted_text, expected_answer)
+                    )
                     result["correct"] = matched
                     result["expected"] = {"answer": expected_answer}
                 else:
@@ -1360,7 +1411,9 @@ class TuringTumbleBenchmark:
                     expected_catcher = sim_result.caught_by
                     if expected_catcher:
                         pred_text = " ".join(v for v in predicted.values() if isinstance(v, str)).lower()
-                        result["correct"] = expected_catcher in pred_text
+                        result["correct"] = expected_catcher in pred_text and not self._hedges(
+                            pred_text, expected_catcher
+                        )
                     result["expected"] = {
                         "caught_by": sim_result.caught_by,
                         "path": sim_result.path,
@@ -1490,7 +1543,6 @@ class TuringTumbleBenchmark:
 
         logger.info(f"Found {len(challenge_files)} challenge files")
 
-        task_types = task_types or ["understanding", "agentic_synthesis"]
         workers = getattr(self, "_workers", 1)
 
         # ── sequential path (default) ──────────────────────────────────
@@ -1534,32 +1586,27 @@ class TuringTumbleBenchmark:
                     except Exception as exc:
                         logger.exception("Task %s failed: %s", tp.name, exc)
 
+        # success=None (provider error, manual review) is ungraded: it counts
+        # toward neither successes nor failures.
         successful = sum(1 for r in self.results if r.success is True)
-        failed = len(self.results) - successful
+        failed = sum(1 for r in self.results if r.success is False)
+        ungraded = len(self.results) - successful - failed
 
-        # Per-tier aggregation
-        per_tier: Dict[int, Dict[str, int]] = {}
-        task_tier_map: Dict[str, int] = {}
-        for cf in challenge_files:
-            try:
-                with open(cf) as f:
-                    data = json.load(f)
-                task_id = data.get("task_id", cf.stem)
-                if cf.stem.startswith("tt-official-") and task_id != cf.stem:
-                    task_id = cf.stem
-                task_tier_map[task_id] = data.get("tier", 1)
-            except Exception:
-                pass
-
+        # Per (tier, task_type): understanding and synthesis rates are not
+        # comparable, and the tier travels on the result itself because
+        # understanding IDs ({task_id}_{qid}) are not challenge IDs.
+        per_tier: Dict[int, Dict[str, Dict[str, int]]] = {}
         for r in self.results:
-            tier = task_tier_map.get(r.task_id, 1)
-            if tier not in per_tier:
-                per_tier[tier] = {"total": 0, "successful": 0, "failed": 0}
-            per_tier[tier]["total"] += 1
-            if r.success is True:
-                per_tier[tier]["successful"] += 1
+            stats = per_tier.setdefault(r.tier or 1, {}).setdefault(
+                r.task_type, {"total": 0, "successful": 0, "failed": 0, "ungraded": 0}
+            )
+            stats["total"] += 1
+            if r.success is None:
+                stats["ungraded"] += 1
+            elif r.success:
+                stats["successful"] += 1
             else:
-                per_tier[tier]["failed"] += 1
+                stats["failed"] += 1
 
         return BenchmarkReport(
             timestamp=datetime.now().isoformat(),
@@ -1570,6 +1617,7 @@ class TuringTumbleBenchmark:
             failed=failed,
             per_tier=per_tier,
             task_results=self.results,
+            ungraded=ungraded,
         )
 
     @staticmethod
@@ -1588,6 +1636,7 @@ class TuringTumbleBenchmark:
             "latency_ms": r.latency_ms,
             "tokens_used": r.tokens_used,
             "logprobs": r.logprobs,
+            "tier": r.tier,
         }
 
     def _save_task_result(self, result: "TaskResult") -> None:
@@ -1623,14 +1672,15 @@ class TuringTumbleBenchmark:
 
         # Build per-tier summary with rates
         per_tier_json = {}
-        for tier, stats in sorted(report.per_tier.items()):
-            total = stats["total"]
-            per_tier_json[str(tier)] = {
-                "total": total,
-                "successful": stats["successful"],
-                "failed": stats["failed"],
-                "success_rate": round(stats["successful"] / total * 100, 1) if total > 0 else 0,
-            }
+        for tier, by_type in sorted(report.per_tier.items()):
+            per_tier_json[str(tier)] = {}
+            for task_type, stats in sorted(by_type.items()):
+                graded = stats["successful"] + stats["failed"]
+                per_tier_json[str(tier)][task_type] = {
+                    **stats,
+                    "success_rate": round(stats["successful"] / graded * 100, 1) if graded > 0 else 0,
+                }
+        graded_total = report.successful + report.failed
 
         # Record the decoding configuration IN the report. Until now the only
         # trace of it was the output directory name, which the sbatch suffixes
@@ -1664,8 +1714,9 @@ class TuringTumbleBenchmark:
             "total_tasks": report.total_tasks,
             "successful": report.successful,
             "failed": report.failed,
-            "success_rate": report.successful / report.total_tasks
-            if report.total_tasks > 0
+            "ungraded": report.ungraded,
+            "success_rate": report.successful / graded_total
+            if graded_total > 0
             else 0,
             "per_tier": per_tier_json,
             "results": results_data,
@@ -1891,20 +1942,25 @@ def main():
     print(f"Tasks: {report.total_tasks}")
     print(f"Successful: {report.successful}")
     print(f"Failed: {report.failed}")
-    if report.total_tasks > 0:
-        print(f"Success Rate: {report.successful / report.total_tasks * 100:.1f}%")
+    print(f"Ungraded: {report.ungraded}")
+    graded_total = report.successful + report.failed
+    if graded_total > 0:
+        print(f"Success Rate: {report.successful / graded_total * 100:.1f}%")
     else:
-        print("Success Rate: N/A (no tasks matched)")
+        print("Success Rate: N/A (no graded tasks)")
 
     # Per-tier breakdown
     if report.per_tier:
         print(f"\nPer-Tier Breakdown")
         print(f"{'-' * 30}")
         for tier in sorted(report.per_tier):
-            stats = report.per_tier[tier]
-            total = stats["total"]
-            rate = stats["successful"] / total * 100 if total > 0 else 0
-            print(f"  Tier {tier}: {stats['successful']}/{total} ({rate:.1f}%)")
+            for task_type, stats in sorted(report.per_tier[tier].items()):
+                graded = stats["successful"] + stats["failed"]
+                rate = stats["successful"] / graded * 100 if graded > 0 else 0
+                print(
+                    f"  Tier {tier} {task_type}: {stats['successful']}/{graded} "
+                    f"({rate:.1f}%, {stats['ungraded']} ungraded)"
+                )
 
     # Save report
     if args.save_report:

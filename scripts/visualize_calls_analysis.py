@@ -35,6 +35,8 @@ def load_tasks(path: Path) -> list:
         with open(rp) as f:
             data = json.load(f)
         for r in data.get("results", []):
+            if r.get("success") is None:  # ungraded (provider error), not a failure
+                continue
             cat_map = {"official": "official", "1comp": "1comp", "1comp_var": "1comp",
                       "2comp": "2comp", "2comp_var": "2comp"}
             tasks.append({
