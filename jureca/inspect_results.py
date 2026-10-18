@@ -213,6 +213,10 @@ def summarise(report_path: Path, set_label: str) -> dict:
 
     tool_calls_total = 0
 
+    # success=None is a provider error, not a model failure: keep it out of every rate.
+    ungraded = sum(1 for t in results if t.get("success") is None)
+    results = [t for t in results if t.get("success") is not None]
+
     for task in results:
         met = task.get("metrics") or {}
         tool_calls_total += met.get("tool_calls_count") or 0
@@ -273,6 +277,7 @@ def summarise(report_path: Path, set_label: str) -> dict:
         "provider": report.get("provider"),
         "total": total,
         "successful": successful,
+        "ungraded": ungraded,
         # Recomputed, not read from the report — see the module docstring.
         "success_rate_pct": (100.0 * successful / total) if total else 0.0,
         "turns_ok": sorted(ok_turns),

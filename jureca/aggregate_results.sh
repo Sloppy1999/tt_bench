@@ -53,7 +53,7 @@ from pathlib import Path
 from collections import defaultdict
 
 sys.path.insert(0, "jureca")
-from inspect_results import parse_set_label
+from inspect_results import DEFAULT_TEMPERATURE, parse_set_label, resolve_temperature
 
 results_dir = Path("benchmark_results/jureca_tier1")
 
@@ -64,31 +64,34 @@ SET_ORDER = ["official", "1comp", "2comp", "scaled"]
 MATRIX_SETS = {"official", "1comp", "2comp"}
 
 
-def in_overall(label, source):
+def in_overall(label, source, temperature):
     """Whether a set counts towards OVERALL.
 
     Only complete default-configuration runs: any suffix (_tN, _T, _a, _sN, and
     _tierN/_probe, which parse_set_label keeps in the base) is a sweep or a
     repetition of a set already counted, unsolvable_* scores 0% by design, and
-    a per_task/ reconstruction is a run that has not finished.
+    a per_task/ reconstruction is a run that has not finished. The temperature
+    check catches an unsuffixed folder whose newest report predates the _T suffix.
     """
     base = parse_set_label(label)[0]
     return (label == base and "_tier" not in base and not base.endswith("_probe")
-            and not base.startswith("unsolvable_") and source == "report")
+            and not base.startswith("unsolvable_") and source == "report"
+            and temperature == DEFAULT_TEMPERATURE)
 
 
 def load_set_results(set_dir):
-    """Return (results_list, provider, model) for one <model>/<set> dir.
+    """Return (results_list, provider, model, temperature) for one <model>/<set> dir.
 
     Prefer the newest aggregate benchmark_*.json; if none exists (e.g. the job
     timed out mid-set), reconstruct from the per_task/*.json files written
-    incrementally. Returns (None, "", "") if the set has no data at all.
+    incrementally. Returns (None, "", "", None) if the set has no data at all.
     """
     reports = sorted(set_dir.glob("benchmark_*.json"))
     if reports:
         with open(reports[-1]) as f:            # newest by timestamped name
             data = json.load(f)
-        return data.get("results", []), data.get("provider", ""), data.get("model", "")
+        return (data.get("results", []), data.get("provider", ""), data.get("model", ""),
+                resolve_temperature(data, set_dir.name)[0])
     per_task = set_dir / "per_task"
     if per_task.is_dir():
         results = []
@@ -99,8 +102,8 @@ def load_set_results(set_dir):
             except Exception:
                 pass
         if results:
-            return results, "", "(reconstructed from per_task/)"
-    return None, "", ""
+            return results, "", "(reconstructed from per_task/)", None
+    return None, "", "", None
 
 
 if not results_dir.is_dir():
@@ -110,12 +113,13 @@ if not results_dir.is_dir():
 
 summary = {"experiment": "jureca_tier1_vllm", "models": {}}
 found = 0
+overall_seen = {}  # model -> task_ids already in OVERALL
 
 for model_dir in sorted(p for p in results_dir.iterdir() if p.is_dir()):
     model_label = model_dir.name
     for set_dir in sorted(p for p in model_dir.iterdir() if p.is_dir()):
         challenge_set = set_dir.name
-        results, provider, model = load_set_results(set_dir)
+        results, provider, model, temperature = load_set_results(set_dir)
         if not results:
             continue
         found += 1
@@ -128,23 +132,32 @@ for model_dir in sorted(p for p in results_dir.iterdir() if p.is_dir()):
                 "tasks": [],
             }
         entry = summary["models"][model_label]
+        overall_seen.setdefault(model_label, set())
         if provider and not entry["provider"]:
             entry["provider"] = provider
         if model and not entry["model"]:
             entry["model"] = model
 
-        total = len(results)
-        successful = sum(1 for t in results if t.get("success") is True)
+        # success=None is a provider error, not a model failure: out of every rate.
+        graded = [t for t in results if t.get("success") is not None]
+        total = len(graded)
+        successful = sum(1 for t in graded if t.get("success") is True)
         source = "report" if has_report else "per_task"
-        counted = in_overall(challenge_set, source)
+        counted = in_overall(challenge_set, source, temperature)
         entry["by_set"][challenge_set] = {
             "total": total, "successful": successful, "failed": total - successful,
-            "source": source, "in_overall": counted,
+            "ungraded": len(results) - total, "source": source, "in_overall": counted,
         }
         if counted:
-            entry["overall"]["total"] += total
-            entry["overall"]["successful"] += successful
-            entry["overall"]["failed"] += total - successful
+            # scaled_1comp/2comp glob **/ and so contain every 1comp/2comp task:
+            # count each task once.
+            for t in graded:
+                if t.get("task_id") in overall_seen[model_label]:
+                    continue
+                overall_seen[model_label].add(t.get("task_id"))
+                entry["overall"]["total"] += 1
+                entry["overall"]["successful"] += t.get("success") is True
+                entry["overall"]["failed"] += t.get("success") is not True
 
         for task in results:
             entry["tasks"].append({
@@ -208,7 +221,7 @@ matrix = defaultdict(dict)
 for model_label, mdata in summary["models"].items():
     for t in mdata["tasks"]:
         if t["challenge_set"] in MATRIX_SETS:
-            matrix[model_label][t["task_id"]] = "1" if t["success"] else "0"
+            matrix[model_label][t["task_id"]] = "-" if t["success"] is None else "1" if t["success"] else "0"
 
 model_names = sorted(summary["models"])
 if all_task_ids and model_names:
