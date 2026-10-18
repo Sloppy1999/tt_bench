@@ -396,3 +396,13 @@ def test_5xx_retries_are_bounded(monkeypatch):
     assert final is None
     assert error == "API error: busy"
     assert len(http.payloads) == 3
+
+
+@pytest.mark.parametrize("provider", ["anthropic", "ollama"])
+def test_transport_failure_is_reported_as_provider_error(monkeypatch, provider):
+    """The runner scores errors prefixed "Exception"/"API error" as ungraded."""
+    monkeypatch.setattr(llm_client.requests, "post", FakeHTTP([requests.ConnectionError("refused")]))
+    c = create_llm_client(LLMConfig(provider=provider, model="m", api_key="key"))
+    out = c.generate_with_tools("p", [], FakeExecutor(), max_turns=2)
+    assert out[0] is None
+    assert out[1].startswith("Exception: ")

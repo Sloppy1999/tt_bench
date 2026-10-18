@@ -968,7 +968,7 @@ class AnthropicClient(LLMClient):
                 logger.exception("Anthropic tool call failed: %s", exc)
                 return (
                     None,
-                    str(exc),
+                    f"Exception: {exc}",
                     tool_calls_made,
                     tool_results,
                     {
@@ -1253,7 +1253,7 @@ class OllamaClient(LLMClient):
             except Exception as e:
                 logger.error(f"Ollama tool call failed: {e}")
                 return (
-                    None, str(e), tool_calls_made, tool_results,
+                    None, f"Exception: {e}", tool_calls_made, tool_results,
                     {"prompt_tokens": total_prompt_eval, "completion_tokens": total_eval_count},
                     turn_logprobs if turn_logprobs else None,
                 )
