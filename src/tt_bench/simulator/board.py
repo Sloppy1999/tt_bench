@@ -257,9 +257,6 @@ class Board:
         curr_x = entry_x
         curr_y = 0  # Enter at top row
 
-        # Track visited positions to detect loops
-        visited_positions: set[tuple[int, int]] = set()
-
         # Marble's current horizontal direction; None means vertical fall.
         last_exit_dir: Direction | None = None
 
@@ -277,15 +274,6 @@ class Board:
 
             if step_callback is not None:
                 step_callback(self, (curr_x, curr_y), steps)
-
-            # Check for loop
-            if (curr_x, curr_y) in visited_positions:
-                terminated = True
-                termination_reason = "infinite_loop"
-                caught_by = None
-                break
-
-            visited_positions.add((curr_x, curr_y))
 
             # Check if marble is off the board
             if curr_x < 0:
@@ -427,7 +415,6 @@ class Board:
 
                 # Check if we should stop (ball caught by interceptor or fell off)
                 if result.terminated and result.termination_reason in (
-                    "infinite_loop",
                     "max_steps_exceeded",
                     "fell_off_side",
                 ):
@@ -450,7 +437,6 @@ class Board:
                         results.append(paired_result)
 
                 if result.terminated and result.termination_reason in (
-                    "infinite_loop",
                     "max_steps_exceeded",
                     "fell_off_side",
                 ):
@@ -501,10 +487,6 @@ class Board:
             },
             "components": components,
         }
-
-    def to_json(self, fp) -> None:
-        """Serialize board to JSON file."""
-        json.dump(self.to_dict(), fp, indent=2)
 
     def _entry_x_for(self, side: Side) -> int:
         """Resolve the column at which a marble actually enters the playfield.
@@ -604,12 +586,6 @@ class Board:
         build_gear_connections(board)
 
         return board
-
-    @classmethod
-    def from_json(cls, fp) -> Board:
-        """Deserialize board from JSON file."""
-        data = json.load(fp)
-        return cls.from_dict(data)
 
     @classmethod
     def from_task_json(cls, task_path: str) -> Board:

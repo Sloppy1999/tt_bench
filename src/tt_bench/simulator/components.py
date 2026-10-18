@@ -6,9 +6,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-from enum import Enum
-from dataclasses import dataclass, field
-
 # =============================================================================
 # Enums and Constants
 # =============================================================================
@@ -88,6 +85,11 @@ class Component:
         """Deserialize component from dictionary."""
         comp_type = ComponentType(data["type"])
         x, y = data["x"], data["y"]
+        if comp_type in (ComponentType.BIT, ComponentType.GEAR_BIT):
+            for key in ("state", "initial_state"):
+                s = data.get(key, 0)
+                if type(s) is not int or s not in (0, 1):
+                    raise ValueError(f"{comp_type.value} {key} must be integer 0 or 1, got {s!r}")
 
         if comp_type == ComponentType.RAMP_RIGHT:
             return Ramp(x, y, Direction.RIGHT)
@@ -257,8 +259,8 @@ class Gear(Component):
         super().__init__(ComponentType.GEAR, x, y)
 
     def get_exit_direction(self, entry_side: str) -> Direction:
-        """Marbles pass straight through a gear (entry side = exit side)."""
-        return Direction(entry_side)
+        """Marbles pass straight through a gear, keeping their direction like a crossover."""
+        return Direction.RIGHT if entry_side == "left" else Direction.LEFT
 
     def get_symbol(self, state: int = 0) -> str:
         return "O"
@@ -303,7 +305,7 @@ class Trigger(Component):
         """
         # Trigger just passes through - marble continues in same direction
         # The actual ball release is handled by the Board in release_marble
-        return Direction.LEFT if entry_side == "left" else Direction.RIGHT
+        return Direction.RIGHT if entry_side == "left" else Direction.LEFT
 
     def get_paired_side(self) -> Side:
         """Returns the opposite side that this trigger releases."""

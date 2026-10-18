@@ -455,3 +455,27 @@ def test_trigger_levers_span_their_half_of_the_board():
                  left_catcher_x=3, right_catcher_x=7)
     assert wide.catcher_at(3) == "left_catcher"
     assert wide.catcher_at(7) == "right_catcher"
+
+
+def test_bit_state_must_be_zero_or_one():
+    # state=2 made a bit a permanent left ramp: it flips 2 -> -1 and never reads 0.
+    executor = TuringTumbleToolExecutor(Board(rows=3, cols=5))
+    result = executor.place_component("bit", 2, 1, state=2)
+    assert not result["success"] and "state" in result["error"]
+    assert executor.board.get(2, 1) is None
+
+    task = json.loads(
+        (Path(__file__).resolve().parent.parent
+         / "data/tasks/official/challenges/json/tt-official-ch09-pA.json").read_text()
+    )
+    task["available_parts"] = {}
+    benchmark = TuringTumbleBenchmark.__new__(TuringTumbleBenchmark)
+    ok, message = benchmark.validate_synthesis(task, [{"type": "bit", "x": 0, "y": 0, "state": 2}])
+    assert not ok and "state" in message
+
+
+def test_tool_coordinates_must_be_integers():
+    # The runner rounds coordinates when scoring, so 2.5 would score a different board.
+    executor = TuringTumbleToolExecutor(Board(rows=3, cols=5))
+    assert "integers" in executor.place_component("ramp_left", 2.5, 1)["error"]
+    assert "integers" in executor.remove_component(2.5, 1)["error"]

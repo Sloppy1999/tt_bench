@@ -165,6 +165,8 @@ class TuringTumbleToolExecutor:
             Success status and component details
         """
         try:
+            if type(x) is not int or type(y) is not int:
+                return {"success": False, "error": f"Coordinates must be integers, got ({x!r}, {y!r})"}
             # Check if position is valid
             if not (0 <= x < self.board.cols and 0 <= y < self.board.rows):
                 return {
@@ -260,6 +262,8 @@ class TuringTumbleToolExecutor:
             Success status
         """
         try:
+            if type(x) is not int or type(y) is not int:
+                return {"success": False, "error": f"Coordinates must be integers, got ({x!r}, {y!r})"}
             if not (0 <= x < self.board.cols and 0 <= y < self.board.rows):
                 return {"success": False, "error": f"Position ({x}, {y}) out of bounds"}
 
