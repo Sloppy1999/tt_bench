@@ -468,7 +468,7 @@ banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:
 
 if [ -n "$SAMPLES" ]; then
     if [ "$BATCH_SAMPLES" -eq 1 ]; then
-        ok "Repetitions: $SAMPLES per model in ONE job each (seeds 1001-$((1000 + SAMPLES)))"
+        ok "Repetitions: $SAMPLES per model in ONE job each (seeds $((1000 + SAMPLE_FIRST))-$((1000 + SAMPLE_LAST)))"
         warn "Walltime must cover all $SAMPLES passes, and one failure loses them all."
     else
         ok "Repetitions: $SAMPLE_FIRST-$SAMPLE_LAST per model, one job each "\
@@ -580,12 +580,15 @@ for entry in "${MODELS[@]}"; do
         echo "    sbatch --gres=gpu:${gpu_count} --job-name tt-$model_name \\"
         [ -n "$WALLTIME" ] && echo "           --time $WALLTIME \\"
         [ -n "$MAIL_USER" ] && echo "           --mail-type $MAIL_TYPE --mail-user $MAIL_USER \\"
-        echo "           --export=$EXPORTS \\"
+        echo "           --chdir=$PROJECT_DIR --export=$EXPORTS \\"
         echo "           --parsable $SBATCH_SCRIPT"
         continue
     fi
 
+    # --chdir: the #SBATCH --output=slurm_logs/... path is relative to the job's
+    # working directory, which otherwise is wherever this script was run from.
     JOB_ID=$(sbatch \
+        --chdir="$PROJECT_DIR" \
         --gres="gpu:${gpu_count}" \
         "${NAME_ARGS[@]}" \
         ${TIME_ARGS[@]+"${TIME_ARGS[@]}"} \

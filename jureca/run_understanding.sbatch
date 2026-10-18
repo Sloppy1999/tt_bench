@@ -92,6 +92,9 @@ RUNS_DIR="$PROJECT_DIR/review/understanding_study/runs"
 MAX_TOKENS="${MAX_TOKENS:-8192}"
 OUT_SUFFIX=""
 [ "$MAX_TOKENS" != "8192" ] && OUT_SUFFIX="_$((MAX_TOKENS / 1024))k"
+# WORKERS is a serving condition too (see the tt-benchmark call below).
+WORKERS="${WORKERS:-8}"
+[ "$WORKERS" != "8" ] && OUT_SUFFIX="${OUT_SUFFIX}_w${WORKERS}"
 OUT_DIR="$RUNS_DIR/${MODEL_NAME}${OUT_SUFFIX}"
 VLLM_PORT=8000
 VLLM_LOG="$PROJECT_DIR/slurm_logs/vllm_understand_${MODEL_NAME}_${JOB_TAG}.log"
@@ -253,10 +256,10 @@ uv run tt-benchmark \
     --api-key none \
     --task-type understanding \
     --challenges-dir data/tasks/official/challenges/json \
-    --pattern 'tt-official-ch*.json' \
+    --pattern 'tt-official-*.json' \
     --temperature 0.0 \
     --max-tokens "$MAX_TOKENS" \
-    --workers "${WORKERS:-8}" \
+    --workers "$WORKERS" \
     --output-dir "$OUT_DIR" \
     --save-report 2>&1 | tee "$BENCH_LOG"
 EXIT_CODE=$?
@@ -270,8 +273,9 @@ fi
 
 # Per-run provenance, same key=value shape as run_all.sh's runs/PROVENANCE.txt,
 # so analyze.py's generic `k=v` parser (which reads any runs/<name>/PROVENANCE.txt)
-# picks this run up the same way it picks up the deepseek ones.
-{
+# picks this run up the same way it picks up the deepseek ones. Written only on
+# success, so a crashed run's directory does not carry a finished run's record.
+[ $EXIT_CODE -eq 0 ] && {
   echo "utc_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "git_commit=$(git -C "$PROJECT_DIR" rev-parse HEAD)"
   echo "provider=vllm"
@@ -279,9 +283,9 @@ fi
   echo "gpu_count=$GPU_COUNT"
   echo "temperature=0.0"
   echo "max_tokens=$MAX_TOKENS"
-  echo "workers=${WORKERS:-8}"
+  echo "workers=$WORKERS"
   echo "task_type=understanding"
-  echo "pattern=tt-official-ch*.json"
+  echo "pattern=tt-official-*.json"
   echo "job_id=$JOB_TAG"
 } > "$OUT_DIR/PROVENANCE.txt"
 

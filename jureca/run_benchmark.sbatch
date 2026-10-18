@@ -332,18 +332,33 @@ SAMPLE="${SAMPLE:-}"
 SAMPLES="${SAMPLES:-}"
 SEED="${SEED:-}"
 if [ -n "$SAMPLES" ]; then
+    # N or an inclusive A-B, the same forms submit_all.sh --samples accepts:
+    # `seq 1 "3-5"` is an error, not a range.
+    case "$SAMPLES" in
+        *-*) SAMPLE_FIRST="${SAMPLES%%-*}"; SAMPLE_LAST="${SAMPLES##*-}" ;;
+        *)   SAMPLE_FIRST=1;               SAMPLE_LAST="$SAMPLES" ;;
+    esac
+    if ! [[ "$SAMPLE_FIRST" =~ ^[0-9]+$ && "$SAMPLE_LAST" =~ ^[0-9]+$ ]] \
+       || [ "$SAMPLE_FIRST" -gt "$SAMPLE_LAST" ]; then
+        fail "SAMPLES takes N or an ascending A-B, got '$SAMPLES'"
+        kill $VLLM_PID 2>/dev/null || true
+        exit 1
+    fi
     SAMPLE_INDICES=()
-    for _i in $(seq 1 "$SAMPLES"); do SAMPLE_INDICES+=("$_i"); done
+    for _i in $(seq "$SAMPLE_FIRST" "$SAMPLE_LAST"); do SAMPLE_INDICES+=("$_i"); done
 elif [ -n "$SAMPLE" ]; then
     SAMPLE_INDICES=("$SAMPLE")
 else
     SAMPLE_INDICES=("")
 fi
 
+# tt-official-*, not tt-official-ch*: tasks derived from the numbered official
+# puzzles are named tt-official-<N>-... without "ch" (tt-official-12-1comp.json)
+# and the ch-only glob silently dropped them. All of them are tier 2+.
 CHALLENGE_SETS=(
-    "data/tasks/official/challenges/json|tt-official-ch*.json|official"
-    "data/tasks/challenges_1comp|tt-official-ch*.json|1comp"
-    "data/tasks/challenges_2comp|tt-official-ch*.json|2comp"
+    "data/tasks/official/challenges/json|tt-official-*.json|official"
+    "data/tasks/challenges_1comp|tt-official-*.json|1comp"
+    "data/tasks/challenges_2comp|tt-official-*.json|2comp"
 )
 # The scaled sets (variants + insight + unsolvable, ~1013 tier-1 tasks against
 # ~10 for the sets above) run ONLY with RUN_SCALED=1 — they take 8-12h on their
@@ -353,9 +368,9 @@ CHALLENGE_SETS=(
 # which contradicted this comment and made every plain run ~100x longer.
 if [ "${RUN_SCALED:-}" = "1" ]; then
     CHALLENGE_SETS+=(
-        "data/tasks/scaled|tt-official-ch*.json|scaled"
-        "data/tasks/challenges_1comp|**/tt-official-ch*.json|scaled_1comp"
-        "data/tasks/challenges_2comp|**/tt-official-ch*.json|scaled_2comp"
+        "data/tasks/scaled|tt-official-*.json|scaled"
+        "data/tasks/challenges_1comp|**/tt-official-*.json|scaled_1comp"
+        "data/tasks/challenges_2comp|**/tt-official-*.json|scaled_2comp"
     )
     warn "RUN_SCALED=1: ~1013 extra tasks queued. 12h of --time may not be enough."
 fi
@@ -421,9 +436,9 @@ fi
 # the set's own. Meant for probing a handful of named tasks — e.g. the four
 # unsolvable subtypes of one challenge — without inventing a set label per probe.
 # The glob is relative to each set's challenges-dir, so it only makes sense with
-# a single set named in SETS. OUT_LABEL does not encode it (results still land in
-# <set>/), so it is written to the manifest below: without that record, a
-# 4-task directory is indistinguishable from a 40-task set that mostly crashed.
+# a single set named in SETS. Results land in <set>_probe/, never in <set>/: the
+# readers take the newest report per directory, so a probe there would hide the
+# full-set result. The glob itself is written to the manifest below.
 if [ -n "${PATTERN:-}" ]; then
     if [ -z "${SETS:-}" ]; then
         fail "PATTERN is set but SETS is not. A pattern override applied to every"
@@ -438,8 +453,8 @@ if [ -n "${PATTERN:-}" ]; then
     done
     CHALLENGE_SETS=("${OVERRIDDEN[@]}")
     warn "Pattern override: '$PATTERN' replaces each set's own glob"
-    warn "Results land in the unsuffixed <set>/ directory — check the manifest"
-    warn "for which tasks a report actually covers before aggregating it."
+    warn "Results land in <set>_probe/ — check the manifest for which tasks a"
+    warn "report actually covers."
 fi
 
 # A glob that matches nothing is the quietest failure this pipeline has:
@@ -519,8 +534,12 @@ for SAMPLE in "${SAMPLE_INDICES[@]}"; do
       # separate directories or the reports pile up in one folder, distinguishable
       # only by timestamp, and any aggregation silently averages across budgets.
       # The default (25) keeps the historical layout so existing results still map.
+      # _tier and _probe come straight after the set name: they change WHICH tasks
+      # ran, so the readers keep them in the base set rather than as a run option.
       OUT_LABEL="$cset_label"
-      [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${cset_label}_t${MAX_TURNS}"
+      [ "$TIERS" != "1" ] && OUT_LABEL+="_tier${TIERS// /}"
+      [ -n "${PATTERN:-}" ] && OUT_LABEL+="_probe"
+      [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${OUT_LABEL}_t${MAX_TURNS}"
       [ "$TEMPERATURE" != "0.0" ] && OUT_LABEL="${OUT_LABEL}_T${TEMPERATURE}"
       [ "$ARM" != "baseline" ] && OUT_LABEL="${OUT_LABEL}_a${ARM}"
       [ -n "$SAMPLE" ] && OUT_LABEL="${OUT_LABEL}_s${SAMPLE}"
@@ -569,14 +588,16 @@ ok "vLLM stopped"
 banner "Job complete"
 echo ""
 echo "  Model:     $MODEL_NAME"
-echo "  Sets done: $TOTAL_SUCCESS / ${#CHALLENGE_SETS[@]}"
+echo "  Sets done: $TOTAL_SUCCESS / $(( ${#CHALLENGE_SETS[@]} * ${#SAMPLE_INDICES[@]} ))"
 echo "  Results:   $RESULTS_DIR"
 echo ""
 
 # Save a job manifest for aggregation
 # Same reasoning as OUT_LABEL: a sweep must not overwrite its own manifest.
 MANIFEST_SUFFIX=""
-[ "$MAX_TURNS" != "25" ] && MANIFEST_SUFFIX="_t${MAX_TURNS}"
+[ "$TIERS" != "1" ] && MANIFEST_SUFFIX="_tier${TIERS// /}"
+[ "$MAX_TURNS" != "25" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_t${MAX_TURNS}"
+[ "$TEMPERATURE" != "0.0" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_T${TEMPERATURE}"
 [ "$ARM" != "baseline" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_a${ARM}"
 [ -n "$SAMPLE" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_s${SAMPLE}"
 # A pattern-narrowed run covers a handful of tasks, not a full roster. Writing
@@ -592,6 +613,7 @@ json.dump({
     'tiers': '${TIERS}',
     'gpus': ${GPU_COUNT},
     'job_id': '${JOB_TAG}',
+    'git_commit': '$(git -C "$PROJECT_DIR" rev-parse HEAD)',
     'native_ctx': ${NATIVE_CTX},
     'max_model_len': ${MAX_MODEL_LEN},
     'yarn_factor': ${FACTOR:-None},
@@ -601,13 +623,14 @@ json.dump({
     'arm': '${ARM}',
     'arm_args': '${ARM_ARGS}',
     'samples': '${SAMPLES:-${SAMPLE:-}}',
-    'seeds': '$( [ -n "${SAMPLES:-}" ] && echo "1001-$((1000 + SAMPLES))" || echo "${SEED:-}" )',
+    'seeds': '$( [ -n "${SAMPLES:-}" ] && echo "$((1000 + SAMPLE_FIRST))-$((1000 + SAMPLE_LAST))" || echo "${SEED:-}" )',
     'sets': '${SETS:-all}',
     'pattern_override': '${PATTERN:-}',
     'run_scaled': '${RUN_SCALED:-0}',
     'results_dir': '${RESULTS_DIR}',
-    'completed': $( [ $TOTAL_SUCCESS -eq ${#CHALLENGE_SETS[@]} ] && echo True || echo False ),
+    'completed': $( [ $TOTAL_FAILED -eq 0 ] && echo True || echo False ),
 }, open('${MANIFEST}', 'w'), indent=2)
 "
 
-exit 0
+# Non-zero when any set failed, so Slurm reports FAILED instead of COMPLETED.
+exit $(( TOTAL_FAILED > 0 ))
