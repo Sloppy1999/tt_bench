@@ -122,6 +122,38 @@ class LLMConfig:
 # ---------------------------------------------------------------------------
 
 
+def parse_json_text(content: str) -> Any:
+    """Parse JSON from model output: bare, inside a ``` fence, or embedded in prose.
+
+    Raises ``json.JSONDecodeError`` when no JSON object can be recovered.
+    """
+    content = content.strip()
+    if content.startswith("```"):
+        inner = content.split("```")[1] if "```" in content[3:] else content[3:]
+        if inner.startswith("json"):
+            inner = inner[4:]
+        content = inner.strip()
+
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        pass
+
+    first_brace = content.find("{")
+    last_brace = content.rfind("}")
+    if first_brace != -1 and last_brace > first_brace:
+        try:
+            data = json.loads(content[first_brace : last_brace + 1])
+            logger.info(
+                f"Successfully extracted JSON from position {first_brace}-{last_brace}"
+            )
+            return data
+        except json.JSONDecodeError:
+            pass
+
+    raise json.JSONDecodeError("No valid JSON found", content, 0)
+
+
 class LLMClient(ABC):
     """Abstract LLM client."""
 
@@ -186,42 +218,12 @@ class LLMClient(ABC):
                     continue
 
                 content = raw_content
-
-                if content.startswith("```"):
-                    inner = content.split("```")[1] if "```" in content[3:] else content[3:]
-                    if inner.startswith("json"):
-                        inner = inner[4:]
-                    content = inner.strip()
-
-                try:
-                    data = json.loads(content)
-                    total_tokens = usage.get("total_tokens", 0) if isinstance(usage, dict) else 0
-                    return (data, "",
-                            {"prompt_tokens": usage.get("prompt_tokens", total_tokens),
-                             "completion_tokens": usage.get("completion_tokens", 0)},
-                            response.logprobs if hasattr(response, 'logprobs') else None)
-                except json.JSONDecodeError:
-                    pass
-
-                first_brace = content.find("{")
-                last_brace = content.rfind("}")
-
-                if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-                    json_candidate = content[first_brace : last_brace + 1]
-                    try:
-                        data = json.loads(json_candidate)
-                        logger.info(
-                            f"Successfully extracted JSON from position {first_brace}-{last_brace}"
-                        )
-                        total_tokens = usage.get("total_tokens", 0) if isinstance(usage, dict) else 0
-                        return (data, "",
-                                {"prompt_tokens": usage.get("prompt_tokens", total_tokens),
-                                 "completion_tokens": usage.get("completion_tokens", 0)},
-                                response.logprobs if hasattr(response, 'logprobs') else None)
-                    except json.JSONDecodeError:
-                        pass
-
-                raise json.JSONDecodeError("No valid JSON found", content, 0)
+                data = parse_json_text(content)
+                total_tokens = usage.get("total_tokens", 0) if isinstance(usage, dict) else 0
+                return (data, "",
+                        {"prompt_tokens": usage.get("prompt_tokens", total_tokens),
+                         "completion_tokens": usage.get("completion_tokens", 0)},
+                        response.logprobs if hasattr(response, 'logprobs') else None)
 
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON parse attempt {attempt + 1} failed: {e}")
@@ -237,7 +239,9 @@ class LLMClient(ABC):
                 time.sleep(1 * (attempt + 1))
             except Exception as e:
                 logger.warning(f"LLM call attempt {attempt + 1} failed: {e}")
-                last_error = str(e)
+                # Same prefix the tool loops use, so the runner can tell a
+                # provider failure from a wrong answer.
+                last_error = f"Exception: {e}"
                 time.sleep(1 * (attempt + 1))
 
         return (None, last_error or f"Failed after {self.config.max_retries} attempts",
