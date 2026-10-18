@@ -7,6 +7,7 @@ import json
 from tt_bench.simulator.board import Board
 from tt_bench.simulator.targets import (
     free_fall_cells,
+    gear_state_conflict,
     lost_marbles,
     normalize_sequence,
     validate_targets,
@@ -63,6 +64,8 @@ def _verify_task_board(
     specified = {(p['x'], p['y']) for p in task.get('solution', {}).get('placed_components', [])
                  if 'state' in p}
     if board.editable_bit_states - specified:
+        return False
+    if gear_state_conflict(board):
         return False
 
     # Use challenge's input_sequence if no explicit sequence provided

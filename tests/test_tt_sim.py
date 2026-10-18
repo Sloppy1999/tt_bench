@@ -29,6 +29,7 @@ from tt_bench.simulator import (
     ComponentType,
     verify_solution,
     load_challenge,
+    build_gear_connections,
 )
 
 
@@ -339,19 +340,18 @@ class TestGearPropagation:
 
         assert board.get(2, 2).state == 1
 
-    def test_gear_connection_creates_connection(self):
-        """Test gear connection is created."""
-        board = Board(rows=5, cols=5)
-        gbit1 = GearBit(x=2, y=2, state=0)
-        gbit2 = GearBit(x=4, y=2, state=0)
-        board.place(2, 2, gbit1)
-        board.place(4, 2, gbit2)
+    def test_meshed_gear_bits_flip_together(self):
+        """Gear bits wired by build_gear_connections, as scoring does, turn as one."""
+        board = Board(rows=5, cols=5, blue_hopper_x=2, hopper_entry_mode="column")
+        board.place(2, 0, GearBit(x=2, y=0, state=0))
+        board.place(3, 0, Gear(x=3, y=0))
+        board.place(4, 0, GearBit(x=4, y=0, state=0))
+        build_gear_connections(board)
 
-        # Connect them (with gear in between)
-        board.connect_gears([(2, 2), (4, 2)])
+        board.release_marble(Side.BLUE)
 
-        # Gear connections should be registered
-        assert (2, 2) in board.gear_connections or (4, 2) in board.gear_connections
+        assert board.get(2, 0).state == 1
+        assert board.get(4, 0).state == 1
 
     def test_gear_propagation(self):
         """Test that connected gear bits flip together."""

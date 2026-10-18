@@ -79,9 +79,6 @@ class Board:
             defaultdict(set)
         )
 
-        # Track gear bit groups
-        self._gear_bit_groups: dict[int, set[tuple[int, int]]] = defaultdict(set)
-
         # Current ball in play
         self.current_marble_side: Side | None = None
         self.marble_count_released = 0
@@ -139,30 +136,6 @@ class Board:
     def get(self, x: int, y: int) -> Component | None:
         """Get component at position."""
         return self.components.get((x, y))
-
-    def connect_gears(self, positions: list[tuple[int, int]]) -> None:
-        """Connect multiple gear bits with gears."""
-        # Create gear components at intermediate positions
-        for i in range(len(positions) - 1):
-            x1, y1 = positions[i]
-            x2, y2 = positions[i + 1]
-
-            # Add bidirectional connection
-            self.gear_connections[(x1, y1)].add((x2, y2))
-            self.gear_connections[(x2, y2)].add((x1, y1))
-
-            # If either is a gear bit, ensure we track the connection
-            comp1 = self.get(x1, y1)
-            comp2 = self.get(x2, y2)
-
-            # Place gear components between gear bits if needed
-            # Check if there's already a component at midpoint
-            mid_x = (x1 + x2) // 2
-            mid_y = (y1 + y2) // 2
-
-            if (mid_x, mid_y) not in self.components:
-                gear = Gear(mid_x, mid_y)
-                self.components[(mid_x, mid_y)] = gear
 
     def _propagate_gear_flip(self, triggered_pos: tuple[int, int]) -> None:
         """Propagate flip to all connected gear bits via BFS."""
@@ -258,7 +231,12 @@ class Board:
         curr_y = 0  # Enter at top row
 
         # Marble's current horizontal direction; None means vertical fall.
+        # An inward entry rolls sideways off the hopper, so it arrives moving.
         last_exit_dir: Direction | None = None
+        if entry_x < hopper_x:
+            last_exit_dir = Direction.LEFT
+        elif entry_x > hopper_x:
+            last_exit_dir = Direction.RIGHT
 
         # Simulate marble path
         steps = 0

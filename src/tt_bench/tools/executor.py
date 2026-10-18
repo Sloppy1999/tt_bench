@@ -178,8 +178,6 @@ class TuringTumbleToolExecutor:
             existing = self.board.components.get((x, y))
             if ((x, y) in self.board.editable_bit_states and isinstance(existing, (Bit, GearBit))
                     and existing.component_type.value == component_type):
-                if type(state) is not int or state not in (0, 1):
-                    return {'success': False, 'error': 'Bit state must be 0 or 1'}
                 existing.state = existing._initial_state = state
                 self.placed_components = [c for c in self.placed_components
                                           if (c['x'], c['y']) != (x, y)]

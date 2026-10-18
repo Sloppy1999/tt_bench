@@ -168,7 +168,7 @@ Never attempt to remove a "fixed" component; it will fail and waste a turn.
 
 REQUIRED WORKFLOW (you MUST follow this exactly):
 1. First call get_board_state to see what's already placed (note which are fixed vs user)
-2. Read its free_fall_errors to find the empty cells marbles pass through
+2. Call run_simulation and read its free_fall_errors to find the empty cells marbles pass through
 3. Call place_component to fill ONE empty cell from the error list
 4. Read the "simulation" field of that response to verify the fix
 5. Repeat steps 3-4, addressing one cell at a time, until NO free_fall_errors remain

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from collections import Counter
 
+from tt_bench.simulator.components import GearBit
+
 _OUTCOMES = {"left_catcher": "blue", "right_catcher": "red", "interceptor": "intercepted"}
 _CATCHER_FIELDS = (
     ("left_catcher", "left_catcher"),
@@ -42,6 +44,33 @@ def validate_targets(task: dict, board, results: list) -> tuple[bool, str]:
     if "marble" not in compared:
         return False, "No explicit marble output target available"
     return True, "Matched all declared output targets"
+
+
+def free_fall_cells(board, results: list) -> list[tuple[int, tuple[int, int]]]:
+    """Every (marble index, cell) where a marble crosses an empty in-board cell.
+
+    The one free-fall rule shared by validation, scoring, trials and the agent tools.
+    """
+    offending = []
+    for marble_idx, result in enumerate(results, start=1):
+        path = result.path or []
+        for path_idx, curr in enumerate(path[1:], start=1):
+            x, y = curr
+            # The hopper-to-board transition may enter an empty coordinate.
+            if path[path_idx - 1][1] < 0 and y >= 0:
+                continue
+            # The last cell just above a trigger lever is a catcher approach slot.
+            next_pos = path[path_idx + 1] if path_idx + 1 < len(path) else None
+            if (
+                y == board.rows - 1
+                and next_pos is not None
+                and next_pos[1] >= board.rows
+                and board.catcher_at(x) is not None
+            ):
+                continue
+            if 0 <= x < board.cols and 0 <= y < board.rows and curr not in board.components:
+                offending.append((marble_idx, tuple(curr)))
+    return offending
 
 
 def _validate_trials(task: dict, board) -> tuple[bool, str]:
@@ -318,6 +347,21 @@ def _gear_group(board, position: tuple[int, int]) -> set[tuple[int, int]]:
                 seen.add(neighbour)
                 queue.append(neighbour)
     return seen
+
+
+def gear_state_conflict(board) -> tuple[int, int] | None:
+    """A gear bit whose meshed gear bits start in another state, or None.
+
+    Meshed gear bits turn as one, so a physical board cannot hold them apart.
+    """
+    for position, component in board.components.items():
+        if not isinstance(component, GearBit):
+            continue
+        for linked in _gear_group(board, position):
+            other = board.get(*linked)
+            if isinstance(other, GearBit) and other.state != component.state:
+                return position
+    return None
 
 
 def _parse_bit_key(key) -> tuple[int, int] | None:

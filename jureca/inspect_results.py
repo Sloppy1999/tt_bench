@@ -160,21 +160,6 @@ def latest_report(set_dir: Path) -> Path | None:
     return reports[-1] if reports else None
 
 
-def report_temperature(report_path: Path, set_label: str) -> str:
-    """The decoding temperature a report was produced at.
-
-    Read from the report when it records one, else attributed by date: nothing
-    could set the temperature before GREEDY_DEFAULT_SINCE, so LLMConfig's 0.7
-    applied. An explicit _T suffix on the directory always wins.
-    """
-    try:
-        with report_path.open() as fh:
-            report = json.load(fh)
-    except (OSError, json.JSONDecodeError):
-        return DEFAULT_TEMPERATURE
-    return resolve_temperature(report, set_label)[0]
-
-
 def latest_per_regime(set_dir: Path) -> list[Path]:
     """Newest report per decoding temperature in a set directory.
 
@@ -182,10 +167,22 @@ def latest_per_regime(set_dir: Path) -> list[Path]:
     directory as a pre-cutover 0.7 run and `latest_report` would hide the older
     regime behind the newer one — silently dropping the temperature comparison
     the results chapter is built on. Keyed by regime, both survive.
+
+    The key also carries the tiers and task count: a tier-2 run, or a PATTERN
+    probe of four tasks, lands in the same directory as the full tier-1 run and
+    must not replace it.
     """
-    newest: dict[str, Path] = {}
-    for report in sorted(set_dir.glob("benchmark_*.json")):
-        newest[report_temperature(report, set_dir.name)] = report
+    newest: dict[tuple, Path] = {}
+    for report_path in sorted(set_dir.glob("benchmark_*.json")):
+        try:
+            with report_path.open() as fh:
+                report = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            report = {}
+        temperature = (resolve_temperature(report, set_dir.name)[0] if report
+                       else DEFAULT_TEMPERATURE)
+        scope = (tuple(sorted(report.get("per_tier") or {})), len(report.get("results") or []))
+        newest[(temperature, *scope)] = report_path
     return list(newest.values())
 
 
@@ -267,6 +264,7 @@ def summarise(report_path: Path, set_label: str) -> dict:
     return {
         "set": set_label,
         "base_set": base_set,
+        "tiers": sorted(report.get("per_tier") or {}),
         "temperature": temperature,
         "temperature_source": temp_source,
         "sample": sample,

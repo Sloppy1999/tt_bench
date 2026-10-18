@@ -193,6 +193,16 @@ def collect(results_dir: Path, wanted: list[str]) -> dict[str, dict[str, dict]]:
                     file=sys.stderr,
                 )
                 continue
+            # Rows are not keyed by tier here (plot_summary.py is); never let a
+            # second tier or a probe silently replace the full run.
+            if base in keep and keep[base].get("tiers") != row.get("tiers"):
+                kept, dropped = sorted((keep[base], row), key=lambda r: -r["total"])
+                print(
+                    f"  ! {model}/{base}: tiers {kept.get('tiers')} ({kept['total']} tasks) kept, "
+                    f"tiers {dropped.get('tiers')} ({dropped['total']} tasks) not plotted",
+                    file=sys.stderr,
+                )
+                row = kept
             keep[base] = row
         if keep:
             out[model] = keep
