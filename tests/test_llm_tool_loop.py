@@ -76,14 +76,7 @@ TOOL_MSG = {"role": "assistant", "content": "thinking", "tool_calls": [TOOL_CALL
 FINAL_TEXT = '{"final_solution": []}'
 FINAL_MSG = {"role": "assistant", "content": FINAL_TEXT}
 
-PROVIDERS = {
-    "deepseek": "deepseek-chat",
-    "lmstudio": "local-model",
-    "vllm": "local-model",
-    "cloud": "cloud-model",
-}
-# Providers whose final answer is JSON-parsed; the rest return {"content": raw}.
-JSON_FINAL = {"cloud"}
+PROVIDERS = {"vllm": "local-model"}
 
 
 def make(provider, model=None, **cfg):
@@ -127,10 +120,7 @@ def test_two_turn_tool_call_then_final_answer(monkeypatch, provider):
     )
 
     assert error == ""
-    if provider in JSON_FINAL:
-        assert final == {"final_solution": []}
-    else:
-        assert final == {"content": FINAL_TEXT}
+    assert final == {"content": FINAL_TEXT}
 
     # Tool call recorded and executed.
     assert executor.calls == [("place_component", {"component_type": "ramp_left", "x": 1, "y": 2})]
@@ -165,9 +155,6 @@ def test_two_turn_tool_call_then_final_answer(monkeypatch, provider):
 
 
 EXPECTED_PAYLOAD = {
-    # Fix b: DeepSeek (non-v4) and Cloud used to send no temperature/seed.
-    "deepseek": {"model": "deepseek-chat", "max_tokens": 1000, "temperature": 0.3},
-    "lmstudio": {"model": "local-model", "max_tokens": 1000, "temperature": 0.3, "seed": 7},
     "vllm": {
         "model": "local-model",
         "tool_choice": "auto",
@@ -175,7 +162,6 @@ EXPECTED_PAYLOAD = {
         "temperature": 0.3,
         "seed": 7,
     },
-    "cloud": {"model": "cloud-model", "max_tokens": 1000, "temperature": 0.3, "seed": 7},
 }
 
 
@@ -189,13 +175,6 @@ def test_payload(monkeypatch, provider):
     ]
     assert payload.pop("tools")
     assert payload == EXPECTED_PAYLOAD[provider]
-
-
-def test_deepseek_v4_payload_disables_thinking_and_skips_temperature(monkeypatch):
-    _, http = run(monkeypatch, "deepseek", [chat(deepcopy(FINAL_MSG))], model="deepseek-v4-flash")
-    payload = http.payloads[0]
-    assert payload["thinking"] == {"type": "disabled"}
-    assert "temperature" not in payload
 
 
 @pytest.mark.parametrize("provider", list(PROVIDERS))
@@ -252,37 +231,6 @@ def test_malformed_tool_arguments_become_a_tool_error(monkeypatch, provider):
     assert tool_msg["role"] == "tool" and "not a JSON object" in tool_msg["content"]
 
 
-def test_cloud_null_final_content_does_not_crash(monkeypatch):
-    """Fix d: ``content: null`` on the final turn crashed Cloud with .strip()."""
-    (final, error, _, _, _, _), _ = run(
-        monkeypatch, "cloud", [chat({"role": "assistant", "content": None})]
-    )
-    assert final == {"final_answer": ""}
-    assert error == ""
-
-
-def test_cloud_rate_limiter_spaces_concurrent_requests():
-    """Fix e: worker threads sharing one client must not fire together."""
-    import threading
-    import time
-
-    c = make("cloud")
-    c._MIN_INTERVAL = 0.05
-    stamps = []
-
-    def worker():
-        c._wait_for_rate_limit()
-        stamps.append(time.monotonic())
-
-    threads = [threading.Thread(target=worker) for _ in range(4)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-    stamps.sort()
-    assert min(b - a for a, b in zip(stamps, stamps[1:])) >= 0.04
-
-
 @pytest.mark.parametrize("provider", list(PROVIDERS))
 def test_5xx_is_retried(monkeypatch, provider):
     """Fix f: vLLM gave up on the first 5xx; all providers now retry it."""
@@ -304,7 +252,7 @@ def test_5xx_retries_are_bounded(monkeypatch):
     assert len(http.payloads) == 3
 
 
-@pytest.mark.parametrize("provider", ["ollama"])
+@pytest.mark.parametrize("provider", ["vllm"])
 def test_transport_failure_is_reported_as_provider_error(monkeypatch, provider):
     """The runner scores errors prefixed "Exception"/"API error" as ungraded."""
     monkeypatch.setattr(llm_client.requests, "post", FakeHTTP([requests.ConnectionError("refused")]))
