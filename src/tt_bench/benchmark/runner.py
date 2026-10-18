@@ -870,9 +870,7 @@ class TuringTumbleBenchmark:
     @staticmethod
     def _is_provider_error(error: Optional[str]) -> bool:
         """True if the client reported a transport/API failure, not a model answer."""
-        # shortcut: only the prefixed errors (vLLM/LMStudio/DeepSeek/Cloud tool
-        # loops, generate_json) are detected; OpenAI/Anthropic/Ollama tool loops
-        # return bare str(e). Prefix those too if they are used for scored runs.
+        # Every client prefixes transport failures this way; keep new clients in line.
         return bool(error) and error.startswith(("API error", "Exception"))
 
     def run_understanding_task(self, task_path: Path) -> List[TaskResult]:
