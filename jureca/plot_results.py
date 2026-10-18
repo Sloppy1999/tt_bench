@@ -182,6 +182,10 @@ def collect(results_dir: Path, wanted: list[str]) -> dict[str, dict[str, dict]]:
             base = SET_BUDGET_RE.sub("", row["set"])
             if base not in wanted or row["set"] != base:
                 continue  # skip sweep variants; they belong in their own figure
+            if row["temperature"] != "0.0":
+                # One unsuffixed directory can hold a greedy and a pre-cutover 0.7
+                # report; keyed by base set alone, the later row would overwrite.
+                continue
             if not is_measurement(row):
                 print(
                     f"  ! dropping {model}/{row['set']}: all tasks recorded 0 turns "
@@ -189,6 +193,16 @@ def collect(results_dir: Path, wanted: list[str]) -> dict[str, dict[str, dict]]:
                     file=sys.stderr,
                 )
                 continue
+            # Rows are not keyed by tier here (plot_summary.py is); never let a
+            # second tier or a probe silently replace the full run.
+            if base in keep and keep[base].get("tiers") != row.get("tiers"):
+                kept, dropped = sorted((keep[base], row), key=lambda r: -r["total"])
+                print(
+                    f"  ! {model}/{base}: tiers {kept.get('tiers')} ({kept['total']} tasks) kept, "
+                    f"tiers {dropped.get('tiers')} ({dropped['total']} tasks) not plotted",
+                    file=sys.stderr,
+                )
+                row = kept
             keep[base] = row
         if keep:
             out[model] = keep

@@ -38,6 +38,13 @@ if [ -n "${PROJECT_DIR:-}" ]; then
     :  # already set via environment
 elif [ -d "/p/scratch/westai0070/$USER/tt-bench" ]; then
     PROJECT_DIR="/p/scratch/westai0070/$USER/tt-bench"
+# The checkout is named tt_bench on at least one account, and only the hyphen
+# spelling was probed. That miss was invisible: the branch below resolves the
+# path relative to the script, which is correct when you run
+# `bash jureca/submit_all.sh` from the checkout — and silently wrong the moment
+# you run it from anywhere else.
+elif [ -d "/p/scratch/westai0070/$USER/tt_bench" ]; then
+    PROJECT_DIR="/p/scratch/westai0070/$USER/tt_bench"
 elif [ -d "$SCRIPT_DIR/.." ]; then
     PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 else
@@ -96,6 +103,11 @@ MODELS=(
     # whole nodes regardless — the extra GPUs are free KV-cache headroom.
     # Needs its own --tool-call-parser: it emits the harmony format, not hermes.
     "openai/gpt-oss-120b|gpt-oss-120b|4"
+    # Qwen4Exp architecture: needs vLLM >= 0.29 (0.24 does not know it at all).
+    # The unsloth GGUF build of this model cannot be used — vLLM registers no
+    # gguf quantization method in any release we can install — so this is the
+    # AWQ INT4 (compressed-tensors) repack, ~176GB against 4x93.6GiB of H100.
+    "cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4|qwen3.8-flash-next-awq4|4"
 )
 
 # ── Defaults (override via flags) ────────────────────────────────────────────
@@ -105,8 +117,11 @@ DRY_RUN=0
 SELECTED=()
 MAX_TURNS=""        # empty → run_benchmark.sbatch's default of 25
 SETS=""             # empty → all challenge sets
+PATTERN=""          # empty → each set's own glob
 WALLTIME=""         # empty → the #SBATCH --time in run_benchmark.sbatch (12h)
 TEMPERATURE=""      # empty → run_benchmark.sbatch default of 0.0 (greedy)
+ARM=""              # empty → run_benchmark.sbatch default of "baseline"
+VENV=""             # empty → run_benchmark.sbatch picks its default venv
 SAMPLES=""          # empty → a single run; N submits N repetitions per model
 BATCH_SAMPLES=0     # 1 → all repetitions inside ONE job (model loads once)
 
@@ -133,7 +148,31 @@ Options:
                    <set>_tN/ so a sweep cannot overwrite itself.
       --sets LIST  Challenge sets to run, comma-separated (default: all).
                    Labels: official, 1comp, 2comp, and with -s also
-                   scaled, scaled_1comp, scaled_2comp
+                   scaled, scaled_1comp, scaled_2comp.
+                   Opt-in only, never part of a default run:
+                     unsolvable_1comp, unsolvable_2comp — ill-posed boards that
+                       CANNOT be solved with the parts offered. No model can
+                       score above 0; the transcript is the result, not the
+                       score. Read <out>/per_task/*.json.
+                     insight_1comp, insight_2comp — solvable, but the inventory
+                       carries a distractor part type.
+                     scaled_sub500 — the frozen 500-task draw from scaled used
+                       by the harness ablation's Phase 2. Generate it first:
+                       python scripts/build_sub500.py --materialise \\
+                         data/tasks/scaled_sub500
+      --arm A      Harness-ablation arm (default: baseline). One of
+                     baseline, fb-optional, fb-auto, rev-retry, rev-structured.
+                   See HARNESS_ABLATION_PLAN.md section 5 for what each changes.
+                   Results land in <set>_a<arm>/ so arms cannot overwrite one
+                   another or the baseline. The TURN-BUDGET arms are --turns,
+                   not --arm: 10/15/40 land in <set>_tN/ already.
+                   rev-* needs the vllm provider; the runner refuses otherwise
+                   rather than producing baseline results under an arm label.
+      --pattern G  Override each selected set's glob with G, relative to that
+                   set's challenges-dir. For probing named tasks without
+                   inventing a set label. Requires --sets with ONE label.
+                   Results still land in <set>/, so the manifest records the
+                   glob — check it before aggregating a narrowed report.
       --time D     Slurm walltime, overriding the script's 12h default.
                    -s needs far more than 12h; check the partition ceiling with
                    scontrol show partition dc-hwai | grep MaxTime
@@ -170,6 +209,14 @@ Examples:
   for n in 25 50 100; do
     bash jureca/submit_all.sh --sets 1comp --turns \$n gemma-4-31b-it
   done
+
+  # Harness ablation, one model, all seven arms (Phase 1 of the plan):
+  for n in 10 15 40; do
+    bash jureca/submit_all.sh -s --sets scaled_1comp --turns \$n gemma-4-31b-it
+  done
+  for a in fb-optional fb-auto rev-retry rev-structured; do
+    bash jureca/submit_all.sh -s --sets scaled_1comp --arm \$a gemma-4-31b-it
+  done
 EOF
 }
 
@@ -191,8 +238,11 @@ while [ $# -gt 0 ]; do
         -t|--tiers)   TIERS="${2:?--tiers needs a value, e.g. -t '1 2'}"; shift 2 ;;
         --turns)      MAX_TURNS="${2:?--turns needs a number, e.g. --turns 50}"; shift 2 ;;
         --sets)       SETS="${2:?--sets needs a list, e.g. --sets 1comp}"; shift 2 ;;
+        --pattern)    PATTERN="${2:?--pattern needs a glob}"; shift 2 ;;
         --time)       WALLTIME="${2:?--time needs a Slurm duration, e.g. --time 24:00:00}"; shift 2 ;;
         --temperature) TEMPERATURE="${2:?--temperature needs a value, e.g. --temperature 0.7}"; shift 2 ;;
+        --arm)        ARM="${2:?--arm needs a label, e.g. --arm fb-auto}"; shift 2 ;;
+        --venv)       VENV="${2:?--venv needs a path, e.g. --venv \$PROJECT_DIR/.venv-ttbench-v29}"; shift 2 ;;
         --samples)    SAMPLES="${2:?--samples needs a count, e.g. --samples 5}"; shift 2 ;;
         --batch)      BATCH_SAMPLES=1; shift ;;
         --mail)       MAIL_USER="${2:?--mail needs an address}"; shift 2 ;;
@@ -224,6 +274,34 @@ if [ ${#SELECTED[@]} -gt 0 ]; then
     MODELS=("${FILTERED[@]}")
 fi
 
+# Reject an unknown arm before submitting. run_benchmark.sbatch checks it too,
+# but it does so after the job has been scheduled and the model loaded — a typo
+# should cost a shell prompt, not a node allocation.
+if [ -n "$ARM" ]; then
+    case "$ARM" in
+        baseline|fb-optional|fb-auto|rev-retry|rev-structured) : ;;
+        *)  fail "Unknown --arm '$ARM'"
+            echo "    available: baseline fb-optional fb-auto rev-retry rev-structured"
+            echo "    (turn-budget arms are --turns 10|15|40, not --arm)"
+            exit 1 ;;
+    esac
+fi
+
+# A pattern override applied to several sets would run the same glob against
+# several directories, which is never what anyone means. Caught here rather than
+# in the job: the job discovers it after a 5-minute model load.
+if [ -n "$PATTERN" ]; then
+    if [ -z "$SETS" ]; then
+        fail "--pattern needs --sets to say which set the glob belongs to"
+        exit 1
+    fi
+    case "${SETS//[,+]/ }" in
+        *' '*) fail "--pattern with more than one --sets label: '$SETS'"
+               fail "One glob cannot sensibly address several challenge dirs."
+               exit 1 ;;
+    esac
+fi
+
 # ── Pre-flight ───────────────────────────────────────────────────────────────
 banner "Pre-flight checks"
 
@@ -239,7 +317,10 @@ fi
 # dangling symlink while bin/activate stays perfectly readable — so the old
 # `-f bin/activate` test passed and the job died on the compute node instead.
 # Validate capability (does it run? does vLLM import?), not mere presence.
-VENV_DIR="$PROJECT_DIR/.venv-ttbench"
+# Pre-flight the venv the JOBS will use, not always the default one: this
+# assignment used to clobber an exported VENV_DIR, so --venv was checked here
+# and then never reached sbatch.
+VENV_DIR="${VENV:-$PROJECT_DIR/.venv-ttbench}"
 VENV_PY="$VENV_DIR/bin/python"
 
 if [ ! -x "$VENV_PY" ]; then
@@ -387,7 +468,7 @@ banner "Submitting Slurm jobs (Tier $TIERS, turns ${MAX_TURNS:-25}, sets ${SETS:
 
 if [ -n "$SAMPLES" ]; then
     if [ "$BATCH_SAMPLES" -eq 1 ]; then
-        ok "Repetitions: $SAMPLES per model in ONE job each (seeds 1001-$((1000 + SAMPLES)))"
+        ok "Repetitions: $SAMPLES per model in ONE job each (seeds $((1000 + SAMPLE_FIRST))-$((1000 + SAMPLE_LAST)))"
         warn "Walltime must cover all $SAMPLES passes, and one failure loses them all."
     else
         ok "Repetitions: $SAMPLE_FIRST-$SAMPLE_LAST per model, one job each "\
@@ -456,7 +537,15 @@ for entry in "${MODELS[@]}"; do
     # success, and nothing anywhere said a set had gone missing. Ship the list
     # comma-free; run_benchmark.sbatch accepts either separator.
     EXPORTS="$EXPORTS,MAX_TURNS=${MAX_TURNS:-25},SETS=${SETS//,/+}"
-    EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0}"
+    EXPORTS="$EXPORTS,TEMPERATURE=${TEMPERATURE:-0.0},PATTERN=$PATTERN"
+    # Which vLLM build serves the model decides what the run measures, so it
+    # is pinned per submission like the rest. Relying on --export=ALL to carry
+    # an exported VENV_DIR did not work: the jobs silently used the default
+    # venv and a model needing a newer vLLM failed 90s in.
+    if [ -n "$VENV" ]; then
+        EXPORTS="$EXPORTS,VENV_DIR=$VENV"
+    fi
+    EXPORTS="$EXPORTS,ARM=${ARM:-baseline}"
     if [ -n "$SAMPLE_N" ]; then
         EXPORTS="$EXPORTS,SAMPLE=$SAMPLE_N"
     elif [ -n "$SAMPLES" ]; then
@@ -468,7 +557,8 @@ for entry in "${MODELS[@]}"; do
         *,*=*,*) : ;;   # normal: several assignments
     esac
     for _kv in MODEL_ID="$model_id" MODEL_NAME="$model_name" TIERS="$TIERS" \
-               PROJECT_DIR="$PROJECT_DIR" TEMPERATURE="${TEMPERATURE:-0.0}"; do
+               PROJECT_DIR="$PROJECT_DIR" TEMPERATURE="${TEMPERATURE:-0.0}" \
+               PATTERN="$PATTERN" ARM="${ARM:-baseline}"; do
         case "${_kv#*=}" in
             *,*) fail "Value of ${_kv%%=*} contains a comma, which sbatch --export"
                  echo "        would read as a variable separator: ${_kv#*=}"
@@ -481,7 +571,7 @@ for entry in "${MODELS[@]}"; do
 
     # A per-job name so `squeue` is readable: six identical "tt-vllm" rows tell
     # you nothing, and the notification mail carries the job name too.
-    NAME_ARGS=(--job-name "tt-$model_name${SAMPLE_N:+-s$SAMPLE_N}")
+    NAME_ARGS=(--job-name "tt-$model_name${ARM:+-$ARM}${SAMPLE_N:+-s$SAMPLE_N}")
 
     MAIL_ARGS=()
     [ -n "$MAIL_USER" ] && MAIL_ARGS=(--mail-type "$MAIL_TYPE" --mail-user "$MAIL_USER")
@@ -490,12 +580,15 @@ for entry in "${MODELS[@]}"; do
         echo "    sbatch --gres=gpu:${gpu_count} --job-name tt-$model_name \\"
         [ -n "$WALLTIME" ] && echo "           --time $WALLTIME \\"
         [ -n "$MAIL_USER" ] && echo "           --mail-type $MAIL_TYPE --mail-user $MAIL_USER \\"
-        echo "           --export=$EXPORTS \\"
+        echo "           --chdir=$PROJECT_DIR --export=$EXPORTS \\"
         echo "           --parsable $SBATCH_SCRIPT"
         continue
     fi
 
+    # --chdir: the #SBATCH --output=slurm_logs/... path is relative to the job's
+    # working directory, which otherwise is wherever this script was run from.
     JOB_ID=$(sbatch \
+        --chdir="$PROJECT_DIR" \
         --gres="gpu:${gpu_count}" \
         "${NAME_ARGS[@]}" \
         ${TIME_ARGS[@]+"${TIME_ARGS[@]}"} \

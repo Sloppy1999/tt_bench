@@ -5,8 +5,9 @@
       "qid": "tt-official-ch04-pB-q1",
       "type": "ball_path",
       "question": "Starting from the red ball hopper with the solved board configuration, describe the complete path of the first red ball.",
-      "answer": "The red ball drops from the red hopper at (8,-1), rolls onto the fixed ramp_left at (7,1), continues to ramp_left at (6,2), ramp_right at (5,3), then solution ramps: ramp_right at (6,3), ramp_right at (5,4), ramp_right at (4,5), ramp_left at (3,6), ramp_left at (2,7), ramp_left at (1,8), ramp_right at (2,9), ramp_right at (3,10), reaching the left lever.",
-      "difficulty": "easy"
+      "answer": "The first red ball drops from (8, -1), rolls onto ramp_left at (7, 0), then ramp_left at (6, 1), then ramp_left at (5, 2), then ramp_left at (4, 3), then ramp_left at (3, 4), then ramp_left at (2, 5), then ramp_right at (1, 6), then ramp_left at (2, 7), then ramp_right at (1, 8), then ramp_left at (2, 9), and is caught at the left exit.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch04-pB-q2",
@@ -19,8 +20,9 @@
       "qid": "tt-official-ch04-pB-q3",
       "type": "output_sequence",
       "question": "How many balls total are released and in what order?",
-      "answer": "One red ball is released first, followed by 8 blue balls.",
-      "difficulty": "easy"
+      "answer": "9 balls reach an exit in the order: red exits left, blue exits left, blue exits left, blue exits left, blue exits left, blue exits left, blue exits left, blue exits left, blue exits left. 9 exit left, 0 exit right, 0 are intercepted.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     }
   ]
 }

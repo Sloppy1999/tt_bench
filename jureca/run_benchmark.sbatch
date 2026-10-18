@@ -54,7 +54,9 @@ mkdir -p "$PROJECT_DIR/slurm_logs"
 # previous one and you cannot tell which run a log belongs to.
 JOB_TAG="${SLURM_JOB_ID:-manual}"
 
-VENV_DIR="$PROJECT_DIR/.venv-ttbench"
+# Overridable so a second vLLM build can be tested against the same checkout
+# without disturbing jobs already running on the default one.
+VENV_DIR="${VENV_DIR:-$PROJECT_DIR/.venv-ttbench}"
 if [ ! -d "$VENV_DIR" ]; then
     VENV_DIR="/p/scratch/westai0070/${SLURM_JOB_USER:-$USER}/.venv-ttbench"
 fi
@@ -243,7 +245,10 @@ ok "vLLM started (PID: $VLLM_PID)"
 # ── Wait for vLLM to be ready ────────────────────────────────────────────────
 banner "Waiting for vLLM server to be ready"
 
-MAX_WAIT=600  # 10 minutes for model loading
+# 10 minutes covers a warm start, but not a cold torch.compile cache under
+# tensor parallelism: on vLLM 0.29 every 4-GPU model sat in engine init past
+# 600s and was killed, while both 1-GPU models came up fine. Overridable.
+MAX_WAIT="${VLLM_MAX_WAIT:-1800}"
 WAITED=0
 while ! curl -s --max-time 2 "http://localhost:${VLLM_PORT}/v1/models" > /dev/null 2>&1; do
     # Fail fast if the server process already died (don't poll a corpse for 10 min).
@@ -281,6 +286,28 @@ MAX_TURNS="${MAX_TURNS:-25}"
 # land in a suffixed directory so a sampling sweep cannot overwrite the baseline.
 TEMPERATURE="${TEMPERATURE:-0.0}"
 
+# Harness-ablation arm (HARNESS_ABLATION_PLAN.md section 5). "baseline" is the
+# configuration behind docs/results_analysis.md and adds no flags, so an
+# unset ARM reproduces the historical runs exactly. Anything else appends
+# _a<arm> to the output directory, because two arms in one directory are
+# distinguishable only by timestamp and any aggregation silently mixes them.
+#
+# The turn-budget arms are NOT here: they are MAX_TURNS, which already suffixes
+# with _tN. Only the arms needing new CLI flags are labelled.
+ARM="${ARM:-baseline}"
+ARM_ARGS=""
+case "$ARM" in
+    baseline)       ARM_ARGS="" ;;
+    fb-optional)    ARM_ARGS="--prompt-variant optional" ;;
+    fb-auto)        ARM_ARGS="--auto-simulate" ;;
+    rev-retry)      ARM_ARGS="--revision-style retry --revision-rounds 3" ;;
+    rev-structured) ARM_ARGS="--revision-style structured --revision-rounds 3" ;;
+    *)
+        fail "ARM names '$ARM', which is not an available arm."
+        echo "    available: baseline fb-optional fb-auto rev-retry rev-structured"
+        exit 1 ;;
+esac
+
 # Repetition index for a variability study. Results land in <set>_sN/ so the
 # repetitions do NOT supersede each other: the analysis tools read the newest
 # report per directory, so five runs into one directory would leave one usable
@@ -305,18 +332,33 @@ SAMPLE="${SAMPLE:-}"
 SAMPLES="${SAMPLES:-}"
 SEED="${SEED:-}"
 if [ -n "$SAMPLES" ]; then
+    # N or an inclusive A-B, the same forms submit_all.sh --samples accepts:
+    # `seq 1 "3-5"` is an error, not a range.
+    case "$SAMPLES" in
+        *-*) SAMPLE_FIRST="${SAMPLES%%-*}"; SAMPLE_LAST="${SAMPLES##*-}" ;;
+        *)   SAMPLE_FIRST=1;               SAMPLE_LAST="$SAMPLES" ;;
+    esac
+    if ! [[ "$SAMPLE_FIRST" =~ ^[0-9]+$ && "$SAMPLE_LAST" =~ ^[0-9]+$ ]] \
+       || [ "$SAMPLE_FIRST" -gt "$SAMPLE_LAST" ]; then
+        fail "SAMPLES takes N or an ascending A-B, got '$SAMPLES'"
+        kill $VLLM_PID 2>/dev/null || true
+        exit 1
+    fi
     SAMPLE_INDICES=()
-    for _i in $(seq 1 "$SAMPLES"); do SAMPLE_INDICES+=("$_i"); done
+    for _i in $(seq "$SAMPLE_FIRST" "$SAMPLE_LAST"); do SAMPLE_INDICES+=("$_i"); done
 elif [ -n "$SAMPLE" ]; then
     SAMPLE_INDICES=("$SAMPLE")
 else
     SAMPLE_INDICES=("")
 fi
 
+# tt-official-*, not tt-official-ch*: tasks derived from the numbered official
+# puzzles are named tt-official-<N>-... without "ch" (tt-official-12-1comp.json)
+# and the ch-only glob silently dropped them. All of them are tier 2+.
 CHALLENGE_SETS=(
-    "data/tasks/official/challenges/json|tt-official-ch*.json|official"
-    "data/tasks/challenges_1comp|tt-official-ch*.json|1comp"
-    "data/tasks/challenges_2comp|tt-official-ch*.json|2comp"
+    "data/tasks/official/challenges/json|tt-official-*.json|official"
+    "data/tasks/challenges_1comp|tt-official-*.json|1comp"
+    "data/tasks/challenges_2comp|tt-official-*.json|2comp"
 )
 # The scaled sets (variants + insight + unsolvable, ~1013 tier-1 tasks against
 # ~10 for the sets above) run ONLY with RUN_SCALED=1 — they take 8-12h on their
@@ -326,12 +368,42 @@ CHALLENGE_SETS=(
 # which contradicted this comment and made every plain run ~100x longer.
 if [ "${RUN_SCALED:-}" = "1" ]; then
     CHALLENGE_SETS+=(
-        "data/tasks/scaled|tt-official-ch*.json|scaled"
-        "data/tasks/challenges_1comp|**/tt-official-ch*.json|scaled_1comp"
-        "data/tasks/challenges_2comp|**/tt-official-ch*.json|scaled_2comp"
+        "data/tasks/scaled|tt-official-*.json|scaled"
+        "data/tasks/challenges_1comp|**/tt-official-*.json|scaled_1comp"
+        "data/tasks/challenges_2comp|**/tt-official-*.json|scaled_2comp"
     )
     warn "RUN_SCALED=1: ~1013 extra tasks queued. 12h of --time may not be enough."
 fi
+
+# ── Opt-in-only sets ─────────────────────────────────────────────────────────
+# These are reachable ONLY by naming them in SETS; they are never part of a
+# default run. Both are ILL-POSED by construction and score 0% by design, so
+# folding them into the roster would drag every headline number down with tasks
+# that measure something else entirely:
+#
+#   unsolvable_* — the board cannot be solved with the parts on offer, either
+#     because a gap has no matching part left (g1/g2) or because the part types
+#     were swapped out from under the solution (t1/t2). Exhaustively verified
+#     against the harness's own validate_synthesis: 0 winning placements exist.
+#     Nothing in AGENTIC_SYSTEM_PROMPT lets a model say "impossible", so success
+#     is unreachable and the RESULT IS THE TRANSCRIPT, not the score. Read
+#     <out>/per_task/*.json, not the summary line.
+#   insight_* — solvable, but available_parts carries a distractor type.
+#
+# The scaled_* sets already sweep these directories via their `**/` glob; these
+# labels exist to run them ALONE, without the ~1013 well-posed tasks alongside.
+OPTIONAL_SETS=(
+    "data/tasks/challenges_1comp|unsolvable/tt-official-ch*.json|unsolvable_1comp"
+    "data/tasks/challenges_2comp|unsolvable/tt-official-ch*.json|unsolvable_2comp"
+    "data/tasks/challenges_1comp|insight/tt-official-ch*.json|insight_1comp"
+    "data/tasks/challenges_2comp|insight/tt-official-ch*.json|insight_2comp"
+    # Phase 2 of the harness ablation: a frozen, stratified 500-task draw from
+    # `scaled`. The directory is GENERATED, not committed — it holds symlinks:
+    #   uv run python scripts/build_sub500.py --materialise data/tasks/scaled_sub500
+    # qwen3.6-35B-A3B needs ~13.5 h for the full 1013-task scaled set at 8
+    # workers, past the 12 h walltime; 500 fits. See HARNESS_ABLATION_PLAN.md 6.9.
+    "data/tasks/scaled_sub500|*.json|scaled_sub500"
+)
 
 # Optional set filter: SETS="1comp" or SETS="official,1comp" runs only those
 # labels. Empty (the default) runs everything selected above. Fail on an unknown
@@ -344,13 +416,13 @@ if [ -n "${SETS:-}" ]; then
     FILTERED_SETS=()
     for want in $WANTED; do
         hit=""
-        for cs in "${CHALLENGE_SETS[@]}"; do
+        for cs in "${CHALLENGE_SETS[@]}" "${OPTIONAL_SETS[@]}"; do
             IFS='|' read -r _d _p label <<< "$cs"
             [ "$label" = "$want" ] && hit="$cs" && break
         done
         if [ -z "$hit" ]; then
             fail "SETS names '$want', which is not an available set label."
-            printf '    available:'; for cs in "${CHALLENGE_SETS[@]}"; do
+            printf '    available:'; for cs in "${CHALLENGE_SETS[@]}" "${OPTIONAL_SETS[@]}"; do
                 IFS='|' read -r _d _p label <<< "$cs"; printf ' %s' "$label"; done; echo ""
             exit 1
         fi
@@ -360,8 +432,68 @@ if [ -n "${SETS:-}" ]; then
     ok "Set filter: $WANTED"
 fi
 
+# Optional pattern override: narrows EVERY selected set to this glob instead of
+# the set's own. Meant for probing a handful of named tasks — e.g. the four
+# unsolvable subtypes of one challenge — without inventing a set label per probe.
+# The glob is relative to each set's challenges-dir, so it only makes sense with
+# a single set named in SETS. Results land in <set>_probe/, never in <set>/: the
+# readers take the newest report per directory, so a probe there would hide the
+# full-set result. The glob itself is written to the manifest below.
+if [ -n "${PATTERN:-}" ]; then
+    if [ -z "${SETS:-}" ]; then
+        fail "PATTERN is set but SETS is not. A pattern override applied to every"
+        fail "default set would silently run the same glob against three different"
+        fail "directories. Name the one set it belongs to: SETS=unsolvable_1comp"
+        exit 1
+    fi
+    OVERRIDDEN=()
+    for cs in "${CHALLENGE_SETS[@]}"; do
+        IFS='|' read -r _d _p label <<< "$cs"
+        OVERRIDDEN+=("$_d|$PATTERN|$label")
+    done
+    CHALLENGE_SETS=("${OVERRIDDEN[@]}")
+    warn "Pattern override: '$PATTERN' replaces each set's own glob"
+    warn "Results land in <set>_probe/ — check the manifest for which tasks a"
+    warn "report actually covers."
+fi
+
+# A glob that matches nothing is the quietest failure this pipeline has:
+# tt-benchmark logs "Found 0 challenge files", writes an empty report and exits
+# 0, so the set is counted as a success and the summary reads 0/0. Count the
+# matches HERE and refuse to run. Counted with pathlib, not the shell, so the
+# `**/` in the scaled patterns means what the runner will make it mean.
+banner "  Resolving challenge sets"
+SET_RESOLVE_FAIL=0
+for cset in "${CHALLENGE_SETS[@]}"; do
+    IFS='|' read -r challenges_dir pattern cset_label <<< "$cset"
+    N_MATCH=$("$VENV_PY" - "$PROJECT_DIR/$challenges_dir" "$pattern" <<'PY'
+import sys
+from pathlib import Path
+d, pat = Path(sys.argv[1]), sys.argv[2]
+print(len(sorted(d.glob(pat))) if d.is_dir() else -1)
+PY
+)
+    if [ "$N_MATCH" = "-1" ]; then
+        fail "$cset_label: directory does not exist — $challenges_dir"
+        [ "$cset_label" = "scaled_sub500" ] && fail \
+            "  It is generated: python scripts/build_sub500.py --materialise $challenges_dir"
+        SET_RESOLVE_FAIL=1
+    elif [ "$N_MATCH" -eq 0 ]; then
+        fail "$cset_label: '$pattern' matches 0 files under $challenges_dir"
+        fail "  The run would exit 0 with an empty report. Fix the glob."
+        SET_RESOLVE_FAIL=1
+    else
+        ok "$cset_label: $N_MATCH file(s) before the tier filter"
+    fi
+done
+if [ "$SET_RESOLVE_FAIL" -eq 1 ]; then
+    kill $VLLM_PID 2>/dev/null || true
+    exit 1
+fi
+
 echo "  Max turns: $MAX_TURNS"
 echo "  Temperature: $TEMPERATURE"
+echo "  Arm:       $ARM${ARM_ARGS:+ ($ARM_ARGS)}"
 [ -n "$SAMPLE" ] && echo "  Sample:      $SAMPLE (seed $SEED)"
 if [ -n "$SAMPLE" ] && [ "$TEMPERATURE" = "0.0" ]; then
     warn "Greedy repetitions measure vLLM batching non-determinism (measured"
@@ -383,7 +515,8 @@ ARGS_COMMON="--provider vllm \
              --max-tokens 32768 \
              --timeout 600 \
              --workers 8 \
-             --tiers $TIERS"
+             --tiers $TIERS \
+             $ARM_ARGS"
 
 TOTAL_SUCCESS=0
 TOTAL_FAILED=0
@@ -401,9 +534,14 @@ for SAMPLE in "${SAMPLE_INDICES[@]}"; do
       # separate directories or the reports pile up in one folder, distinguishable
       # only by timestamp, and any aggregation silently averages across budgets.
       # The default (25) keeps the historical layout so existing results still map.
+      # _tier and _probe come straight after the set name: they change WHICH tasks
+      # ran, so the readers keep them in the base set rather than as a run option.
       OUT_LABEL="$cset_label"
-      [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${cset_label}_t${MAX_TURNS}"
+      [ "$TIERS" != "1" ] && OUT_LABEL+="_tier${TIERS// /}"
+      [ -n "${PATTERN:-}" ] && OUT_LABEL+="_probe"
+      [ "$MAX_TURNS" != "25" ] && OUT_LABEL="${OUT_LABEL}_t${MAX_TURNS}"
       [ "$TEMPERATURE" != "0.0" ] && OUT_LABEL="${OUT_LABEL}_T${TEMPERATURE}"
+      [ "$ARM" != "baseline" ] && OUT_LABEL="${OUT_LABEL}_a${ARM}"
       [ -n "$SAMPLE" ] && OUT_LABEL="${OUT_LABEL}_s${SAMPLE}"
       OUT_DIR="$RESULTS_DIR/${OUT_LABEL}"
       mkdir -p "$OUT_DIR"
@@ -450,15 +588,22 @@ ok "vLLM stopped"
 banner "Job complete"
 echo ""
 echo "  Model:     $MODEL_NAME"
-echo "  Sets done: $TOTAL_SUCCESS / ${#CHALLENGE_SETS[@]}"
+echo "  Sets done: $TOTAL_SUCCESS / $(( ${#CHALLENGE_SETS[@]} * ${#SAMPLE_INDICES[@]} ))"
 echo "  Results:   $RESULTS_DIR"
 echo ""
 
 # Save a job manifest for aggregation
 # Same reasoning as OUT_LABEL: a sweep must not overwrite its own manifest.
 MANIFEST_SUFFIX=""
-[ "$MAX_TURNS" != "25" ] && MANIFEST_SUFFIX="_t${MAX_TURNS}"
+[ "$TIERS" != "1" ] && MANIFEST_SUFFIX="_tier${TIERS// /}"
+[ "$MAX_TURNS" != "25" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_t${MAX_TURNS}"
+[ "$TEMPERATURE" != "0.0" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_T${TEMPERATURE}"
+[ "$ARM" != "baseline" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_a${ARM}"
 [ -n "$SAMPLE" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_s${SAMPLE}"
+# A pattern-narrowed run covers a handful of tasks, not a full roster. Writing
+# it to the plain manifest_<model>.json would overwrite the record of the real
+# run with one describing four tasks — tag it with the set it probed instead.
+[ -n "${PATTERN:-}" ] && MANIFEST_SUFFIX="${MANIFEST_SUFFIX}_$(echo "${SETS:-probe}" | tr ',+' '__')"
 MANIFEST="$RESULTS_BASE/manifest_${MODEL_NAME}${MANIFEST_SUFFIX}.json"
 "$VENV_PY" -c "
 import json
@@ -468,19 +613,24 @@ json.dump({
     'tiers': '${TIERS}',
     'gpus': ${GPU_COUNT},
     'job_id': '${JOB_TAG}',
+    'git_commit': '$(git -C "$PROJECT_DIR" rev-parse HEAD)',
     'native_ctx': ${NATIVE_CTX},
     'max_model_len': ${MAX_MODEL_LEN},
     'yarn_factor': ${FACTOR:-None},
     'tool_parser': '${TOOL_PARSER}',
     'max_turns': ${MAX_TURNS},
     'temperature': ${TEMPERATURE},
+    'arm': '${ARM}',
+    'arm_args': '${ARM_ARGS}',
     'samples': '${SAMPLES:-${SAMPLE:-}}',
-    'seeds': '$( [ -n "${SAMPLES:-}" ] && echo "1001-$((1000 + SAMPLES))" || echo "${SEED:-}" )',
+    'seeds': '$( [ -n "${SAMPLES:-}" ] && echo "$((1000 + SAMPLE_FIRST))-$((1000 + SAMPLE_LAST))" || echo "${SEED:-}" )',
     'sets': '${SETS:-all}',
+    'pattern_override': '${PATTERN:-}',
     'run_scaled': '${RUN_SCALED:-0}',
     'results_dir': '${RESULTS_DIR}',
-    'completed': $( [ $TOTAL_SUCCESS -eq ${#CHALLENGE_SETS[@]} ] && echo True || echo False ),
+    'completed': $( [ $TOTAL_FAILED -eq 0 ] && echo True || echo False ),
 }, open('${MANIFEST}', 'w'), indent=2)
 "
 
-exit 0
+# Non-zero when any set failed, so Slurm reports FAILED instead of COMPLETED.
+exit $(( TOTAL_FAILED > 0 ))

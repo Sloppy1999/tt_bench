@@ -29,6 +29,7 @@ from tt_bench.simulator import (
     ComponentType,
     verify_solution,
     load_challenge,
+    build_gear_connections,
 )
 
 
@@ -155,15 +156,21 @@ class TestGear:
         gear = Gear(x=5, y=5)
         assert gear.get_symbol() == "O"
 
+    def test_gear_keeps_marble_direction(self):
+        # The prompt tells models a gear "does not redirect marbles".
+        gear = Gear(x=5, y=5)
+        assert gear.get_exit_direction("left") == Direction.RIGHT
+        assert gear.get_exit_direction("right") == Direction.LEFT
+
 
 class TestTrigger:
     """Test Trigger component behavior."""
 
     def test_trigger_passes_through(self):
         trigger = Trigger(x=5, y=10, side="blue")
-        # Trigger passes through in same direction
-        assert trigger.get_exit_direction("left") == Direction.LEFT
-        assert trigger.get_exit_direction("right") == Direction.RIGHT
+        # Entry from upper-left keeps moving right, like a crossover
+        assert trigger.get_exit_direction("left") == Direction.RIGHT
+        assert trigger.get_exit_direction("right") == Direction.LEFT
 
 
 # =============================================================================
@@ -333,19 +340,18 @@ class TestGearPropagation:
 
         assert board.get(2, 2).state == 1
 
-    def test_gear_connection_creates_connection(self):
-        """Test gear connection is created."""
-        board = Board(rows=5, cols=5)
-        gbit1 = GearBit(x=2, y=2, state=0)
-        gbit2 = GearBit(x=4, y=2, state=0)
-        board.place(2, 2, gbit1)
-        board.place(4, 2, gbit2)
+    def test_meshed_gear_bits_flip_together(self):
+        """Gear bits wired by build_gear_connections, as scoring does, turn as one."""
+        board = Board(rows=5, cols=5, blue_hopper_x=2, hopper_entry_mode="column")
+        board.place(2, 0, GearBit(x=2, y=0, state=0))
+        board.place(3, 0, Gear(x=3, y=0))
+        board.place(4, 0, GearBit(x=4, y=0, state=0))
+        build_gear_connections(board)
 
-        # Connect them (with gear in between)
-        board.connect_gears([(2, 2), (4, 2)])
+        board.release_marble(Side.BLUE)
 
-        # Gear connections should be registered
-        assert (2, 2) in board.gear_connections or (4, 2) in board.gear_connections
+        assert board.get(2, 0).state == 1
+        assert board.get(4, 0).state == 1
 
     def test_gear_propagation(self):
         """Test that connected gear bits flip together."""
@@ -722,13 +728,12 @@ class TestFullSimulation:
         # With hopper_entry_mode="inward", blue enters at hopper_x + 1 = 3.
         assert result.path[0] == (2, -1)  # hopper slot
         assert result.path[1] == (3, 0)   # one column inward
-        # Ramp_right at (2,0) sends lower-right → (3,1); ramp_left at (3,1) sends lower-left → (2,2)
-        assert (2, 2) in result.path
-        assert (3, 1) in result.path
-        # The zigzag chain continues downward; last ramp sends ball to column 2.
-        # Left catcher at x=2 catches the marble.
+        # The guide's board starts its ramp chain at (3,0), so the ball zig-zags
+        # between columns 3 and 4 all the way down.
+        assert (4, 1) in result.path
+        assert (3, 2) in result.path
         assert result.caught_by == "left_catcher"
-        assert result.path[-1] == (2, 11)
+        assert result.path[-1] == (3, 11)
 
     def test_challenge_04_red_hopper_entry_alignment(self):
         """Red hopper should enter one column inward and hit the first red-side ramp."""
@@ -741,8 +746,9 @@ class TestFullSimulation:
 
         assert result.path[0] == (8, -1)
         assert result.path[1] == (7, 0)
-        assert result.path[2] == (7, 1)
-        assert (6, 2) in result.path
+        # The red-side chain in the guide's board turns back outward from (7,0).
+        assert result.path[2] == (8, 1)
+        assert (9, 2) in result.path
 
     def test_challenge_01_simulation(self):
         """Test running challenge 1.
@@ -801,17 +807,16 @@ class TestFullSimulation:
         )
         board, task = load_challenge(path)
 
-        red_count = task["board"]["ball_hoppers"]["red"]["count"]
-        blue_count = task["board"]["ball_hoppers"]["blue"]["count"]
-
-        # Release one blue → cascade consumes all blues + reds
+        # Release one blue → the lever cascade releases the reds behind it.
         results = board.run(["blue"])
 
-        # All real marbles (paths with steps > 0) should reach the right catcher.
+        # The guide prints one blue followed by eight reds, all leaving on the
+        # right, which is the board's documented required output.
         real_results = [r for r in results if r.steps > 0]
-        assert len(real_results) == blue_count + red_count
+        assert [r.colour for r in real_results] == ["blue"] + ["red"] * 8
         assert all(r.caught_by == "right_catcher" for r in real_results)
-        assert board.blue_balls_remaining == 0
+        # Only the one blue that starts the cascade is spent; the reds follow it.
+        assert board.blue_balls_remaining == 7
         assert board.red_balls_remaining == 0
 
 

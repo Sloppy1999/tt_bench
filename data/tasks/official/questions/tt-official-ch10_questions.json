@@ -5,15 +5,17 @@
       "qid": "tt-official-ch10-q1",
       "type": "ball_path",
       "question": "Starting from the blue ball hopper with the solved board configuration, describe the path of the first blue ball.",
-      "answer": "The first blue ball drops from (2,-1), rolls onto ramp_right at (3,3), ramp_right at (4,2), ramp_right at (5,3), landing on the first bit at (4,4) which points right, directing the ball to the second bit at (6,4) which also points right, continuing to the right side.",
-      "difficulty": "medium"
+      "answer": "The first blue ball drops from (2, -1), rolls onto bit at (3, 0), then ramp_right at (2, 1), then ramp_right at (3, 2), then ramp_left at (4, 3), then ramp_right at (3, 4), then ramp_left at (4, 5), then ramp_right at (3, 6), then ramp_left at (4, 7), then ramp_right at (3, 8), then ramp_left at (4, 9), and is caught at the left exit.",
+      "difficulty": "medium",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch10-q2",
       "type": "output_sequence",
       "question": "What is the output pattern?",
-      "answer": "The pattern is blue, blue, red, red, blue, blue, red, red...",
-      "difficulty": "easy"
+      "answer": "16 balls reach an exit in the order: blue exits left, blue exits right, red exits right, red exits left, blue exits left, blue exits right, red exits right, red exits left, blue exits left, blue exits right, red exits right, red exits left, blue exits left, blue exits right, red exits right, red exits left. 8 exit left, 8 exit right, 0 are intercepted.",
+      "difficulty": "easy",
+      "answer_source": "recomputed from the transcribed board"
     },
     {
       "qid": "tt-official-ch10-q3",

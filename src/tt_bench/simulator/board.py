@@ -61,16 +61,23 @@ class Board:
         self.left_catcher_x = left_catcher_x if left_catcher_x is not None else blue_hopper_x
         self.right_catcher_x = right_catcher_x if right_catcher_x is not None else red_hopper_x
 
+        # The levers are bars, not single cells: on the physical board each one
+        # spans its half of the bottom and they meet at the central ball return.
+        # The stored x values are where the guide draws each lever's cup, which
+        # is only the column a marble happens to land on in the simpler boards.
+        # The return sits midway between the two cups — not at the middle of the
+        # board, which is a different column once a board is padded wider.
+        self.chute_x = (self.left_catcher_x + self.right_catcher_x) / 2
+
         # Components: dict of (x, y) -> Component
         self.components: dict[tuple[int, int], Component] = {}
+        # Some guide puzzles ask the solver to set pre-mounted bits.
+        self.editable_bit_states: set[tuple[int, int]] = set()
 
         # Gear connections: adjacency list of (x, y) positions
         self.gear_connections: dict[tuple[int, int], set[tuple[int, int]]] = (
             defaultdict(set)
         )
-
-        # Track gear bit groups
-        self._gear_bit_groups: dict[int, set[tuple[int, int]]] = defaultdict(set)
 
         # Current ball in play
         self.current_marble_side: Side | None = None
@@ -89,6 +96,19 @@ class Board:
     # Component Placement
     # -------------------------------------------------------------------------
 
+    def catcher_at(self, x: int) -> str | None:
+        """Which trigger lever a marble leaving the bottom at column ``x`` hits.
+
+        Each lever is a bar covering its half of the board, so the side of the
+        central ball return decides it, not an exact column. A marble dropping
+        into the return itself triggers nothing.
+        """
+        if x < self.chute_x:
+            return "left_catcher"
+        if x > self.chute_x:
+            return "right_catcher"
+        return None
+
     def place(self, x: int, y: int, component: Component) -> None:
         """Place a component at the given position."""
         if not (0 <= x < self.cols and 0 <= y < self.rows):
@@ -102,33 +122,20 @@ class Board:
         """Remove and return component at position."""
         return self.components.pop((x, y), None)
 
+    def place_solution_component(self, component: Component) -> None:
+        """Place a part, or set a source-authorized fixed bit's initial state."""
+        pos = (component.x, component.y)
+        existing = self.components.get(pos)
+        if (pos in self.editable_bit_states and isinstance(existing, (Bit, GearBit))
+                and type(existing) is type(component)):
+            existing.state = component.state
+            existing._initial_state = component.state
+        else:
+            self.place(*pos, component)
+
     def get(self, x: int, y: int) -> Component | None:
         """Get component at position."""
         return self.components.get((x, y))
-
-    def connect_gears(self, positions: list[tuple[int, int]]) -> None:
-        """Connect multiple gear bits with gears."""
-        # Create gear components at intermediate positions
-        for i in range(len(positions) - 1):
-            x1, y1 = positions[i]
-            x2, y2 = positions[i + 1]
-
-            # Add bidirectional connection
-            self.gear_connections[(x1, y1)].add((x2, y2))
-            self.gear_connections[(x2, y2)].add((x1, y1))
-
-            # If either is a gear bit, ensure we track the connection
-            comp1 = self.get(x1, y1)
-            comp2 = self.get(x2, y2)
-
-            # Place gear components between gear bits if needed
-            # Check if there's already a component at midpoint
-            mid_x = (x1 + x2) // 2
-            mid_y = (y1 + y2) // 2
-
-            if (mid_x, mid_y) not in self.components:
-                gear = Gear(mid_x, mid_y)
-                self.components[(mid_x, mid_y)] = gear
 
     def _propagate_gear_flip(self, triggered_pos: tuple[int, int]) -> None:
         """Propagate flip to all connected gear bits via BFS."""
@@ -181,6 +188,7 @@ class Board:
                 steps=0,
                 terminated=True,
                 termination_reason="no_blue_balls",
+                colour="blue",
             )
         if side == Side.RED and self.red_balls_remaining <= 0:
             return MarbleResult(
@@ -190,6 +198,7 @@ class Board:
                 steps=0,
                 terminated=True,
                 termination_reason="no_red_balls",
+                colour="red",
             )
 
         # Decrement ball count
@@ -221,11 +230,13 @@ class Board:
         curr_x = entry_x
         curr_y = 0  # Enter at top row
 
-        # Track visited positions to detect loops
-        visited_positions: set[tuple[int, int]] = set()
-
         # Marble's current horizontal direction; None means vertical fall.
+        # An inward entry rolls sideways off the hopper, so it arrives moving.
         last_exit_dir: Direction | None = None
+        if entry_x < hopper_x:
+            last_exit_dir = Direction.LEFT
+        elif entry_x > hopper_x:
+            last_exit_dir = Direction.RIGHT
 
         # Simulate marble path
         steps = 0
@@ -241,15 +252,6 @@ class Board:
 
             if step_callback is not None:
                 step_callback(self, (curr_x, curr_y), steps)
-
-            # Check for loop
-            if (curr_x, curr_y) in visited_positions:
-                terminated = True
-                termination_reason = "infinite_loop"
-                caught_by = None
-                break
-
-            visited_positions.add((curr_x, curr_y))
 
             # Check if marble is off the board
             if curr_x < 0:
@@ -269,16 +271,14 @@ class Board:
             if curr_y >= self.rows:
                 # Reached bottom - landing on a trigger lever releases the
                 # same-coloured hopper: left lever → blue, right lever → red.
-                if curr_x == self.left_catcher_x:
-                    caught_by = "left_catcher"
+                caught_by = self.catcher_at(curr_x)
+                if caught_by == "left_catcher":
                     if self.blue_balls_remaining > 0:
                         self._pending_trigger_releases.append(Side.BLUE)
-                elif curr_x == self.right_catcher_x:
-                    caught_by = "right_catcher"
+                elif caught_by == "right_catcher":
                     if self.red_balls_remaining > 0:
                         self._pending_trigger_releases.append(Side.RED)
                 else:
-                    caught_by = None
                     termination_reason = "fell_off_bottom"
                 terminated = True
                 break
@@ -348,6 +348,7 @@ class Board:
             steps=steps,
             terminated=terminated,
             termination_reason=termination_reason,
+            colour=side.value,
         )
 
         self.marble_history.append(result)
@@ -392,7 +393,6 @@ class Board:
 
                 # Check if we should stop (ball caught by interceptor or fell off)
                 if result.terminated and result.termination_reason in (
-                    "infinite_loop",
                     "max_steps_exceeded",
                     "fell_off_side",
                 ):
@@ -415,7 +415,6 @@ class Board:
                         results.append(paired_result)
 
                 if result.terminated and result.termination_reason in (
-                    "infinite_loop",
                     "max_steps_exceeded",
                     "fell_off_side",
                 ):
@@ -466,10 +465,6 @@ class Board:
             },
             "components": components,
         }
-
-    def to_json(self, fp) -> None:
-        """Serialize board to JSON file."""
-        json.dump(self.to_dict(), fp, indent=2)
 
     def _entry_x_for(self, side: Side) -> int:
         """Resolve the column at which a marble actually enters the playfield.
@@ -540,6 +535,8 @@ class Board:
             "components": components,
             "bit_states": self.get_all_states(),
             "gear_groups": gear_groups,
+            **({'editable_bit_states': [list(p) for p in sorted(self.editable_bit_states)]}
+               if self.editable_bit_states else {}),
         }
 
     @classmethod
@@ -569,19 +566,18 @@ class Board:
         return board
 
     @classmethod
-    def from_json(cls, fp) -> Board:
-        """Deserialize board from JSON file."""
-        data = json.load(fp)
-        return cls.from_dict(data)
-
-    @classmethod
     def from_task_json(cls, task_path: str) -> Board:
         """Load board from a challenge task JSON file."""
         with open(task_path) as fp:
             task = json.load(fp)
 
+        return cls.from_task_dict(task)
+
+    @classmethod
+    def from_task_dict(cls, task: dict) -> Board:
+        """Build a board from an already-loaded challenge dictionary."""
+
         board_data = task.get("board", {})
-        available = task.get("available_parts", {})
         solution = task.get("solution", {})
 
         # Create board
@@ -608,6 +604,7 @@ class Board:
         )
 
         # Place fixed components
+        board.editable_bit_states = {tuple(p) for p in board_data.get('editable_bit_states', [])}
         for comp_dict in board_data.get("fixed_components", []):
             comp = Component.from_dict(comp_dict)
             board.place(comp.x, comp.y, comp)
@@ -615,7 +612,7 @@ class Board:
         # Place solution components if provided
         for comp_dict in solution.get("placed_components", []):
             comp = Component.from_dict(comp_dict)
-            board.place(comp.x, comp.y, comp)
+            board.place_solution_component(comp)
 
         # Auto-detect and build gear connections
         build_gear_connections(board)
@@ -727,6 +724,9 @@ def build_gear_connections(board: Board) -> None:
     Args:
         board: The Board to analyze and update
     """
+    # Rebuilding must also remove stale edges after an editable board changes.
+    board.gear_connections.clear()
+
     # Find all gear-related components
     gear_bits: list[tuple[int, int]] = []
     gears: list[tuple[int, int]] = []
@@ -751,33 +751,9 @@ def build_gear_connections(board: Board) -> None:
                 board.gear_connections[pos1].add(pos2)
                 board.gear_connections[pos2].add(pos1)
 
-    # Also create gear components at intermediate positions between connected gear bits if needed
-    # This allows gear bits to be connected through intermediate gear components
-    for pos1 in gear_bits:
-        for pos2 in gear_bits:
-            if pos1 >= pos2:
-                continue
-            x1, y1 = pos1
-            x2, y2 = pos2
-            # If gear bits are within 2 positions in any direction
-            if abs(x1 - x2) <= 2 and abs(y1 - y2) <= 2:
-                # Check if there's already a path through existing gears
-                if pos2 in board.gear_connections.get(pos1, set()):
-                    continue  # Already connected
-                # Add intermediate position if on board
-                mid_x = (x1 + x2) // 2
-                mid_y = (y1 + y2) // 2
-                if 0 <= mid_x < board.cols and 0 <= mid_y < board.rows:
-                    if (mid_x, mid_y) not in board.components:
-                        # Place a gear at midpoint
-                        gear = Gear(mid_x, mid_y)
-                        board.components[(mid_x, mid_y)] = gear
-                        gears.append((mid_x, mid_y))
-                    # Connect all three
-                    board.gear_connections[pos1].add((mid_x, mid_y))
-                    board.gear_connections[(mid_x, mid_y)].add(pos1)
-                    board.gear_connections[pos2].add((mid_x, mid_y))
-                    board.gear_connections[(mid_x, mid_y)].add(pos2)
+    # Only physically present neighbouring gears mesh. Never synthesize an
+    # intermediate gear (or connect through a ramp/crossover at its position).
+    # Separate latches, e.g. official 29-bA, must remain independent.
 
 
 # =============================================================================

@@ -1,0 +1,139 @@
+{
+  "task_id": "tt-official-ch07-pA_sz13x11",
+  "challenge_number": 7,
+  "tier": 2,
+  "title": "Path of Least Resistance",
+  "objective": "Create a path for the blue balls to reach the output with only 6 ramps.",
+  "board": {
+    "width": 13,
+    "height": 11,
+    "hopper_entry_mode": "inward",
+    "fixed_components": [
+      {
+        "type": "crossover",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "crossover",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "crossover",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "type": "crossover",
+        "x": 3,
+        "y": 8
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 3,
+        "y": 11
+      },
+      "right": {
+        "x": 8,
+        "y": 11
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 2,
+    "ramp_left": 4,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 9
+      }
+    ],
+    "explanation": "Wide padded variant \u2014 board expanded from 11\u00d711 to 13\u00d711 without changing the marble path. At the top, you've got to decide, 'Do I go to the left or to the right?' The right is the better path because you can use two crossovers instead of just one. NOTE - component positions are estimates pending simulator verification",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
+  },
+  "required_output": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 29,
+    "checked": "simulation reproduces the guide's printed required output"
+  }
+}

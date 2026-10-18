@@ -46,5 +46,10 @@ Positioned below the grid at y = 11:
 - `state: 1` = Bit points to the right
 
 ## Gear Group Convention
-- Gear bits and gears sharing the same `gear_group` integer are mechanically connected
+- `gear_group` labels the source diagram's intended groups. The simulator
+  determines connectivity from physically present adjacent gear components.
+  Matching labels alone do not bridge an empty cell or a non-gear component.
 - When one gear bit flips, all gears in the same group rotate
+
+See [README.md](README.md) for pooled ramp inventories, solver-selectable fixed
+bit states, trial targets, and the distinction between boards and worksheets.

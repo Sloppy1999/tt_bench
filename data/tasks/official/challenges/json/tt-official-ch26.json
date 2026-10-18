@@ -3,155 +3,32 @@
   "challenge_number": 26,
   "tier": 4,
   "title": "Nucleus",
-  "objective": "Generate the required pattern",
+  "objective": "Generate the required pattern.",
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
         "type": "bit",
-        "x": 2,
-        "y": 0,
-        "state": 0
-      },
-      {
-        "type": "bit",
-        "x": 8,
-        "y": 0,
-        "state": 0
-      },
-      {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
         "x": 7,
-        "y": 1
+        "y": 0,
+        "state": 0
       },
       {
         "type": "interceptor",
-        "x": 9,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 2
-      },
-      {
-        "type": "bit",
-        "x": 2,
-        "y": 2,
-        "state": 0
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 2
-      },
-      {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "ramp_left",
-        "x": 5,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 4
-      },
-      {
-        "type": "crossover",
-        "x": 4,
-        "y": 4
-      },
-      {
-        "type": "ramp_left",
-        "x": 1,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 6
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 7
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 8
-      },
-      {
-        "type": "ramp_left",
         "x": 8,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 9
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 9
+        "y": 1
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
-        "count": 8
+        "count": 10
       },
       "red": {
         "x": 8,
-        "y": -1,
-        "count": 8
+        "count": 10
       }
     },
     "trigger_levers": {
@@ -163,37 +40,195 @@
         "x": 8,
         "y": 11
       }
-    }
+    },
+    "editable_bit_states": [
+      [
+        7,
+        0
+      ]
+    ]
   },
   "available_parts": {
-    "ramp_right": 0,
-    "ramp_left": 0,
-    "crossover": 0,
-    "bit": 0,
+    "ramp": 121,
+    "crossover": 2,
+    "bit": 2,
     "gear_bit": 0,
     "gear": 0,
     "interceptor": 0,
     "trigger": 0
   },
   "solution": {
-    "placed_components": [],
-    "explanation": "",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": []
+    "placed_components": [
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 0,
+        "state": 1
+      },
+      {
+        "type": "bit",
+        "x": 7,
+        "y": 0,
+        "state": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 2
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 2,
+        "state": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "crossover",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 7,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 9
+      }
+    ],
+    "explanation": "The 2-bit countdown register on the left releases four blue balls, the last of which triggers the right lever, releasing a red ball. That red ball goes back over to the left side, triggering the release of four more blue balls, the last of which triggers the release of a second red ball. That second red ball is caught by the interceptor.",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "red",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "red",
+      "intercepted"
+    ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 7,
+    "right_catcher": 2,
+    "intercepted": 1
+  },
+  "required_output": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "red",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "intercepted"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 101,
+    "solution_page": 102,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": "unlimited",
+    "crossover": 2,
+    "bit": 2,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

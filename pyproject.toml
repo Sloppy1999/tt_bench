@@ -10,19 +10,21 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.10",
-    "networkx>=3.6.1",
     "pandas>=3.0.3",
     "pyqt6>=6.11",
     "python-dotenv>=1.2",
     "requests>=2.33",
-    "scikit-learn>=1.9.0",
     "scipy>=1.18.0",
-    "seaborn>=0.13.2",
 ]
 
 [project.scripts]
 tt-benchmark = "tt_bench.benchmark.runner:main"
 tt-simulate = "tt_bench.cli.simulate:run_cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -41,4 +43,4 @@ warn_unused_configs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]

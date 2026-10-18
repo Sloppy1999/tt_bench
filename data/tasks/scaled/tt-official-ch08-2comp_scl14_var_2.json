@@ -1,67 +1,57 @@
 {
   "task_id": "tt-official-ch08-2comp_scl14_var_2",
-  "challenge_number": 6,
+  "challenge_number": 8,
   "tier": 2,
-  "title": "Entropy (1 Component)",
-  "objective": "Make the pattern blue, red, blue, red, blue, red... using a shorter path.",
+  "title": "Depolarization",
+  "objective": "Make the pattern blue, red, blue, red, blue, red...",
   "board": {
     "width": 11,
     "height": 15,
     "fixed_components": [
       {
-        "type": "ramp_left",
-        "x": 8,
-        "y": 0
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 2
-      },
-      {
-        "type": "ramp_left",
-        "x": 6,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 6,
-        "y": 8
-      },
-      {
         "type": "ramp_right",
         "x": 2,
         "y": 0
       },
       {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 3,
         "y": 1
       },
       {
         "type": "ramp_right",
-        "x": 4,
+        "x": 2,
         "y": 2
       },
       {
         "type": "ramp_left",
-        "x": 6,
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
         "y": 4
       },
       {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 9
+        "type": "ramp_left",
+        "x": 3,
+        "y": 5
       },
       {
         "type": "ramp_right",
-        "x": 4,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 4,
+        "x": 2,
         "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 8
       },
       {
         "type": "ramp_left",
@@ -69,20 +59,23 @@
         "y": 9
       },
       {
-        "type": "crossover",
-        "x": 5,
-        "y": 7
+        "type": "ramp_right",
+        "x": 2,
+        "y": 10
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 11
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -95,10 +88,11 @@
         "x": 8,
         "y": 15
       }
-    }
+    },
+    "hopper_entry_mode": "inward"
   },
   "available_parts": {
-    "ramp_right": 0,
+    "ramp_right": 1,
     "ramp_left": 1,
     "crossover": 0,
     "bit": 0,
@@ -111,52 +105,35 @@
     "placed_components": [
       {
         "type": "ramp_left",
-        "x": 7,
+        "x": 3,
         "y": 13
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 12
       }
     ],
-    "explanation": "Scaled variant \u2014 14 total components, 1 to place.",
-    "verified": false,
-    "position_verified": false,
+    "explanation": "Scaled variant \u2014 14 total components, 2 to place.",
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue",
-      "red",
       "blue"
     ]
   },
   "input_sequence": [
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red",
-    "blue",
-    "red"
+    "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
   }
 }

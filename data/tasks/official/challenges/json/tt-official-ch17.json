@@ -1,167 +1,61 @@
 {
-  "task_id": "tt-official-17",
+  "task_id": "tt-official-ch17",
   "challenge_number": 17,
   "tier": 2,
   "title": "Fixed Ratio",
-  "objective": "Make a pattern blue, blue, blue, red, red, red",
+  "objective": "Make the pattern blue, blue, blue, red, red, red.",
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 0,
         "state": 0
       },
       {
         "type": "bit",
-        "x": 8,
+        "x": 7,
         "y": 0,
         "state": 0
       },
       {
         "type": "ramp_left",
-        "x": 1,
-        "y": 1
-      },
-      {
-        "type": "ramp_left",
-        "x": 3,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 1
-      },
-      {
-        "type": "ramp_right",
-        "x": 0,
-        "y": 2
-      },
-      {
-        "type": "bit",
-        "x": 2,
-        "y": 2,
-        "state": 0
-      },
-      {
-        "type": "bit",
-        "x": 8,
-        "y": 2,
-        "state": 0
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 3
-      },
-      {
-        "type": "interceptor",
-        "x": 7,
-        "y": 3
-      },
-      {
-        "type": "ramp_right",
-        "x": 9,
-        "y": 3
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
         "x": 4,
-        "y": 4
-      },
-      {
-        "type": "ramp_left",
-        "x": 10,
-        "y": 4
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 5
-      },
-      {
-        "type": "ramp_right",
-        "x": 5,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 9,
-        "y": 5
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 6
+        "y": 1
       },
       {
         "type": "ramp_right",
         "x": 6,
-        "y": 6
+        "y": 1
       },
       {
-        "type": "ramp_right",
-        "x": 8,
-        "y": 6
+        "type": "bit",
+        "x": 3,
+        "y": 2,
+        "state": 1
       },
       {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
+        "type": "bit",
         "x": 7,
-        "y": 7
+        "y": 2,
+        "state": 0
       },
       {
-        "type": "ramp_left",
-        "x": 9,
-        "y": 7
-      },
-      {
-        "type": "ramp_left",
-        "x": 2,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 8,
-        "y": 8
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 9
-      },
-      {
-        "type": "ramp_left",
-        "x": 9,
-        "y": 9
+        "type": "interceptor",
+        "x": 6,
+        "y": 3
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -177,34 +71,172 @@
     }
   },
   "available_parts": {
-    "ramp_right": 5,
-    "ramp_left": 5,
-    "crossover": 5,
-    "bit": 5,
-    "gear_bit": 5,
-    "gear": 5,
-    "interceptor": 5,
-    "trigger": 5
+    "ramp": 121,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   },
   "solution": {
-    "placed_components": [],
-    "explanation": "",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": []
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 1
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 3
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 1,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 9,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 2,
+        "y": 9
+      },
+      {
+        "type": "ramp_right",
+        "x": 8,
+        "y": 9
+      }
+    ],
+    "explanation": "Now we have two 2-bit counters - one on the left and one on the right. Notice the starting positions of the bits! To get three blues and three reds in the output, we have to count out 3 blue balls, and 4 red balls (the 4th ball goes into the interceptor!).",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "red",
+      "red",
+      "red",
+      "red",
+      "intercepted"
+    ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 2,
+    "right_catcher": 4,
+    "intercepted": 1
+  },
+  "required_output": [
+    "blue",
+    "blue",
+    "blue",
+    "red",
+    "red",
+    "red",
+    "intercepted"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 71,
+    "solution_page": 72,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": "unlimited",
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

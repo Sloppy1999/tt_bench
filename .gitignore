@@ -13,6 +13,9 @@ wheels/
 # Virtual environments
 .venv
 
+# Generated task-set views (symlinks; the id list in review/ is the source)
+data/tasks/scaled_sub500/
+
 # Generated visualizations and reports
 *.mp4
 *.html
@@ -54,3 +57,6 @@ generate_challenge_inventory_viz.py
 figures/
 presentation/
 board_three_panel.png
+
+# Rendered pages from the practice guide (regenerated on demand)
+.guide-cache/

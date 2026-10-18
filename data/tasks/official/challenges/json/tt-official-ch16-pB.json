@@ -7,22 +7,68 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
+        "type": "bit",
+        "x": 3,
+        "y": 0,
+        "state": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 1
+      },
+      {
+        "type": "bit",
+        "x": 3,
+        "y": 2,
+        "state": 1
+      },
+      {
         "type": "interceptor",
-        "x": 8,
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
         "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -38,8 +84,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 3,
-    "ramp_left": 0,
+    "ramp": 3,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -51,40 +96,55 @@
     "placed_components": [
       {
         "type": "ramp_right",
-        "x": 3,
-        "y": 3
+        "x": 4,
+        "y": 1
       },
       {
-        "type": "ramp_right",
+        "type": "ramp_left",
         "x": 5,
-        "y": 3
+        "y": 2
       },
       {
         "type": "ramp_right",
-        "x": 7,
+        "x": 4,
         "y": 3
       }
     ],
     "explanation": "The top bit sends the first ball to the right, which leads to the left lever. Then, when the second ball is released, both bits point right, just like in the previous challenge. The second ball travels to the interceptor.",
-    "verified": false,
-    "position_verified": false,
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
-      "blue"
+      "intercepted"
     ]
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
   "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+    "left_catcher": 1,
+    "right_catcher": 0,
+    "intercepted": 1
+  },
+  "required_output": [
+    "blue",
+    "intercepted"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 61,
+    "solution_page": 62,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 3,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

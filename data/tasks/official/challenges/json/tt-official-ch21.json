@@ -3,116 +3,95 @@
   "challenge_number": 21,
   "tier": 3,
   "title": "Quantum Number",
-  "objective": "Use register A to coun the number of blue balls.(Use 15 or less balls)",
+  "objective": "Use register A to count the number of blue balls. (Use 15 or less balls.)",
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 0,
         "state": 0
       },
       {
         "type": "ramp_right",
-        "x": 1,
+        "x": 2,
         "y": 1
       },
       {
         "type": "ramp_right",
-        "x": 3,
+        "x": 4,
         "y": 1
       },
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 2,
         "state": 0
       },
       {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 2
-      },
-      {
         "type": "ramp_right",
-        "x": 1,
+        "x": 2,
         "y": 3
       },
       {
         "type": "ramp_right",
-        "x": 3,
+        "x": 4,
         "y": 3
       },
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 4,
         "state": 0
       },
       {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 4
-      },
-      {
         "type": "ramp_right",
-        "x": 1,
+        "x": 2,
         "y": 5
       },
       {
         "type": "ramp_right",
-        "x": 3,
+        "x": 4,
         "y": 5
       },
       {
         "type": "bit",
-        "x": 2,
+        "x": 3,
         "y": 6,
         "state": 0
       },
       {
-        "type": "ramp_left",
-        "x": 4,
-        "y": 6
-      },
-      {
-        "type": "ramp_right",
-        "x": 1,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 3,
-        "y": 7
-      },
-      {
         "type": "ramp_right",
         "x": 2,
-        "y": 8
+        "y": 7
       },
       {
-        "type": "ramp_left",
+        "type": "ramp_right",
         "x": 4,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
         "y": 8
       },
       {
-        "type": "ramp_left",
-        "x": 3,
+        "type": "ramp_right",
+        "x": 4,
         "y": 9
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
-        "count": 8
+        "count": 15
       },
       "red": {
         "x": 8,
-        "y": -1,
-        "count": 8
+        "count": 0
       }
     },
     "trigger_levers": {
@@ -127,8 +106,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 0,
-    "ramp_left": 0,
+    "ramp": 5,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -137,24 +115,258 @@
     "trigger": 0
   },
   "solution": {
-    "placed_components": [],
-    "explanation": "",
-    "verified": false,
-    "position_verified": false,
-    "final_marble_state": []
+    "placed_components": [
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 6
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 10
+      }
+    ],
+    "explanation": "This seems a lot more complicated than it really is! The top bit flips with every ball. The 2nd bit flips every 2nd ball (whenever the top bit flips to the left). The 3rd bit flips every 4th ball (whenever the 2nd bit flips to the left). The 4th bit flips every 8th ball (whenever the 3rd bit flips to the left). That\u2019s it! Remember how this works - it\u2019ll be in a lot of the puzzles to come.",
+    "verified": true,
+    "position_verified": true
   },
   "input_sequence": [
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
-    "blue",
     "blue"
   ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
-  }
+  "expected_output": {},
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 83,
+    "solution_page": 84,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 5,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "registers": {
+    "A": [
+      "bit_3_6",
+      "bit_3_4",
+      "bit_3_2",
+      "bit_3_0"
+    ]
+  },
+  "trials": [
+    {
+      "name": "x0",
+      "hoppers": {
+        "blue": 0,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 0
+        }
+      }
+    },
+    {
+      "name": "x1",
+      "hoppers": {
+        "blue": 1,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 1
+        }
+      }
+    },
+    {
+      "name": "x2",
+      "hoppers": {
+        "blue": 2,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 2
+        }
+      }
+    },
+    {
+      "name": "x3",
+      "hoppers": {
+        "blue": 3,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 3
+        }
+      }
+    },
+    {
+      "name": "x4",
+      "hoppers": {
+        "blue": 4,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 4
+        }
+      }
+    },
+    {
+      "name": "x5",
+      "hoppers": {
+        "blue": 5,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 5
+        }
+      }
+    },
+    {
+      "name": "x6",
+      "hoppers": {
+        "blue": 6,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 6
+        }
+      }
+    },
+    {
+      "name": "x7",
+      "hoppers": {
+        "blue": 7,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 7
+        }
+      }
+    },
+    {
+      "name": "x8",
+      "hoppers": {
+        "blue": 8,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 8
+        }
+      }
+    },
+    {
+      "name": "x9",
+      "hoppers": {
+        "blue": 9,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 9
+        }
+      }
+    },
+    {
+      "name": "x10",
+      "hoppers": {
+        "blue": 10,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 10
+        }
+      }
+    },
+    {
+      "name": "x11",
+      "hoppers": {
+        "blue": 11,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 11
+        }
+      }
+    },
+    {
+      "name": "x12",
+      "hoppers": {
+        "blue": 12,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 12
+        }
+      }
+    },
+    {
+      "name": "x13",
+      "hoppers": {
+        "blue": 13,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 13
+        }
+      }
+    },
+    {
+      "name": "x14",
+      "hoppers": {
+        "blue": 14,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 14
+        }
+      }
+    },
+    {
+      "name": "x15",
+      "hoppers": {
+        "blue": 15,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 15
+        }
+      }
+    }
+  ]
 }

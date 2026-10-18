@@ -7,22 +7,41 @@
   "board": {
     "width": 11,
     "height": 11,
+    "hopper_entry_mode": "inward",
     "fixed_components": [
       {
-        "type": "ramp_right",
-        "x": 3,
+        "type": "crossover",
+        "x": 2,
         "y": 1
+      },
+      {
+        "type": "crossover",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "crossover",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "crossover",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "type": "crossover",
+        "x": 3,
+        "y": 8
       }
     ],
     "ball_hoppers": {
       "blue": {
         "x": 2,
-        "y": -1,
         "count": 8
       },
       "red": {
         "x": 8,
-        "y": -1,
         "count": 8
       }
     },
@@ -38,8 +57,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 6,
-    "ramp_left": 0,
+    "ramp": 6,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -51,38 +69,38 @@
     "placed_components": [
       {
         "type": "ramp_right",
-        "x": 4,
-        "y": 2
+        "x": 3,
+        "y": 0
       },
       {
-        "type": "ramp_right",
-        "x": 5,
+        "type": "ramp_left",
+        "x": 6,
         "y": 3
       },
       {
-        "type": "ramp_right",
-        "x": 6,
+        "type": "ramp_left",
+        "x": 5,
         "y": 4
       },
       {
-        "type": "ramp_right",
-        "x": 7,
-        "y": 7
-      },
-      {
-        "type": "ramp_right",
-        "x": 2,
+        "type": "ramp_left",
+        "x": 4,
         "y": 5
       },
       {
         "type": "ramp_right",
-        "x": 1,
+        "x": 2,
         "y": 7
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 9
       }
     ],
-    "explanation": "At the top, you've got to decide, 'Do I go to the left or to the right?' The right is the better path because you can use two crossovers instead of just one. NOTE - component positions are estimates pending simulator verification",
-    "verified": false,
-    "position_verified": false,
+    "explanation": "At the top, you\u2019ve got to decide, \u201cDo I go to the left or to the right?\u201d The right is the better path because you can use two crossovers instead of just one.",
+    "verified": true,
+    "position_verified": true,
     "final_marble_state": [
       "blue",
       "blue",
@@ -95,6 +113,14 @@
     ]
   },
   "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
+  },
+  "required_output": [
     "blue",
     "blue",
     "blue",
@@ -104,8 +130,21 @@
     "blue",
     "blue"
   ],
-  "expected_output": {
-    "description": "Where each marble ends up after execution",
-    "format": "left_catcher, right_catcher counts"
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 29,
+    "solution_page": 30,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 6,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

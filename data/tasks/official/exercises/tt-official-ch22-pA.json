@@ -1,0 +1,16 @@
+{
+  "task_id": "tt-official-ch22-pA",
+  "challenge_number": 22,
+  "tier": 3,
+  "title": "Depletion",
+  "objective": "Draw bits to solve the following problems.",
+  "task_type": "paper_exercise",
+  "benchmark_eligible": false,
+  "source": {
+    "document": "Papers/practice-guide-2021.pdf",
+    "page": 85,
+    "solution_page": 86
+  },
+  "questions_file": "questions/tt-official-ch22-pA_questions.json",
+  "note": "This guide entry is a worksheet, not a component-placement board. Consult the source pages for its diagrams."
+}

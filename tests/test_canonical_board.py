@@ -27,7 +27,8 @@ class TestToLlmDictOnOfficialChallenge:
 
         assert d["dimensions"] == {"width": 11, "height": 11}
         assert d["hopper_entry_mode"] == "inward"
-        # Official ch01 hoppers at x=2/8, catchers at x=2/8.
+        # Hopper slots and lever cups use the canonical x=2/8 convention;
+        # the lever spans its half of the board, including the exit at x=3.
         assert d["ball_hoppers"]["blue"]["x"] == 2
         assert d["ball_hoppers"]["red"]["x"] == 8
         assert d["trigger_levers"]["left"]["x"] == 2

@@ -11,8 +11,11 @@ from pathlib import Path
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from tt_bench.simulator.targets import free_fall_cells, lost_marbles, validate_targets
+from tt_bench.simulator.inventory import inventory_key
 from tt_bench.simulator import (
     Board,
+    build_gear_connections,
     Component,
     Ramp,
     Crossover,
@@ -42,11 +45,22 @@ class TuringTumbleToolExecutor:
         fixed_positions: Optional[set] = None,
         target_sequence: Optional[List[str]] = None,
         expose_inventory: bool = False,
+        auto_simulate: bool = False,
+        target_final_state: Optional[List[str]] = None,
+        expected_output: Optional[Dict[str, Any]] = None,
+        required_output: Optional[List[str]] = None,
+        trials: Optional[List[Dict[str, Any]]] = None,
+        registers: Optional[Dict[str, List[str]]] = None,
     ):
         self.board = board
         # Ablation switch: report the remaining inventory from get_board_state.
         # Off by default — see the note in get_board_state.
         self.expose_inventory: bool = expose_inventory
+        # Ablation switch (harness arm `fb-auto`): attach the target-sequence
+        # simulation to every successful placement or removal, so verification
+        # costs the agent no turn. Off by default; see _auto_simulation_payload
+        # for why the payload is trimmed rather than passed through whole.
+        self.auto_simulate: bool = auto_simulate
         self.placed_components: List[Dict[str, Any]] = []
         self.available_parts: Dict[str, int] = dict(available_parts) if available_parts else {}
         # Tracks how many of each type have been placed (for inventory enforcement).
@@ -68,6 +82,14 @@ class TuringTumbleToolExecutor:
         # only sets _solution_found when the input matches this sequence
         # (prevents false positives from exploratory simulations).
         self._target_sequence: Optional[List[str]] = target_sequence
+        self._required_output = required_output
+        self._target_final_state = target_final_state
+        self._expected_output = dict(expected_output or {})
+        # A trial-scored task is decided by re-running the board per trial, not
+        # by the single simulation the agent just did. Carried here so the
+        # early-stop signal asks the same question the scorer will.
+        self._trials = trials
+        self._registers = registers
 
     def execute(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a tool by name with given arguments.
@@ -85,6 +107,44 @@ class TuringTumbleToolExecutor:
             return {"error": f"Unknown tool: {tool_name}"}
 
         return tool_map[tool_name](**arguments)
+
+    # Cap on the auto-injected payload. run_simulation returns grouped
+    # execution traces, and 40 turns of them on a 15x15 board would exhaust the
+    # 131072-token context — the arm would then measure truncation rather than
+    # feedback. free_fall_errors is the field the agent acts on, so it is kept
+    # (bounded) and the traces are dropped.
+    AUTO_SIM_MAX_FREE_FALL_CELLS = 12
+
+    def _auto_simulation_payload(self) -> Dict[str, Any]:
+        """Trimmed target-sequence simulation for the `fb-auto` arm.
+
+        Runs the same non-destructive ``run_simulation`` the agent would call,
+        so this also updates ``_best_placement`` / ``_solution_found`` exactly as
+        an agent-initiated call would. That is intended, and it means successes
+        under this arm can be credited through the early-stop and
+        best-placement routes without the agent ever calling the tool — which is
+        why those routes are reported separately (see HARNESS_ABLATION_PLAN.md
+        section 4.4).
+        """
+        result = self.run_simulation(self._target_sequence)
+        if not result.get("success"):
+            return {"success": False, "error": result.get("error", "simulation failed")}
+
+        errors = result.get("free_fall_errors", [])
+        cap = self.AUTO_SIM_MAX_FREE_FALL_CELLS
+        payload: Dict[str, Any] = {
+            "success": True,
+            "input_sequence": self._target_sequence or ["blue"],
+            "left_catcher": result["left_catcher"],
+            "right_catcher": result["right_catcher"],
+            "interceptor": result["interceptor"],
+            "total_marbles": result["total_marbles"],
+            "final_bit_states": result["final_bit_states"],
+            "free_fall_errors": errors[:cap],
+        }
+        if len(errors) > cap:
+            payload["free_fall_errors_omitted"] = len(errors) - cap
+        return payload
 
     def place_component(
         self,
@@ -105,6 +165,8 @@ class TuringTumbleToolExecutor:
             Success status and component details
         """
         try:
+            if type(x) is not int or type(y) is not int:
+                return {"success": False, "error": f"Coordinates must be integers, got ({x!r}, {y!r})"}
             # Check if position is valid
             if not (0 <= x < self.board.cols and 0 <= y < self.board.rows):
                 return {
@@ -114,6 +176,17 @@ class TuringTumbleToolExecutor:
 
             # Check if position is already occupied
             existing = self.board.components.get((x, y))
+            if ((x, y) in self.board.editable_bit_states and isinstance(existing, (Bit, GearBit))
+                    and existing.component_type.value == component_type):
+                existing.state = existing._initial_state = state
+                self.placed_components = [c for c in self.placed_components
+                                          if (c['x'], c['y']) != (x, y)]
+                self.placed_components.append({'component_type': component_type, 'x': x, 'y': y, 'state': state})
+                self._solution_found = False
+                result = {'success': True, 'message': f'Set fixed bit ({x}, {y}) to {state}'}
+                if self.auto_simulate:
+                    result['simulation'] = self._auto_simulation_payload()
+                return result
             if existing is not None:
                 return {
                     "success": False,
@@ -124,8 +197,9 @@ class TuringTumbleToolExecutor:
             # If available_parts is empty (not provided), all types are allowed
             # (backward-compatible with tasks that don't declare inventory).
             if self.available_parts:
-                allowed = self.available_parts.get(component_type, 0)
-                used = self._used_parts.get(component_type, 0)
+                pool = inventory_key(component_type, self.available_parts)
+                allowed = self.available_parts.get(pool, 0)
+                used = self._used_parts.get(pool, 0)
                 if used >= allowed:
                     return {
                         "success": False,
@@ -135,7 +209,6 @@ class TuringTumbleToolExecutor:
                             f"Available types: {[k for k, v in self.available_parts.items() if v > 0]}"
                         ),
                     }
-                self._used_parts[component_type] = used + 1
 
             # Create component
             comp_dict = {
@@ -148,6 +221,9 @@ class TuringTumbleToolExecutor:
 
             # Place on board
             self.board.place(x, y, component)
+            if self.available_parts:
+                self._used_parts[pool] = used + 1
+            build_gear_connections(self.board)
 
             # Track placed components
             self.placed_components.append(
@@ -161,11 +237,14 @@ class TuringTumbleToolExecutor:
             # Board changed — the last solution_found state is now stale.
             self._solution_found = False
 
-            return {
+            placed: Dict[str, Any] = {
                 "success": True,
                 "component": comp_dict,
                 "message": f"Placed {component_type} at ({x}, {y})",
             }
+            if self.auto_simulate:
+                placed["simulation"] = self._auto_simulation_payload()
+            return placed
 
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -181,6 +260,8 @@ class TuringTumbleToolExecutor:
             Success status
         """
         try:
+            if type(x) is not int or type(y) is not int:
+                return {"success": False, "error": f"Coordinates must be integers, got ({x!r}, {y!r})"}
             if not (0 <= x < self.board.cols and 0 <= y < self.board.rows):
                 return {"success": False, "error": f"Position ({x}, {y}) out of bounds"}
 
@@ -201,6 +282,7 @@ class TuringTumbleToolExecutor:
 
             # Remove from board
             self.board.remove(x, y)
+            build_gear_connections(self.board)
 
             # Remove from tracking
             removed = [c for c in self.placed_components if c["x"] == x and c["y"] == y]
@@ -210,14 +292,20 @@ class TuringTumbleToolExecutor:
 
             # Decrement inventory usage counter if applicable
             for c in removed:
-                ct = c.get("component_type", "")
+                ct = inventory_key(c.get("component_type", ""), self.available_parts)
                 if ct in self._used_parts and self._used_parts[ct] > 0:
                     self._used_parts[ct] -= 1
 
             # Board changed — the last solution_found state is now stale.
             self._solution_found = False
 
-            return {"success": True, "message": f"Removed component from ({x}, {y})"}
+            removal: Dict[str, Any] = {
+                "success": True,
+                "message": f"Removed component from ({x}, {y})",
+            }
+            if self.auto_simulate:
+                removal["simulation"] = self._auto_simulation_payload()
+            return removal
 
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -245,6 +333,14 @@ class TuringTumbleToolExecutor:
         saved_blue = self.board.blue_balls_remaining
         saved_red = self.board.red_balls_remaining
         saved_triggers = list(self.board._pending_trigger_releases)
+        saved_bit_states = {
+            pos: comp.state
+            for pos, comp in self.board.components.items()
+            if isinstance(comp, (Bit, GearBit))
+        }
+        saved_current_side = self.board.current_marble_side
+        saved_release_count = self.board.marble_count_released
+        saved_history = list(self.board.marble_history)
 
         try:
             results = self.board.run(input_sequence)
@@ -293,36 +389,8 @@ class TuringTumbleToolExecutor:
             # per (marble, cell) pair — when 8 identical marbles follow
             # the same path, the LLM only needs to see each empty cell once.
             cell_errors: dict[tuple[int, int], list[int]] = {}
-            for marble_idx, result in enumerate(results, start=1):
-                path = result.path or []
-                for path_idx, curr in enumerate(path[1:], start=1):
-                    prev = path[path_idx - 1]
-                    x, y = curr
-
-                    # Hopper-to-board entry may be empty; subsequent cells
-                    # inside the board may not.
-                    if prev[1] < 0 and y >= 0:
-                        continue
-
-                    # Last cell just above a catcher is a valid approach slot.
-                    next_pos = path[path_idx + 1] if path_idx + 1 < len(path) else None
-                    if (
-                        y == self.board.rows - 1
-                        and next_pos is not None
-                        and next_pos[1] >= self.board.rows
-                        and x in (
-                            self.board.left_catcher_x,
-                            self.board.right_catcher_x,
-                        )
-                    ):
-                        continue
-
-                    if (
-                        0 <= x < self.board.cols
-                        and 0 <= y < self.board.rows
-                        and curr not in self.board.components
-                    ):
-                        cell_errors.setdefault(curr, []).append(marble_idx)
+            for marble_idx, cell in free_fall_cells(self.board, results):
+                cell_errors.setdefault(cell, []).append(marble_idx)
 
             free_fall_errors: List[str] = []
             for cell, marble_indices in sorted(cell_errors.items()):
@@ -345,10 +413,14 @@ class TuringTumbleToolExecutor:
             # Only flag as "solution found" when the input_sequence matches
             # the challenge's target sequence — prevents false positives
             # from exploratory simulations with different inputs.
-            if (
-                not free_fall_errors
-                and (left_count > 0 or right_count > 0)
-            ):
+            target_matched = self._results_match_target(
+                results,
+                left_count=left_count,
+                right_count=right_count,
+                interceptor_count=interceptor_count,
+                free_fall_errors=free_fall_errors,
+            )
+            if target_matched:
                 self._best_placement = [
                     dict(p) for p in self.placed_components
                 ]
@@ -376,6 +448,42 @@ class TuringTumbleToolExecutor:
             self.board.blue_balls_remaining = saved_blue
             self.board.red_balls_remaining = saved_red
             self.board._pending_trigger_releases = saved_triggers
+            for pos, state in saved_bit_states.items():
+                comp = self.board.components.get(pos)
+                if isinstance(comp, (Bit, GearBit)):
+                    comp.state = state
+            self.board.current_marble_side = saved_current_side
+            self.board.marble_count_released = saved_release_count
+            self.board.marble_history = saved_history
+
+    def _results_match_target(
+        self,
+        results: List[Any],
+        *,
+        left_count: int,
+        right_count: int,
+        interceptor_count: int,
+        free_fall_errors: List[str],
+    ) -> bool:
+        """Return whether results satisfy the same explicit targets as scoring."""
+        specified = {(p['x'], p['y']) for p in self.placed_components if 'state' in p}
+        if self.board.editable_bit_states - specified:
+            return False
+        if free_fall_errors:
+            return False
+        if lost_marbles(results):
+            return False
+
+        task = {
+            "input_sequence": self._target_sequence,
+            "solution": {"final_marble_state": self._target_final_state},
+            "required_output": self._required_output,
+            "expected_output": self._expected_output,
+        }
+        if self._trials is not None:
+            task["trials"] = self._trials
+            task["registers"] = self._registers
+        return validate_targets(task, self.board, results)[0]
 
     def get_board_state(self) -> Dict[str, Any]:
         """Get the current board configuration in the canonical LLM shape.
@@ -397,7 +505,8 @@ class TuringTumbleToolExecutor:
             # Mark each component as fixed (original board) or user-placed.
             user_positions = {(c["x"], c["y"]) for c in self.placed_components}
             for comp in payload["components"]:
-                comp["source"] = "user" if (comp["x"], comp["y"]) in user_positions else "fixed"
+                pos = (comp['x'], comp['y'])
+                comp["source"] = "user" if pos in user_positions and pos not in self._fixed_positions else "fixed"
 
             result = {
                 "success": True,
@@ -450,9 +559,9 @@ class TuringTumbleToolExecutor:
     def is_solution_found(self) -> bool:
         """Check whether a valid solution has been found.
 
-        Set to True when run_simulation completes without free-fall
-        errors and at least one marble reaches a catcher.  Cleared
-        whenever the board is modified (place_component/remove_component).
+        Set only when run_simulation matches the explicit final-state or
+        catcher-count target without free-fall or lost marbles. Cleared whenever
+        the board is modified (place_component/remove_component).
 
         The agentic loop can use this to terminate early instead of
         waiting for the LLM to submit a final_solution.
@@ -467,6 +576,13 @@ def create_executor_from_task(
     *,
     target_sequence: Optional[List[str]] = None,
     expose_inventory: bool = False,
+    auto_simulate: bool = False,
+    target_final_state: Optional[List[str]] = None,
+    expected_output: Optional[Dict[str, Any]] = None,
+    required_output: Optional[List[str]] = None,
+    trials: Optional[List[Dict[str, Any]]] = None,
+    registers: Optional[Dict[str, List[str]]] = None,
+    executor_type: type[TuringTumbleToolExecutor] = TuringTumbleToolExecutor,
 ) -> TuringTumbleToolExecutor:
     """Create a tool executor from task configuration.
 
@@ -479,6 +595,11 @@ def create_executor_from_task(
         target_sequence: The expected marble release sequence for this challenge.
             When set, ``run_simulation`` only flags ``solution_found`` when the
             simulation input matches this sequence.
+        auto_simulate: Attach the target-sequence simulation to every successful
+            placement or removal (harness arm ``fb-auto``).
+        target_final_state: Expected ordered catcher-colour sequence.
+        expected_output: Count and bit-state targets checked alongside sequences.
+        required_output: Additional required ordered output; must also match.
 
     Returns:
         Configured TuringTumbleToolExecutor
@@ -508,6 +629,7 @@ def create_executor_from_task(
     )
 
     # Place fixed components and track their positions
+    board.editable_bit_states = {tuple(p) for p in board_data.get('editable_bit_states', [])}
     fixed_positions = set()
     if fixed_components:
         for comp_dict in fixed_components:
@@ -515,12 +637,20 @@ def create_executor_from_task(
             board.place(comp.x, comp.y, comp)
             fixed_positions.add((comp.x, comp.y))
 
-    return TuringTumbleToolExecutor(
+    build_gear_connections(board)
+
+    return executor_type(
         board,
         available_parts=available_parts,
         fixed_positions=fixed_positions,
         target_sequence=target_sequence,
         expose_inventory=expose_inventory,
+        auto_simulate=auto_simulate,
+        target_final_state=target_final_state,
+        expected_output=expected_output,
+        required_output=required_output,
+        trials=trials,
+        registers=registers,
     )
 
 

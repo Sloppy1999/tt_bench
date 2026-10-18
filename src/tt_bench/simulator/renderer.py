@@ -27,7 +27,7 @@ from matplotlib.lines import Line2D
 from matplotlib.image import imread
 import numpy as np
 
-from tt_bench.simulator import Board, Component, Side, build_gear_connections
+from tt_bench.simulator import Board, Side
 
 # ---------------------------------------------------------------------------
 # Load component assets
@@ -73,7 +73,7 @@ CELL = 1.0
 BOARD_W = 11
 BOARD_H = 11
 MARGIN_TOP = 4.5
-MARGIN_BOTTOM = 3.18  # tuned so 150 DPI MP4 height is even (x264 req)
+MARGIN_BOTTOM = 3.54  # tuned so 150 DPI MP4 height is even (x264 req)
 MARGIN_SIDES = 1.5
 
 FIG_W = BOARD_W + 2 * MARGIN_SIDES
@@ -433,6 +433,66 @@ def draw_catcher(ax, x_grid, side, ball_count=0, active=False, zorder=8):
         ax.add_patch(highlight)
 
 
+def draw_catch_apron(ax, left_x, right_x, left_count=0, right_count=0, zorder=6):
+    """Draw the full-width catcher apron under the board.
+
+    The board drains as one apron split at the central ball return: everything
+    leaving the left half funnels into the left catcher and everything from the
+    right half into the right catcher. The ridge sits at the return — midway
+    between the two catcher columns, which is not the middle of the board once a
+    board is padded wider. This is the thesis figure's catcher design
+    (`results/analysis/plot_board_heatmap_single.py` draws the same geometry,
+    with the counts stripped because an aggregate has no single count).
+    """
+    left = MARGIN_SIDES - 0.5
+    right = MARGIN_SIDES + BOARD_W - 0.5
+    middle = MARGIN_SIDES + (left_x + right_x) / 2
+    top = MARGIN_BOTTOM - 0.55
+    floor = top - 1.35
+    frame = COLOURS["frame"]
+
+    ax.add_patch(plt.Polygon(
+        [(left, top), (right, top), (right - 0.45, floor - 0.45),
+         (left + 0.45, floor - 0.45)],
+        closed=True, facecolor=COLOURS["bg"], edgecolor=frame,
+        linewidth=1.8, joinstyle="round", zorder=zorder))
+
+    for side, outer, direction, colour, count in (
+        ("blue", left, 1, COLOURS["blue_trigger"], left_count),
+        ("red", right, -1, COLOURS["red_trigger"], right_count),
+    ):
+        centre = (outer + middle) / 2
+        half = 0.62
+        # Each slope lands on the near lip of its box: the wall nearest the
+        # outer edge on the outer lip, the one off the ridge on the inner lip.
+        # Mirroring these for the right half makes the arms read as a funnel
+        # rather than as crossed lines.
+        outer_lip = centre - direction * half
+        inner_lip = centre + direction * half
+        ax.plot([outer + direction * 0.30, outer_lip],
+                [top - 0.10, floor], color=colour, linewidth=1.6,
+                solid_capstyle="round", zorder=zorder + 1)
+        ax.plot([middle - direction * 0.30, inner_lip],
+                [top - 0.10, floor], color=colour, linewidth=1.6,
+                solid_capstyle="round", zorder=zorder + 1)
+        ax.add_patch(plt.Rectangle(
+            (centre - half, floor - 0.42), 2 * half, 0.42,
+            facecolor="#D0E8FF" if side == "blue" else "#FFD0D0",
+            edgecolor=colour, linewidth=1.8, zorder=zorder + 2))
+        ax.text(centre, floor - 0.78,
+                "Left catcher" if side == "blue" else "Right catcher",
+                ha="center", va="top", fontsize=8, color=colour,
+                zorder=zorder + 3)
+        # A simulation clip has one run, so the per-catcher tally stays.
+        ax.text(centre, floor + 0.16, f"\u00d7{count}", ha="center",
+                va="bottom", fontsize=9, color=colour, fontweight="bold",
+                zorder=zorder + 3)
+
+    # The ridge that decides the split.
+    ax.plot([middle, middle], [top, floor + 0.34], color=frame,
+            linewidth=1.6, solid_capstyle="round", zorder=zorder + 1)
+
+
 # ---------------------------------------------------------------------------
 # Component dispatcher (using PNG assets)
 # ---------------------------------------------------------------------------
@@ -615,26 +675,17 @@ def render_board(task: dict, state: str = "start", output_path: str = None, show
     if red_h.get("count", 0) > 0:
         draw_hopper(ax, red_h["x"], "R", red_h["count"], "red", red_h.get("y", -1))
 
-    # --- Catcher buckets (bottom) ---
-    # Tally ball counts per catcher from final_marble_state (solution view only)
+    # --- Catcher apron (bottom) ---
+    # Tally ball counts per catcher from final_marble_state (solution view only).
     final_state = sol.get("final_marble_state", []) if state == "solution" else []
-    # Determine which catcher each colour feeds into via trigger lever positions.
-    # Left lever → blue catcher, right lever → red catcher.
-    # final_marble_state lists balls that reached the end; assume they all go
-    # to whichever catcher the path terminates at. Count blues vs reds.
-    left_count  = sum(1 for b in final_state if b == "blue")
+    left_count = sum(1 for b in final_state if b == "blue")
     right_count = sum(1 for b in final_state if b == "red")
 
-    left_t  = tlevs.get("left", {})
+    left_t = tlevs.get("left", {})
     right_t = tlevs.get("right", {})
-    if left_t:
-        draw_catcher(ax, left_t["x"], "blue",
-                     ball_count=left_count,
-                     active=(left_count > 0 and state == "solution"))
-    if right_t:
-        draw_catcher(ax, right_t["x"], "red",
-                     ball_count=right_count,
-                     active=(right_count > 0 and state == "solution"))
+    if left_t and right_t:
+        draw_catch_apron(ax, left_t["x"], right_t["x"],
+                         left_count=left_count, right_count=right_count)
 
     # Fixed components (dark navy)
     for comp in fixed_comps:
@@ -728,40 +779,23 @@ def _grid_to_axes(gx: int, gy: int) -> tuple[float, float]:
 
 def _build_board_from_task(
     task: dict,
-    hopper_entry_mode: str = "column",
+    hopper_entry_mode: Optional[str] = None,
 ) -> tuple[Board, dict[tuple[int, int], str]]:
-    """Build a simulator Board from task JSON and return component origin labels."""
-    board_data = task.get("board", {})
-    hoppers = board_data.get("ball_hoppers", {})
-    levers = board_data.get("trigger_levers", {})
+    """Build a simulator Board from task JSON and return component origin labels.
 
-    board = Board(
-        rows=board_data.get("height", 11),
-        cols=board_data.get("width", 11),
-        blue_hopper_x=hoppers.get("blue", {}).get("x", 2),
-        red_hopper_x=hoppers.get("red", {}).get("x", 8),
-        blue_hopper_count=hoppers.get("blue", {}).get("count", 8),
-        red_hopper_count=hoppers.get("red", {}).get("count", 8),
-        hopper_entry_mode=hopper_entry_mode,
-        left_catcher_x=levers.get("left", {}).get("x"),
-        right_catcher_x=levers.get("right", {}).get("x"),
-    )
+    The board is the scorer's own (``Board.from_task_dict``), so the animation
+    shows the run that is scored. ``hopper_entry_mode`` overrides the task's.
+    """
+    if hopper_entry_mode is not None:
+        task = {**task, "board": {**task.get("board", {}), "hopper_entry_mode": hopper_entry_mode}}
+    board = Board.from_task_dict(task)
 
     origins: dict[tuple[int, int], str] = {}
-
-    for comp_dict in board_data.get("fixed_components", []):
-        comp = Component.from_dict(comp_dict)
-        board.place(comp.x, comp.y, comp)
-        origins[(comp.x, comp.y)] = "fixed"
-
+    for comp_dict in task.get("board", {}).get("fixed_components", []):
+        origins[(comp_dict["x"], comp_dict["y"])] = "fixed"
+    # An editable fixed bit is listed in the solution only to set its state.
     for comp_dict in task.get("solution", {}).get("placed_components", []):
-        comp = Component.from_dict(comp_dict)
-        board.place(comp.x, comp.y, comp)
-        origins[(comp.x, comp.y)] = "placed"
-
-    # Ensure connected gear bits flip together during simulation.
-    build_gear_connections(board)
-
+        origins.setdefault((comp_dict["x"], comp_dict["y"]), "placed")
     for pos in board.components:
         origins.setdefault(pos, "derived")
 
@@ -802,7 +836,7 @@ def _snapshot_frame(
 def _build_animation_frames(
     task: dict,
     sequence: list[Side],
-    hopper_entry_mode: str = "column",
+    hopper_entry_mode: Optional[str] = None,
 ) -> tuple[list[dict], dict[tuple[int, int], str]]:
     """Simulate the task and capture frame-by-frame states."""
     board, origins = _build_board_from_task(task, hopper_entry_mode=hopper_entry_mode)
@@ -886,7 +920,6 @@ def _build_animation_frames(
         queue = triggered + queue
 
         if result.terminated and result.termination_reason in (
-            "infinite_loop",
             "max_steps_exceeded",
             "fell_off_side",
         ):
@@ -928,8 +961,8 @@ def _draw_animation_frame(
 
     left_x = tlevs.get("left", {}).get("x", 0)
     right_x = tlevs.get("right", {}).get("x", BOARD_W - 1)
-    draw_catcher(ax, left_x, "blue", ball_count=frame["left_hits"], active=False)
-    draw_catcher(ax, right_x, "red", ball_count=frame["right_hits"], active=False)
+    draw_catch_apron(ax, left_x, right_x,
+                     left_count=frame["left_hits"], right_count=frame["right_hits"])
 
     for comp in frame["components"]:
         pos = (comp["x"], comp["y"])
@@ -955,11 +988,11 @@ def _draw_animation_frame(
     status = frame.get("status", "")
     if status:
         ax.text(
-            0.2,
-            0.35,
+            MARGIN_SIDES,
+            FIG_H - 1.5,
             status,
             ha="left",
-            va="bottom",
+            va="top",
             fontsize=8,
             color="#333333",
             zorder=10,
@@ -988,7 +1021,7 @@ def render_simulation_mp4(
     sequence: Optional[str] = None,
     fps: int = 10,
     hold_frames: int = 6,
-    hopper_entry_mode: str = "column",
+    hopper_entry_mode: Optional[str] = None,
 ) -> str:
     """Render an MP4 animation of marble simulation for a single task."""
     hoppers = task.get("board", {}).get("ball_hoppers", {})
@@ -1107,8 +1140,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--hopper-entry-mode",
         choices=["column", "inward"],
-        default="column",
-        help="Marble entry semantics for simulation MP4s (default: column to match benchmark tooling)",
+        default=None,
+        help="Override marble entry semantics for simulation MP4s (default: the task's hopper_entry_mode, else inward, as the benchmark scores it)",
     )
     args = parser.parse_args()
 

@@ -1,0 +1,159 @@
+{
+  "task_id": "tt-official-ch02-pA_sz11x15",
+  "challenge_number": 2,
+  "tier": 1,
+  "title": "Re-entry",
+  "objective": "Make all of the blue balls (and only the blue balls) reach the end.",
+  "board": {
+    "width": 11,
+    "height": 15,
+    "hopper_entry_mode": "inward",
+    "fixed_components": [
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "ramp_left",
+        "x": 6,
+        "y": 3
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "type": "ramp_left",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "type": "ramp_right",
+        "x": 2,
+        "y": 7
+      },
+      {
+        "type": "ramp_right",
+        "x": 3,
+        "y": 8
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 10
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 11
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 12
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 13
+      },
+      {
+        "type": "ramp_left",
+        "x": 5,
+        "y": 14
+      }
+    ],
+    "ball_hoppers": {
+      "blue": {
+        "x": 2,
+        "count": 8
+      },
+      "red": {
+        "x": 8,
+        "count": 8
+      }
+    },
+    "trigger_levers": {
+      "left": {
+        "x": 4,
+        "y": 15
+      },
+      "right": {
+        "x": 8,
+        "y": 15
+      }
+    }
+  },
+  "available_parts": {
+    "ramp_right": 2,
+    "ramp_left": 1,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "solution": {
+    "placed_components": [
+      {
+        "type": "ramp_right",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "ramp_left",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "type": "ramp_right",
+        "x": 4,
+        "y": 9
+      }
+    ],
+    "explanation": "Tall scaled variant \u2014 board expanded from 11\u00d711 to 11\u00d715, extending the marble path through the added rows. The ramps fill the gaps in the path from the top of the board to the bottom of the board.",
+    "verified": true,
+    "position_verified": true,
+    "final_marble_state": [
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue",
+      "blue"
+    ]
+  },
+  "input_sequence": [
+    "blue"
+  ],
+  "expected_output": {
+    "left_catcher": 8,
+    "right_catcher": 0,
+    "intercepted": 0
+  },
+  "required_output": [
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue",
+    "blue"
+  ],
+  "provenance": {
+    "board": "transcribed from practice-guide-2021.pdf",
+    "page": 7,
+    "checked": "simulation reproduces the guide's printed required output"
+  }
+}

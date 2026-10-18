@@ -41,6 +41,8 @@ def load_model_results(model_name: str, results_dir: str) -> list:
         with open(rp) as f:
             data = json.load(f)
         for r in data.get("results", []):
+            if r.get("success") is None:  # ungraded (provider error), not a failure
+                continue
             sol = r.get("expected", {}).get("solution", {})
             placed = sol.get("placed_components", [])
             cat_map = {"official": "official", "1comp": "1comp", "1comp_var": "1comp",
