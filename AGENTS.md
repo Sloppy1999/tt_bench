@@ -43,7 +43,7 @@ objective-text heuristics cannot establish a successful solution.
 Preserve user edits. Keep audit artifacts outside data/. Do not regenerate boards
 or overwrite targets merely to make checks pass. The eligibility manifest is a
 mechanical screen, not proof of semantic correctness; negative labels require
-separate certificates. See `DATASET_REMEDIATION_PLAN.md` for follow-up work.
+separate certificates.
 
 Provider credentials: mock needs no key.
 Inspect the current CLI help before composing benchmark commands. Ruff and mypy
