@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import sys
 import time
@@ -1379,10 +1380,6 @@ class TuringTumbleBenchmark:
                         outcome_checks.append("right lever")
                     if "triggers the left lever" in exp_lower:
                         outcome_checks.append("left lever")
-                    if "releasing a red" in exp_lower or "red ball is released" in exp_lower:
-                        outcome_checks.append("red released")
-                    if "releasing a blue" in exp_lower or "blue ball is released" in exp_lower:
-                        outcome_checks.append("blue released")
 
                     coord_pattern = r"\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)"
                     expected_coords = [
@@ -1653,8 +1650,11 @@ class TuringTumbleBenchmark:
             safe_id = re.sub(
                 r"[^A-Za-z0-9._-]", "_", f"{result.task_id}__{result.task_type}"
             )
-            with open(per_task_dir / f"{safe_id}.json", "w") as f:
+            # Write then rename, so a Slurm kill never leaves a truncated file.
+            tmp = per_task_dir / f"{safe_id}.json.tmp"
+            with open(tmp, "w") as f:
                 json.dump(self._result_to_dict(result), f, indent=2)
+            os.replace(tmp, per_task_dir / f"{safe_id}.json")
         except Exception as exc:  # never let a save failure abort the run
             logger.warning(
                 "Could not save per-task result for %s: %s", result.task_id, exc

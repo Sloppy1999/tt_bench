@@ -199,12 +199,17 @@ class LLMClient(ABC):
             system_prompt += " Output valid JSON only. No markdown."
 
         last_error = ""
+        # Every attempt costs tokens, not just the one that parsed.
+        spent = {"prompt_tokens": 0, "completion_tokens": 0}
         for attempt in range(self.config.max_retries):
             content = None
             usage = {}
             try:
                 response = self.generate(json_prompt, system_prompt, **kwargs)
                 usage = response.usage if hasattr(response, 'usage') and response.usage else {}
+                if isinstance(usage, dict):
+                    spent["prompt_tokens"] += usage.get("prompt_tokens", usage.get("total_tokens", 0))
+                    spent["completion_tokens"] += usage.get("completion_tokens", 0)
 
                 raw_content = response.content.strip()
 
@@ -218,10 +223,7 @@ class LLMClient(ABC):
 
                 content = raw_content
                 data = parse_json_text(content)
-                total_tokens = usage.get("total_tokens", 0) if isinstance(usage, dict) else 0
-                return (data, "",
-                        {"prompt_tokens": usage.get("prompt_tokens", total_tokens),
-                         "completion_tokens": usage.get("completion_tokens", 0)},
+                return (data, "", spent,
                         response.logprobs if hasattr(response, 'logprobs') else None)
 
             except json.JSONDecodeError as e:
@@ -244,7 +246,7 @@ class LLMClient(ABC):
                 time.sleep(1 * (attempt + 1))
 
         return (None, last_error or f"Failed after {self.config.max_retries} attempts",
-                {"prompt_tokens": 0, "completion_tokens": 0}, None)
+                spent, None)
 
     def generate_with_tools(
         self,
