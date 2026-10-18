@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 import logging
 from copy import deepcopy
@@ -387,7 +388,305 @@ def turing_tumble_tools(rows: int, cols: int) -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-class OpenAIClient(LLMClient):
+class _ChatToolLoop(LLMClient):
+    """Shared tool-calling loop for OpenAI-compatible ``/v1/chat/completions``.
+
+    Subclasses set ``api_key``/``base_url`` and implement :meth:`_tool_payload`;
+    the remaining hooks default to the common behaviour.
+    """
+
+    # Stop as soon as the executor reports a validated board.
+    _STOP_ON_SOLUTION = True
+    # Copy the assistant's free text of a tool-call turn onto its ToolCalls.
+    _RECORD_ASSISTANT_TEXT = False
+
+    def _tool_payload(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """Model, token budget and sampling fields; messages/tools are added per turn."""
+        raise NotImplementedError
+
+    def _sampling(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"temperature": kwargs.get("temperature", self.config.temperature)}
+        if self.config.seed is not None:
+            out["seed"] = self.config.seed
+        return out
+
+    def _before_request(self) -> None:
+        """Called once per turn before posting (rate limiting)."""
+
+    def _recover_tool_calls(self, msg: Dict[str, Any], turn: int) -> None:
+        """Repair ``msg`` in place when the server mangled its tool calls."""
+
+    def _tool_error_result(self, error: Exception) -> Any:
+        """``ToolResult.result`` recorded when a tool call fails."""
+        return None
+
+    def _tool_turn_messages(
+        self, msg: Dict[str, Any], tool_msgs: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Messages appended to the conversation after a tool-call turn."""
+        return [msg, *tool_msgs]
+
+    def _final_result(self, content: str, error: str) -> Tuple[Optional[Dict[str, Any]], str]:
+        """Shape of the final answer returned to the caller."""
+        return {"content": content}, error
+
+    def _post_chat(self, payload: Dict[str, Any]) -> requests.Response:
+        """POST with bounded retries: network errors, 5xx and 429 up to 3
+        attempts, plus one ``tool_choice=required`` fallback for vLLM servers
+        started without ``--enable-auto-tool-choice``. Non-200 replies that
+        are not retried are returned to the caller."""
+        name = type(self).__name__
+        post = getattr(self, "http_post", requests.post)
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        retries = 0
+        while True:
+            try:
+                response = post(
+                    f"{self.base_url}/v1/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=self.config.timeout,
+                )
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                if retries < 2:
+                    wait = 2**retries
+                    logger.warning(
+                        "%s: %s (attempt %d/3), retrying in %ds…",
+                        name, type(e).__name__, retries + 1, wait,
+                    )
+                    time.sleep(wait)
+                    retries += 1
+                    continue
+                raise
+
+            if response.status_code == 200:
+                return response
+            if (
+                response.status_code == 400
+                and "enable-auto-tool-choice" in response.text
+                and payload.get("tool_choice") != "required"
+            ):
+                logger.warning(
+                    "%s: tool_choice=auto unsupported by server, retrying with tool_choice=required…",
+                    name,
+                )
+                payload["tool_choice"] = "required"
+                continue
+            if (response.status_code >= 500 or response.status_code == 429) and retries < 2:
+                wait = 2**retries + 4  # extra wait for rate-limit recovery
+                logger.warning(
+                    "%s: HTTP %d (attempt %d/3), retrying in %ds…",
+                    name, response.status_code, retries + 1, wait,
+                )
+                time.sleep(wait)
+                retries += 1
+                continue
+            logger.error("%s API error: %s - %s", name, response.status_code, response.text)
+            return response
+
+    def _run_tool_calls(
+        self,
+        msg: Dict[str, Any],
+        turn: int,
+        tool_executor,
+        tool_calls_made: List[ToolCall],
+        tool_results: List[ToolResult],
+    ) -> List[Dict[str, Any]]:
+        """Execute every call in ``msg``; return the tool reply messages."""
+        assistant_text = (msg.get("content") or "").strip() if self._RECORD_ASSISTANT_TEXT else ""
+        tool_msgs = []
+        for tc in msg["tool_calls"]:
+            name = tc["function"]["name"]
+            tc_id = tc.get("id", f"call_{turn}")
+            raw_args = tc["function"]["arguments"]
+            try:
+                args = json.loads(raw_args)
+            except (json.JSONDecodeError, TypeError):
+                args = raw_args
+            tool_calls_made.append(
+                ToolCall(
+                    name=name,
+                    arguments=args,
+                    tool_call_id=tc_id,
+                    turn_index=turn,
+                    assistant_text=assistant_text,
+                )
+            )
+            # A malformed call is reported back to the model as a tool error.
+            try:
+                if not isinstance(args, dict):
+                    raise ValueError(f"tool arguments are not a JSON object: {raw_args!r}")
+                result, error = tool_executor.execute(name, args), None
+            except Exception as e:
+                result, error = self._tool_error_result(e), str(e)
+            tool_results.append(
+                ToolResult(
+                    tool_name=name,
+                    result=result,
+                    error=error,
+                    tool_call_id=tc_id,
+                    turn_index=turn,
+                )
+            )
+            tool_msgs.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc_id,
+                    "content": error if error and result is None else json.dumps(result),
+                }
+            )
+        return tool_msgs
+
+    def generate_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict[str, Any]],
+        tool_executor,
+        system_prompt: Optional[str] = None,
+        max_turns: int = 10,
+        *,
+        on_final_answer: Optional[Callable[[str], Optional[str]]] = None,
+        revision_rounds: int = 0,
+        **kwargs,
+    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
+        """Generate using OpenAI-style tool calling.
+
+        ``on_final_answer`` implements the harness revision arms. When given, a
+        submitted answer is passed to it instead of ending the episode; if it
+        returns a message, that message is appended and the loop continues, for
+        at most ``revision_rounds`` rounds and always inside ``max_turns``.
+        Returning ``None`` accepts the answer and returns as usual. Validation
+        lives in the caller, beside the scorer, so this loop never decides
+        whether an answer is correct.
+        """
+        name = type(self).__name__
+        revisions_left = revision_rounds if on_final_answer is not None else 0
+        messages: List[Dict[str, Any]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        tool_calls_made: List[ToolCall] = []
+        tool_results: List[ToolResult] = []
+        usage = {"prompt_tokens": 0, "completion_tokens": 0}
+        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
+
+        def done(final: Optional[Dict[str, Any]], error: str):
+            # Usage is the running total on every path, failures included.
+            return final, error, tool_calls_made, tool_results, dict(usage), turn_logprobs or None
+
+        base_payload = self._tool_payload(kwargs)
+        if self.config.capture_logprobs:
+            base_payload["logprobs"] = True
+            base_payload["top_logprobs"] = 5
+        max_tokens_val = base_payload.get("max_tokens", base_payload.get("max_completion_tokens"))
+        tool_choice = base_payload.get("tool_choice")
+
+        for turn in range(max_turns):
+            payload = {**base_payload, "messages": messages, "tools": tools}
+            if tool_choice:
+                payload["tool_choice"] = tool_choice
+
+            try:
+                self._before_request()
+                response = self._post_chat(payload)
+                tool_choice = payload.get("tool_choice")  # keep a required-fallback
+                if response.status_code != 200:
+                    return done(None, f"API error: {response.text}")
+
+                data = response.json()
+                turn_usage = data.get("usage") or {}
+                usage["prompt_tokens"] += turn_usage.get("prompt_tokens", 0)
+                usage["completion_tokens"] += turn_usage.get("completion_tokens", 0)
+
+                choice = data["choices"][0]
+                lp_data = choice.get("logprobs") if self.config.capture_logprobs else None
+                turn_logprobs.append(lp_data.get("content") if isinstance(lp_data, dict) else None)
+
+                msg = choice["message"]
+                finish_reason = choice.get("finish_reason", "")
+                if finish_reason == "length":
+                    logger.warning(
+                        "%s turn %d: response truncated (finish_reason=length). "
+                        "max_tokens=%s may be too low.",
+                        name, turn, max_tokens_val,
+                    )
+
+                self._recover_tool_calls(msg, turn)
+
+                if msg.get("tool_calls"):
+                    tool_msgs = self._run_tool_calls(
+                        msg, turn, tool_executor, tool_calls_made, tool_results
+                    )
+                    messages.extend(self._tool_turn_messages(msg, tool_msgs))
+                    if (
+                        self._STOP_ON_SOLUTION
+                        and hasattr(tool_executor, "is_solution_found")
+                        and tool_executor.is_solution_found()
+                    ):
+                        logger.info(
+                            "%s turn %d: valid solution detected — terminating agentic loop early.",
+                            name, turn,
+                        )
+                        return done({"content": "", "solution_found": True}, "")
+                    continue
+
+                # A cut-off answer is never graded from the reasoning channel.
+                content = (msg.get("content") or "").strip()
+                error_msg = ""
+                if not content:
+                    if msg.get("reasoning_content"):
+                        logger.warning(
+                            "%s turn %d: empty content with %d chars of reasoning_content "
+                            "(finish_reason=%s). Not substituting reasoning for the answer.",
+                            name, turn, len(msg["reasoning_content"]), finish_reason,
+                        )
+                    if finish_reason == "length":
+                        error_msg = (
+                            f"Response truncated: max_tokens={max_tokens_val} "
+                            f"exhausted before content could be generated."
+                        )
+                        logger.warning("%s turn %d: %s", name, turn, error_msg)
+
+                # Harness arms rev-retry / rev-structured: an answer the
+                # scorer would reject does not end the episode. Revisions
+                # draw on the same turn budget, so the arm is not
+                # compute-matched against the baseline — which is what
+                # rev-retry exists to control for.
+                if content and revisions_left > 0:
+                    critique = on_final_answer(content)
+                    if critique:
+                        revisions_left -= 1
+                        messages.append({"role": "assistant", "content": content})
+                        messages.append({"role": "user", "content": critique})
+                        logger.info(
+                            "%s turn %d: submitted answer rejected — "
+                            "injected critique, %d revision round(s) left.",
+                            name, turn, revisions_left,
+                        )
+                        continue
+
+                return done(*self._final_result(content, error_msg))
+
+            except Exception as e:
+                logger.exception("%s API exception: %s", name, e)
+                return done(None, f"Exception: {e}")
+
+        return done(None, f"Max turns ({max_turns}) reached")
+
+
+def _parse_final_json(content: str) -> Dict[str, Any]:
+    """JSON-parse a final answer, wrapping plain text as ``final_answer``."""
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return {"final_answer": content}
+
+
+class OpenAIClient(_ChatToolLoop):
     """OpenAI API client."""
 
     # Canonical model options (modern models only, no legacy snapshots).
@@ -503,199 +802,37 @@ class OpenAIClient(LLMClient):
             logprobs=logprobs_list,
         )
 
-    def generate_with_tools(
-        self,
-        prompt: str,
-        tools: List[Dict[str, Any]],
-        tool_executor,
-        system_prompt: Optional[str] = None,
-        max_turns: int = 10,
-        **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
-        """Generate using OpenAI function calling."""
+    # OpenAI runs keep their original protocol: no early stop, assistant text
+    # on each ToolCall, tool errors recorded as {"error": ...} results.
+    _STOP_ON_SOLUTION = False
+    _RECORD_ASSISTANT_TEXT = True
+
+    def _tool_payload(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         model = self._resolve_model_id(self.config.model)
+        payload: Dict[str, Any] = {
+            "model": model,
+            "max_completion_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+        }
+        if "gpt-5" in model.lower():
+            payload["reasoning_effort"] = "low"
+        else:
+            payload["temperature"] = kwargs.get("temperature", self.config.temperature)
+        return payload
 
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+    def _tool_error_result(self, error: Exception) -> Any:
+        return {"error": str(error)}
 
-        tool_calls_made: List[ToolCall] = []
-        tool_results: List[ToolResult] = []
-        total_prompt_tokens = 0
-        total_completion_tokens = 0
-        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
+    def _tool_turn_messages(self, msg, tool_msgs):
+        # One assistant message per call, each followed by its tool reply.
+        out: List[Dict[str, Any]] = []
+        for tc, tool_msg in zip(msg["tool_calls"], tool_msgs):
+            out += [{"role": "assistant", "tool_calls": [tc]}, tool_msg]
+        return out
 
-        is_gpt5 = "gpt-5" in model.lower()
-
-        for turn in range(max_turns):
-            payload = {
-                "model": model,
-                "messages": messages,
-                "tools": tools,
-                "max_completion_tokens": kwargs.get(
-                    "max_tokens", self.config.max_tokens
-                ),
-            }
-
-            if is_gpt5:
-                payload["reasoning_effort"] = "low"
-            else:
-                payload["temperature"] = kwargs.get(
-                    "temperature", self.config.temperature
-                )
-
-            # Request logprobs when enabled
-            if self.config.capture_logprobs:
-                payload["logprobs"] = True
-                payload["top_logprobs"] = 5
-
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-
-            start_time = time.time()
-
-            try:
-                response = requests.post(
-                    f"{self.base_url}/v1/chat/completions",
-                    json=payload,
-                    headers=headers,
-                    timeout=self.config.timeout,
-                )
-                if response.status_code != 200:
-                    logger.error(
-                        f"OpenAI API error: {response.status_code} - {response.text}"
-                    )
-                    return (
-                        None,
-                        f"API error: {response.text}",
-                        tool_calls_made,
-                        tool_results,
-                        {},
-                        turn_logprobs if turn_logprobs else None,
-                    )
-
-                data = response.json()
-                latency_ms = int((time.time() - start_time) * 1000)
-
-                usage = data.get("usage", {})
-                total_prompt_tokens += usage.get("prompt_tokens", 0)
-                total_completion_tokens += usage.get("completion_tokens", 0)
-
-                # Capture per-turn logprobs
-                if self.config.capture_logprobs:
-                    choice_lp = data["choices"][0]
-                    lp_data = choice_lp.get("logprobs")
-                    if lp_data and isinstance(lp_data, dict):
-                        turn_logprobs.append(lp_data.get("content"))
-                    else:
-                        turn_logprobs.append(None)
-                else:
-                    turn_logprobs.append(None)
-
-            except Exception as e:
-                logger.error(f"API call failed: {e}")
-                return None, str(e), tool_calls_made, tool_results, {}, turn_logprobs if turn_logprobs else None
-
-            choice = data["choices"][0]
-            msg = choice["message"]
-
-            assistant_text = (msg.get("content") or "").strip()
-
-            if "tool_calls" in msg and msg["tool_calls"]:
-                for tc in msg["tool_calls"]:
-                    tool_name = tc["function"]["name"]
-                    try:
-                        args = json.loads(tc["function"]["arguments"])
-                    except json.JSONDecodeError:
-                        args = tc["function"]["arguments"]
-
-                    tc_id = tc.get("id", f"call_{turn}")
-                    tool_call = ToolCall(
-                        name=tool_name,
-                        arguments=args,
-                        tool_call_id=tc_id,
-                        turn_index=turn,
-                        assistant_text=assistant_text,
-                    )
-                    tool_calls_made.append(tool_call)
-
-                    try:
-                        result = tool_executor.execute(tool_name, args)
-                        tool_results.append(
-                            ToolResult(
-                                tool_name=tool_name,
-                                result=result,
-                                tool_call_id=tc_id,
-                                turn_index=turn,
-                            )
-                        )
-
-                        messages.append({"role": "assistant", "tool_calls": [tc]})
-                        messages.append(
-                            {
-                                "role": "tool",
-                                "tool_call_id": tc_id,
-                                "content": json.dumps(result),
-                            }
-                        )
-
-                    except Exception as e:
-                        error_result = {"error": str(e)}
-                        tool_results.append(
-                            ToolResult(
-                                tool_name=tool_name,
-                                result=error_result,
-                                error=str(e),
-                                tool_call_id=tc_id,
-                                turn_index=turn,
-                            )
-                        )
-                        messages.append({"role": "assistant", "tool_calls": [tc]})
-                        messages.append(
-                            {
-                                "role": "tool",
-                                "tool_call_id": tc_id,
-                                "content": json.dumps(error_result),
-                            }
-                        )
-
-            elif msg.get("content"):
-                content = msg["content"].strip()
-                try:
-                    final_result = json.loads(content)
-                except json.JSONDecodeError:
-                    final_result = {"final_answer": content}
-
-                return (
-                    final_result,
-                    "",
-                    tool_calls_made,
-                    tool_results,
-                    {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
-                    turn_logprobs if turn_logprobs else None,
-                )
-
-            else:
-                return (
-                    None,
-                    "Empty response",
-                    tool_calls_made,
-                    tool_results,
-                    {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
-                    turn_logprobs if turn_logprobs else None,
-                )
-
-        return (
-            None,
-            f"Max turns ({max_turns}) reached",
-            tool_calls_made,
-            tool_results,
-            {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
-            turn_logprobs if turn_logprobs else None,
-        )
+    def _final_result(self, content, error):
+        if not content:
+            return None, "Empty response"
+        return _parse_final_json(content), ""
 
 
 class AnthropicClient(LLMClient):
@@ -835,7 +972,7 @@ class AnthropicClient(LLMClient):
                 logger.exception("Anthropic tool call failed: %s", exc)
                 return (
                     None,
-                    str(exc),
+                    f"Exception: {exc}",
                     tool_calls_made,
                     tool_results,
                     {
@@ -1120,7 +1257,7 @@ class OllamaClient(LLMClient):
             except Exception as e:
                 logger.error(f"Ollama tool call failed: {e}")
                 return (
-                    None, str(e), tool_calls_made, tool_results,
+                    None, f"Exception: {e}", tool_calls_made, tool_results,
                     {"prompt_tokens": total_prompt_eval, "completion_tokens": total_eval_count},
                     turn_logprobs if turn_logprobs else None,
                 )
@@ -1265,7 +1402,7 @@ class OllamaClient(LLMClient):
         )
 
 
-class DeepSeekClient(LLMClient):
+class DeepSeekClient(_ChatToolLoop):
     """DeepSeek API client."""
 
     # Canonical model options (v4 reasoning models).
@@ -1391,31 +1528,8 @@ class DeepSeekClient(LLMClient):
             logprobs=logprobs_list,
         )
 
-    def generate_with_tools(
-        self,
-        prompt: str,
-        tools: List[Dict[str, Any]],
-        tool_executor,
-        system_prompt: Optional[str] = None,
-        max_turns: int = 10,
-        **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
-        """Generate using DeepSeek function calling."""
+    def _tool_payload(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         model = self._resolve_model_id(self.config.model)
-
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
-        tool_calls_made: List[ToolCall] = []
-        tool_results: List[ToolResult] = []
-        total_prompt_tokens = 0
-        total_completion_tokens = 0
-        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
-
-        is_v4 = self._is_v4_reasoning_model(model)
-
         # The tool-calling loop grows context every turn and many
         # models (especially DeepSeek) generate verbose analysis
         # alongside tool_calls.  2048 is too low — 32768 gives
@@ -1424,240 +1538,21 @@ class DeepSeekClient(LLMClient):
         max_tokens_val = kwargs.get("max_tokens")
         if max_tokens_val is None:
             max_tokens_val = 32768
-
-        for turn in range(max_turns):
-            payload = {
-                "model": model,
-                "messages": messages,
-                "tools": tools,
-                "max_tokens": max_tokens_val,
-            }
-
+        payload: Dict[str, Any] = {"model": model, "max_tokens": max_tokens_val}
+        if self._is_v4_reasoning_model(model):
             # v4 reasoning models: disable thinking mode for tool calls.
             # Thinking mode splits output into reasoning_content (internal)
             # and content (user-facing). The model often puts the answer in
             # reasoning_content and leaves content empty, causing the agent
             # loop to return no final solution. Non-thinking mode merges
             # everything into content — simpler and faster for tool-calling.
-            if is_v4:
-                payload["thinking"] = {"type": "disabled"}
-
-            # Request logprobs when enabled
-            if self.config.capture_logprobs:
-                payload["logprobs"] = True
-                payload["top_logprobs"] = 5
-
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-
-            start_time = time.time()
-
-            try:
-                # Retry transient network errors (timeouts, connection
-                # drops) up to 3 times with exponential backoff so a
-                # single hung API call doesn't sink the entire task.
-                for attempt in range(3):
-                    try:
-                        response = requests.post(
-                            f"{self.base_url}/v1/chat/completions",
-                            json=payload,
-                            headers=headers,
-                            timeout=self.config.timeout,
-                        )
-                        break
-                    except (
-                        requests.exceptions.Timeout,
-                        requests.exceptions.ConnectionError,
-                    ) as retry_err:
-                        if attempt < 2:
-                            wait = 2**attempt
-                            logger.warning(
-                                "DeepSeek API %s (attempt %d/3), "
-                                "retrying in %ds…",
-                                type(retry_err).__name__,
-                                attempt + 1,
-                                wait,
-                            )
-                            time.sleep(wait)
-                        else:
-                            raise
-                if response.status_code != 200:
-                    logger.error(
-                        f"DeepSeek API error: {response.status_code} - {response.text}"
-                    )
-                    return (
-                        None,
-                        f"API error: {response.text}",
-                        tool_calls_made,
-                        tool_results,
-                        {},
-                        turn_logprobs if turn_logprobs else None,
-                    )
-
-                data = response.json()
-                latency_ms = int((time.time() - start_time) * 1000)
-
-                usage = data.get("usage", {})
-                total_prompt_tokens += usage.get("prompt_tokens", 0)
-                total_completion_tokens += usage.get("completion_tokens", 0)
-
-                # Capture per-turn logprobs
-                if self.config.capture_logprobs:
-                    choice_lp = data["choices"][0]
-                    lp_data = choice_lp.get("logprobs")
-                    if lp_data and isinstance(lp_data, dict):
-                        turn_logprobs.append(lp_data.get("content"))
-                    else:
-                        turn_logprobs.append(None)
-                else:
-                    turn_logprobs.append(None)
-
-                choice = data["choices"][0]
-                msg = choice["message"]
-                finish_reason = choice.get("finish_reason", "")
-
-                # Warn if the model output was truncated (token limit hit).
-                # Reasoning models can burn the entire budget on
-                # reasoning_content before producing content or tool_calls.
-                if finish_reason == "length":
-                    logger.warning(
-                        "DeepSeek turn %d: response truncated (finish_reason=length). "
-                        "max_tokens=%d may be too low for this reasoning model. "
-                        "Increase max_tokens to leave room for content after reasoning.",
-                        turn,
-                        max_tokens_val,
-                    )
-
-                # Check for tool calls
-                if msg.get("tool_calls"):
-                    # Add assistant message with tool_calls first
-                    messages.append(msg)
-
-                    # Then process each tool call and add tool result messages
-                    for tc in msg["tool_calls"]:
-                        tool_call_id = tc.get("id", "")
-                        tool_call = ToolCall(
-                            name=tc["function"]["name"],
-                            arguments=json.loads(tc["function"]["arguments"]),
-                            tool_call_id=tool_call_id,
-                            turn_index=turn,
-                        )
-                        tool_calls_made.append(tool_call)
-
-                        # Execute tool
-                        try:
-                            result = tool_executor.execute(tool_call.name, tool_call.arguments)
-                            tool_result = ToolResult(
-                                tool_name=tool_call.name,
-                                result=result,
-                                tool_call_id=tool_call.tool_call_id,
-                                turn_index=turn,
-                            )
-                        except Exception as e:
-                            tool_result = ToolResult(
-                                tool_name=tool_call.name,
-                                result=None,
-                                error=str(e),
-                                tool_call_id=tool_call.tool_call_id,
-                                turn_index=turn,
-                            )
-                        tool_results.append(tool_result)
-
-                        # Add tool result message
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.tool_call_id,
-                            "content": json.dumps(tool_result.result) if tool_result.result else tool_result.error,
-                        })
-
-                    # Early termination: if the executor detected a valid
-                    # solution (run_simulation with no free-fall and marbles
-                    # reaching catchers), stop the loop immediately.  Saves
-                    # tokens and prevents the LLM from second-guessing a
-                    # correct board.
-                    if (
-                        hasattr(tool_executor, "is_solution_found")
-                        and tool_executor.is_solution_found()
-                    ):
-                        logger.info(
-                            "DeepSeek turn %d: valid solution detected — "
-                            "terminating agentic loop early.",
-                            turn,
-                        )
-                        return (
-                            {"content": "", "solution_found": True},
-                            "",
-                            tool_calls_made,
-                            tool_results,
-                            {
-                                "prompt_tokens": total_prompt_tokens,
-                                "completion_tokens": total_completion_tokens,
-                            },
-                            turn_logprobs if turn_logprobs else None,
-                        )
-                else:
-                    # No more tool calls, return the final response.
-                    content = msg.get("content", "")
-                    error_msg = ""
-
-                    # Safety net: reasoning models sometimes put the answer
-                    # in reasoning_content and leave content empty.
-                    if not content:
-                        reasoning = msg.get("reasoning_content", "")
-                        if reasoning:
-                            logger.warning(
-                                "DeepSeek turn %d: content is empty but "
-                                "reasoning_content has %d chars. Using "
-                                "reasoning_content as fallback.",
-                                turn,
-                                len(reasoning),
-                            )
-                            content = reasoning
-
-                    if not content and finish_reason == "length":
-                        error_msg = (
-                            f"Response truncated: max_tokens={max_tokens_val} exhausted "
-                            f"before content could be generated. reasoning_content consumed "
-                            f"the entire token budget."
-                        )
-                        logger.warning("DeepSeek turn %d: %s", turn, error_msg)
-                    return (
-                        {"content": content},
-                        error_msg,
-                        tool_calls_made,
-                        tool_results,
-                        {
-                            "prompt_tokens": total_prompt_tokens,
-                            "completion_tokens": total_completion_tokens,
-                        },
-                        turn_logprobs if turn_logprobs else None,
-                    )
-
-            except Exception as e:
-                logger.exception(f"DeepSeek API exception: {e}")
-                return (
-                    None,
-                    f"Exception: {str(e)}",
-                    tool_calls_made,
-                    tool_results,
-                    {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
-                    turn_logprobs if turn_logprobs else None,
-                )
-
-        # Max turns reached
-        return (
-            None,
-            "Max turns reached",
-            tool_calls_made,
-            tool_results,
-            {"prompt_tokens": total_prompt_tokens, "completion_tokens": total_completion_tokens},
-            turn_logprobs if turn_logprobs else None,
-        )
+            payload["thinking"] = {"type": "disabled"}
+        else:
+            payload["temperature"] = kwargs.get("temperature", self.config.temperature)
+        return payload
 
 
-class LMStudioClient(LLMClient):
+class LMStudioClient(_ChatToolLoop):
     """LMStudio local model client (OpenAI-compatible API).
 
     LMStudio serves an OpenAI-compatible ``/v1/chat/completions`` endpoint
@@ -1747,240 +1642,21 @@ class LMStudioClient(LLMClient):
             "Signaling completion for LMStudio model: %s", self.config.model
         )
 
-    def generate_with_tools(
-        self,
-        prompt: str,
-        tools: List[Dict[str, Any]],
-        tool_executor,
-        system_prompt: Optional[str] = None,
-        max_turns: int = 10,
-        **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
-        """Generate using LMStudio / OpenAI-compatible tool calling."""
-        messages: List[Dict[str, Any]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
-        tool_calls_made: List[ToolCall] = []
-        tool_results: List[ToolResult] = []
-        total_prompt_tokens = 0
-        total_completion_tokens = 0
-        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
-
+    def _tool_payload(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         # LMStudio local models have much lower output token limits than
         # cloud providers (typically 4k-8k).  Capping prevents the server
         # from truncating mid-generation with finish_reason=length.
-        _mt = kwargs.get("max_tokens", self.config.max_tokens)
-        if _mt > 8192:
+        max_tokens_val = kwargs.get("max_tokens", self.config.max_tokens)
+        if max_tokens_val > 8192:
             logger.info(
                 "LMStudio: capping max_tokens from %d to 8192 for local model.",
-                _mt,
+                max_tokens_val,
             )
-            _mt = 8192
-        max_tokens_val = _mt
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        for turn in range(max_turns):
-            payload: Dict[str, Any] = {
-                "model": self.config.model,
-                "messages": messages,
-                "tools": tools,
-                "max_tokens": max_tokens_val,
-                "temperature": kwargs.get("temperature", self.config.temperature),
-            }
-            if self.config.seed is not None:
-                payload["seed"] = self.config.seed
-
-            if self.config.capture_logprobs:
-                payload["logprobs"] = True
-                payload["top_logprobs"] = 5
-
-            start_time = time.time()
-
-            try:
-                # ── Retry transient network errors ──────────────────
-                for attempt in range(3):
-                    try:
-                        response = requests.post(
-                            f"{self.base_url}/v1/chat/completions",
-                            json=payload,
-                            headers=headers,
-                            timeout=self.config.timeout,
-                        )
-                        break
-                    except (
-                        requests.exceptions.Timeout,
-                        requests.exceptions.ConnectionError,
-                    ) as retry_err:
-                        if attempt < 2:
-                            wait = 2**attempt
-                            logger.warning(
-                                "LMStudio API %s (attempt %d/3), retrying in %ds…",
-                                type(retry_err).__name__,
-                                attempt + 1,
-                                wait,
-                            )
-                            time.sleep(wait)
-                        else:
-                            raise
-
-                if response.status_code != 200:
-                    logger.error(
-                        "LMStudio API error: %s - %s",
-                        response.status_code,
-                        response.text,
-                    )
-                    return (
-                        None,
-                        f"API error: {response.text}",
-                        tool_calls_made,
-                        tool_results,
-                        {},
-                        turn_logprobs if turn_logprobs else None,
-                    )
-
-                data = response.json()
-                latency_ms = int((time.time() - start_time) * 1000)
-
-                usage = data.get("usage", {})
-                total_prompt_tokens += usage.get("prompt_tokens", 0)
-                total_completion_tokens += usage.get("completion_tokens", 0)
-
-                # Per-turn logprobs
-                if self.config.capture_logprobs:
-                    choice_lp = data["choices"][0]
-                    lp_data = choice_lp.get("logprobs")
-                    if lp_data and isinstance(lp_data, dict):
-                        turn_logprobs.append(lp_data.get("content"))
-                    else:
-                        turn_logprobs.append(None)
-                else:
-                    turn_logprobs.append(None)
-
-                choice = data["choices"][0]
-                msg = choice["message"]
-                finish_reason = choice.get("finish_reason", "")
-
-                if finish_reason == "length":
-                    logger.warning(
-                        "LMStudio turn %d: response truncated (finish_reason=length). "
-                        "max_tokens=%d may be too low.",
-                        turn,
-                        max_tokens_val,
-                    )
-
-                # ── Tool calls? ─────────────────────────────────────
-                if msg.get("tool_calls"):
-                    messages.append(msg)
-
-                    for tc in msg["tool_calls"]:
-                        tool_call_id = tc.get("id", "")
-                        tool_call = ToolCall(
-                            name=tc["function"]["name"],
-                            arguments=json.loads(tc["function"]["arguments"]),
-                            tool_call_id=tool_call_id,
-                            turn_index=turn,
-                        )
-                        tool_calls_made.append(tool_call)
-
-                        try:
-                            result = tool_executor.execute(
-                                tool_call.name, tool_call.arguments
-                            )
-                            tool_result = ToolResult(
-                                tool_name=tool_call.name,
-                                result=result,
-                                tool_call_id=tool_call.tool_call_id,
-                                turn_index=turn,
-                            )
-                        except Exception as e:
-                            tool_result = ToolResult(
-                                tool_name=tool_call.name,
-                                result=None,
-                                error=str(e),
-                                tool_call_id=tool_call.tool_call_id,
-                                turn_index=turn,
-                            )
-                        tool_results.append(tool_result)
-
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.tool_call_id,
-                            "content": (
-                                json.dumps(tool_result.result)
-                                if tool_result.result
-                                else tool_result.error
-                            ),
-                        })
-
-                    if (
-                        hasattr(tool_executor, "is_solution_found")
-                        and tool_executor.is_solution_found()
-                    ):
-                        logger.info(
-                            "LMStudio turn %d: valid solution detected — "
-                            "terminating agentic loop early.",
-                            turn,
-                        )
-                        return (
-                            {"content": "", "solution_found": True},
-                            "",
-                            tool_calls_made,
-                            tool_results,
-                            {
-                                "prompt_tokens": total_prompt_tokens,
-                                "completion_tokens": total_completion_tokens,
-                            },
-                            turn_logprobs if turn_logprobs else None,
-                        )
-
-                else:
-                    content = msg.get("content", "")
-                    return (
-                        {"content": content},
-                        "",
-                        tool_calls_made,
-                        tool_results,
-                        {
-                            "prompt_tokens": total_prompt_tokens,
-                            "completion_tokens": total_completion_tokens,
-                        },
-                        turn_logprobs if turn_logprobs else None,
-                    )
-
-            except Exception as e:
-                logger.exception("LMStudio API exception: %s", e)
-                return (
-                    None,
-                    f"Exception: {str(e)}",
-                    tool_calls_made,
-                    tool_results,
-                    {
-                        "prompt_tokens": total_prompt_tokens,
-                        "completion_tokens": total_completion_tokens,
-                    },
-                    turn_logprobs if turn_logprobs else None,
-                )
-
-        return (
-            None,
-            f"Max turns ({max_turns}) reached",
-            tool_calls_made,
-            tool_results,
-            {
-                "prompt_tokens": total_prompt_tokens,
-                "completion_tokens": total_completion_tokens,
-            },
-            turn_logprobs if turn_logprobs else None,
-        )
+            max_tokens_val = 8192
+        return {"model": self.config.model, "max_tokens": max_tokens_val, **self._sampling(kwargs)}
 
 
-class VLLMClient(LLMClient):
+class VLLMClient(_ChatToolLoop):
     """vLLM local server client (OpenAI-compatible API).
 
     vLLM serves an OpenAI-compatible ``/v1/chat/completions`` endpoint on
@@ -1998,8 +1674,6 @@ class VLLMClient(LLMClient):
       parser returns ``tool_calls: []`` but embeds the call JSON in the
       message ``content`` (hermes ``<tool_call>…</tool_call>`` or bare
       ``{"name": …}`` from ``llama3_json``);
-    * a ``reasoning_content`` fallback for models that route their answer
-      through the reasoning channel;
     * no aggressive ``max_tokens`` cap — vLLM enforces its own
       ``--max-model-len`` server-side.
     """
@@ -2029,7 +1703,7 @@ class VLLMClient(LLMClient):
             "model": self.config.model,
             "messages": messages,
             "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
-            "temperature": kwargs.get("temperature", self.config.temperature),
+            **self._sampling(kwargs),
         }
 
         if self.config.capture_logprobs:
@@ -2060,8 +1734,14 @@ class VLLMClient(LLMClient):
 
         choice = data["choices"][0]
         msg = choice["message"]
-        # Fall back to reasoning_content for models that only fill that field.
-        content = msg.get("content") or msg.get("reasoning_content") or ""
+        content = msg.get("content") or ""
+        if not content and msg.get("reasoning_content"):
+            logger.warning(
+                "vLLM: empty content with %d chars of reasoning_content "
+                "(finish_reason=%s). Not substituting reasoning for the answer.",
+                len(msg["reasoning_content"]),
+                choice.get("finish_reason", ""),
+            )
 
         logprobs_list: Optional[List[Dict[str, Any]]] = None
         if self.config.capture_logprobs:
@@ -2125,310 +1805,26 @@ class VLLMClient(LLMClient):
             idx = end  # valid JSON but not a tool call — skip past it
         return None
 
-    def generate_with_tools(
-        self,
-        prompt: str,
-        tools: List[Dict[str, Any]],
-        tool_executor,
-        system_prompt: Optional[str] = None,
-        max_turns: int = 10,
-        *,
-        on_final_answer: Optional[Callable[[str], Optional[str]]] = None,
-        revision_rounds: int = 0,
-        **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
-        """Generate using vLLM / OpenAI-compatible tool calling.
-
-        ``on_final_answer`` implements the harness revision arms. When given, a
-        submitted answer is passed to it instead of ending the episode; if it
-        returns a message, that message is appended and the loop continues, for
-        at most ``revision_rounds`` rounds and always inside ``max_turns``.
-        Returning ``None`` accepts the answer and returns as usual. Validation
-        lives in the caller, beside the scorer, so this loop never decides
-        whether an answer is correct.
-        """
-        revisions_left = revision_rounds if on_final_answer is not None else 0
-        messages: List[Dict[str, Any]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
-        tool_calls_made: List[ToolCall] = []
-        tool_results: List[ToolResult] = []
-        total_prompt_tokens = 0
-        total_completion_tokens = 0
-        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
-
+    def _tool_payload(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         # vLLM enforces its own --max-model-len server-side, so pass the
         # configured value through without the aggressive local-model cap.
-        max_tokens_val = kwargs.get("max_tokens", self.config.max_tokens)
-
-        tried_required_fallback = False
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
+        return {
+            "model": self.config.model,
+            "tool_choice": "auto",
+            "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+            **self._sampling(kwargs),
         }
 
-        for turn in range(max_turns):
-            payload: Dict[str, Any] = {
-                "model": self.config.model,
-                "messages": messages,
-                "tools": tools,
-                "tool_choice": "required" if tried_required_fallback else "auto",
-                "max_tokens": max_tokens_val,
-                "temperature": kwargs.get("temperature", self.config.temperature),
-            }
-            if self.config.seed is not None:
-                payload["seed"] = self.config.seed
-
-            if self.config.capture_logprobs:
-                payload["logprobs"] = True
-                payload["top_logprobs"] = 5
-
-            start_time = time.time()
-
-            try:
-                # ── Retry transient network errors ──────────────────
-                # +1 attempt covers the tool_choice=required fallback.
-                for attempt in range(4):
-                    try:
-                        response = getattr(self, "http_post", requests.post)(
-                            f"{self.base_url}/v1/chat/completions",
-                            json=payload,
-                            headers=headers,
-                            timeout=self.config.timeout,
-                        )
-                    except (
-                        requests.exceptions.Timeout,
-                        requests.exceptions.ConnectionError,
-                    ) as retry_err:
-                        if attempt < 2:
-                            wait = 2**attempt
-                            logger.warning(
-                                "vLLM API %s (attempt %d/3), retrying in %ds…",
-                                type(retry_err).__name__,
-                                attempt + 1,
-                                wait,
-                            )
-                            time.sleep(wait)
-                            continue
-                        raise
-
-                    if response.status_code == 200:
-                        break  # success
-
-                    # Server started without --enable-auto-tool-choice rejects
-                    # tool_choice="auto".  Fall back to "required".
-                    if (
-                        response.status_code == 400
-                        and "enable-auto-tool-choice" in response.text
-                        and not tried_required_fallback
-                    ):
-                        logger.warning(
-                            "vLLM: tool_choice=auto unsupported by server, "
-                            "retrying with tool_choice=required…"
-                        )
-                        payload["tool_choice"] = "required"
-                        tried_required_fallback = True
-                        continue  # retry same turn with required
-
-                    logger.error(
-                        "vLLM API error: %s - %s",
-                        response.status_code,
-                        response.text,
-                    )
-                    break
-
-                if response.status_code != 200:
-                    return (
-                        None,
-                        f"API error: {response.text}",
-                        tool_calls_made,
-                        tool_results,
-                        {},
-                        turn_logprobs if turn_logprobs else None,
-                    )
-
-                data = response.json()
-                latency_ms = int((time.time() - start_time) * 1000)
-
-                usage = data.get("usage", {})
-                total_prompt_tokens += usage.get("prompt_tokens", 0)
-                total_completion_tokens += usage.get("completion_tokens", 0)
-
-                # Per-turn logprobs
-                if self.config.capture_logprobs:
-                    choice_lp = data["choices"][0]
-                    lp_data = choice_lp.get("logprobs")
-                    if lp_data and isinstance(lp_data, dict):
-                        turn_logprobs.append(lp_data.get("content"))
-                    else:
-                        turn_logprobs.append(None)
-                else:
-                    turn_logprobs.append(None)
-
-                choice = data["choices"][0]
-                msg = choice["message"]
-                finish_reason = choice.get("finish_reason", "")
-
-                if finish_reason == "length":
-                    logger.warning(
-                        "vLLM turn %d: response truncated (finish_reason=length). "
-                        "max_tokens=%d may be too low.",
-                        turn,
-                        max_tokens_val,
-                    )
-
-                # ── Content-based tool-call recovery ────────────────
-                # When the tool-call parser is misconfigured, vLLM returns an
-                # empty tool_calls list with the call JSON inside content.
-                if not msg.get("tool_calls") and (msg.get("content") or "").strip():
-                    recovered = self._extract_tool_call_from_content(
-                        msg["content"].strip(), turn
-                    )
-                    if recovered:
-                        msg["tool_calls"] = [recovered]
-
-                # ── Tool calls? ─────────────────────────────────────
-                if msg.get("tool_calls"):
-                    messages.append(msg)
-
-                    for tc in msg["tool_calls"]:
-                        tool_call_id = tc.get("id", "")
-                        tool_call = ToolCall(
-                            name=tc["function"]["name"],
-                            arguments=json.loads(tc["function"]["arguments"]),
-                            tool_call_id=tool_call_id,
-                            turn_index=turn,
-                        )
-                        tool_calls_made.append(tool_call)
-
-                        try:
-                            result = tool_executor.execute(
-                                tool_call.name, tool_call.arguments
-                            )
-                            tool_result = ToolResult(
-                                tool_name=tool_call.name,
-                                result=result,
-                                tool_call_id=tool_call.tool_call_id,
-                                turn_index=turn,
-                            )
-                        except Exception as e:
-                            tool_result = ToolResult(
-                                tool_name=tool_call.name,
-                                result=None,
-                                error=str(e),
-                                tool_call_id=tool_call.tool_call_id,
-                                turn_index=turn,
-                            )
-                        tool_results.append(tool_result)
-
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.tool_call_id,
-                            "content": (
-                                json.dumps(tool_result.result)
-                                if tool_result.result
-                                else tool_result.error
-                            ),
-                        })
-
-                    if (
-                        hasattr(tool_executor, "is_solution_found")
-                        and tool_executor.is_solution_found()
-                    ):
-                        logger.info(
-                            "vLLM turn %d: valid solution detected — "
-                            "terminating agentic loop early.",
-                            turn,
-                        )
-                        return (
-                            {"content": "", "solution_found": True},
-                            "",
-                            tool_calls_made,
-                            tool_results,
-                            {
-                                "prompt_tokens": total_prompt_tokens,
-                                "completion_tokens": total_completion_tokens,
-                            },
-                            turn_logprobs if turn_logprobs else None,
-                        )
-
-                else:
-                    # Fall back to reasoning_content for models that route the
-                    # answer through the reasoning channel.
-                    content = (
-                        msg.get("content") or msg.get("reasoning_content") or ""
-                    ).strip()
-                    error_msg = ""
-
-                    if not content and finish_reason == "length":
-                        error_msg = (
-                            f"Response truncated: max_tokens={max_tokens_val} "
-                            f"exhausted before content could be generated."
-                        )
-                        logger.warning("vLLM turn %d: %s", turn, error_msg)
-
-                    # Harness arms rev-retry / rev-structured: an answer the
-                    # scorer would reject does not end the episode. Revisions
-                    # draw on the same turn budget, so the arm is not
-                    # compute-matched against the baseline — which is what
-                    # rev-retry exists to control for.
-                    if content and revisions_left > 0:
-                        critique = on_final_answer(content)
-                        if critique:
-                            revisions_left -= 1
-                            messages.append({"role": "assistant", "content": content})
-                            messages.append({"role": "user", "content": critique})
-                            logger.info(
-                                "vLLM turn %d: submitted answer rejected — "
-                                "injected critique, %d revision round(s) left.",
-                                turn,
-                                revisions_left,
-                            )
-                            continue
-
-                    return (
-                        {"content": content},
-                        error_msg,
-                        tool_calls_made,
-                        tool_results,
-                        {
-                            "prompt_tokens": total_prompt_tokens,
-                            "completion_tokens": total_completion_tokens,
-                        },
-                        turn_logprobs if turn_logprobs else None,
-                    )
-
-            except Exception as e:
-                logger.exception("vLLM API exception: %s", e)
-                return (
-                    None,
-                    f"Exception: {str(e)}",
-                    tool_calls_made,
-                    tool_results,
-                    {
-                        "prompt_tokens": total_prompt_tokens,
-                        "completion_tokens": total_completion_tokens,
-                    },
-                    turn_logprobs if turn_logprobs else None,
-                )
-
-        return (
-            None,
-            f"Max turns ({max_turns}) reached",
-            tool_calls_made,
-            tool_results,
-            {
-                "prompt_tokens": total_prompt_tokens,
-                "completion_tokens": total_completion_tokens,
-            },
-            turn_logprobs if turn_logprobs else None,
-        )
+    def _recover_tool_calls(self, msg: Dict[str, Any], turn: int) -> None:
+        # When the tool-call parser is misconfigured, vLLM returns an
+        # empty tool_calls list with the call JSON inside content.
+        if not msg.get("tool_calls") and (msg.get("content") or "").strip():
+            recovered = self._extract_tool_call_from_content(msg["content"].strip(), turn)
+            if recovered:
+                msg["tool_calls"] = [recovered]
 
 
-class CloudClient(LLMClient):
+class CloudClient(_ChatToolLoop):
     """Cloud API client for OpenAI-compatible endpoints (AcademicCloud).
 
     Uses the same /v1/chat/completions format as OpenAI with Bearer auth.
@@ -2444,6 +1840,7 @@ class CloudClient(LLMClient):
         self.api_key = config.api_key or os.environ.get("CLOUD_API_KEY")
         self.base_url = config.base_url or "https://chat-ai.academiccloud.de"
         self._last_request: float = 0.0
+        self._rate_lock = threading.Lock()
 
         if not self.api_key:
             raise ValueError(
@@ -2452,14 +1849,17 @@ class CloudClient(LLMClient):
             )
 
     def _wait_for_rate_limit(self) -> None:
-        """Sleep if needed to stay within API rate limits (2 req/s, 15 req/min)."""
-        now = time.time()
-        elapsed = now - self._last_request
-        wait = max(self._MIN_INTERVAL - elapsed, 0)
-        if wait > 0:
-            logger.debug("Rate limit: waiting %.1fs", wait)
-            time.sleep(wait)
-        self._last_request = time.time()
+        """Sleep if needed to stay within API rate limits (2 req/s, 15 req/min).
+
+        Locked: benchmark worker threads share one client, and without the
+        lock they all read the same ``_last_request`` and fire together.
+        """
+        with self._rate_lock:
+            wait = max(self._MIN_INTERVAL - (time.time() - self._last_request), 0)
+            if wait > 0:
+                logger.debug("Rate limit: waiting %.1fs", wait)
+                time.sleep(wait)
+            self._last_request = time.time()
 
     def generate(
         self,
@@ -2561,276 +1961,17 @@ class CloudClient(LLMClient):
             logprobs=logprobs_list,
         )
 
-    def generate_with_tools(
-        self,
-        prompt: str,
-        tools: List[Dict[str, Any]],
-        tool_executor,
-        system_prompt: Optional[str] = None,
-        max_turns: int = 10,
-        **kwargs,
-    ) -> Tuple[Optional[Dict[str, Any]], str, List[ToolCall], List[ToolResult], Dict[str, int], Optional[List[Optional[List[Dict[str, Any]]]]]]:
-        model = self.config.model
-
-        messages: List[Dict[str, Any]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
-        tool_calls_made: List[ToolCall] = []
-        tool_results: List[ToolResult] = []
-        total_prompt_tokens = 0
-        total_completion_tokens = 0
-        turn_logprobs: List[Optional[List[Dict[str, Any]]]] = []
-
+    def _tool_payload(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         max_tokens_val = kwargs.get("max_tokens")
         if max_tokens_val is None:
             max_tokens_val = 32768
+        return {"model": self.config.model, "max_tokens": max_tokens_val, **self._sampling(kwargs)}
 
-        tried_required_fallback = False
+    def _before_request(self) -> None:
+        self._wait_for_rate_limit()
 
-        for turn in range(max_turns):
-            payload: Dict[str, Any] = {
-                "model": model,
-                "messages": messages,
-                "tools": tools,
-                "max_tokens": max_tokens_val,
-            }
-            if tried_required_fallback:
-                payload["tool_choice"] = "required"
-
-            if self.config.capture_logprobs:
-                payload["logprobs"] = True
-                payload["top_logprobs"] = 5
-
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-
-            start_time = time.time()
-
-            try:
-                self._wait_for_rate_limit()
-                for attempt in range(4):  # +1 for the tool_choice fallback
-                    try:
-                        response = requests.post(
-                            f"{self.base_url}/v1/chat/completions",
-                            json=payload,
-                            headers=headers,
-                            timeout=self.config.timeout,
-                        )
-                    except (
-                        requests.exceptions.Timeout,
-                        requests.exceptions.ConnectionError,
-                    ) as retry_err:
-                        if attempt < 2:
-                            wait = 2 ** attempt
-                            logger.warning(
-                                "Cloud API %s (attempt %d/3), retrying in %ds…",
-                                type(retry_err).__name__,
-                                attempt + 1,
-                                wait,
-                            )
-                            time.sleep(wait)
-                            continue
-                        raise
-
-                    if response.status_code == 200:
-                        break  # success
-
-                    # vLLM servers without --enable-auto-tool-choice reject
-                    # implicit tool_choice="auto".  Fall back to "required".
-                    if (
-                        response.status_code == 400
-                        and "enable-auto-tool-choice" in response.text
-                        and not tried_required_fallback
-                    ):
-                        logger.warning(
-                            "Cloud API: tool_choice=auto unsupported by server, "
-                            "retrying with tool_choice=required…"
-                        )
-                        payload["tool_choice"] = "required"
-                        tried_required_fallback = True
-                        continue  # retry same turn with required
-
-                    if 500 <= response.status_code < 600 or response.status_code == 429:
-                        if attempt < 2:
-                            wait = 2 ** attempt + 4  # extra wait for rate-limit recovery
-                            logger.warning(
-                                "Cloud API %d (attempt %d/3), retrying in %ds…",
-                                response.status_code, attempt + 1, wait,
-                            )
-                            time.sleep(wait)
-                            continue
-                        logger.error(
-                            "Cloud API error after 3 retries: %s - %s",
-                            response.status_code, response.text,
-                        )
-                    else:
-                        logger.error(
-                            "Cloud API error: %s - %s",
-                            response.status_code,
-                            response.text,
-                        )
-
-                if response.status_code != 200:
-                    return (
-                        None,
-                        f"API error: {response.text}",
-                        tool_calls_made,
-                        tool_results,
-                        {},
-                        turn_logprobs if turn_logprobs else None,
-                    )
-
-                data = response.json()
-                latency_ms = int((time.time() - start_time) * 1000)
-
-                usage = data.get("usage", {})
-                total_prompt_tokens += usage.get("prompt_tokens", 0)
-                total_completion_tokens += usage.get("completion_tokens", 0)
-
-                if self.config.capture_logprobs:
-                    choice_lp = data["choices"][0]
-                    lp_data = choice_lp.get("logprobs")
-                    if lp_data and isinstance(lp_data, dict):
-                        turn_logprobs.append(lp_data.get("content"))
-                    else:
-                        turn_logprobs.append(None)
-                else:
-                    turn_logprobs.append(None)
-
-            except Exception as e:
-                logger.exception("Cloud API exception: %s", e)
-                return (
-                    None,
-                    f"Exception: {str(e)}",
-                    tool_calls_made,
-                    tool_results,
-                    {
-                        "prompt_tokens": total_prompt_tokens,
-                        "completion_tokens": total_completion_tokens,
-                    },
-                    turn_logprobs if turn_logprobs else None,
-                )
-
-            choice = data["choices"][0]
-            msg = choice["message"]
-            finish_reason = choice.get("finish_reason", "")
-
-            if finish_reason == "length":
-                logger.warning(
-                    "Cloud API turn %d: response truncated (finish_reason=length). "
-                    "max_tokens=%d may be too low.",
-                    turn,
-                    max_tokens_val,
-                )
-
-            if msg.get("tool_calls"):
-                messages.append(msg)
-
-                for tc in msg["tool_calls"]:
-                    tool_call_id = tc.get("id", "")
-                    tool_call = ToolCall(
-                        name=tc["function"]["name"],
-                        arguments=json.loads(tc["function"]["arguments"]),
-                        tool_call_id=tool_call_id,
-                        turn_index=turn,
-                    )
-                    tool_calls_made.append(tool_call)
-
-                    try:
-                        result = tool_executor.execute(
-                            tool_call.name, tool_call.arguments
-                        )
-                        tool_result = ToolResult(
-                            tool_name=tool_call.name,
-                            result=result,
-                            tool_call_id=tool_call.tool_call_id,
-                            turn_index=turn,
-                        )
-                    except Exception as e:
-                        tool_result = ToolResult(
-                            tool_name=tool_call.name,
-                            result=None,
-                            error=str(e),
-                            tool_call_id=tool_call.tool_call_id,
-                            turn_index=turn,
-                        )
-                    tool_results.append(tool_result)
-
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.tool_call_id,
-                            "content": (
-                                json.dumps(tool_result.result)
-                                if tool_result.result
-                                else tool_result.error
-                            ),
-                        }
-                    )
-
-                if (
-                    hasattr(tool_executor, "is_solution_found")
-                    and tool_executor.is_solution_found()
-                ):
-                    logger.info(
-                        "Cloud API turn %d: valid solution detected — "
-                        "terminating agentic loop early.",
-                        turn,
-                    )
-                    return (
-                        {"content": "", "solution_found": True},
-                        "",
-                        tool_calls_made,
-                        tool_results,
-                        {
-                            "prompt_tokens": total_prompt_tokens,
-                            "completion_tokens": total_completion_tokens,
-                        },
-                        turn_logprobs if turn_logprobs else None,
-                    )
-            else:
-                content = msg.get("content", "").strip()
-                error_msg = ""
-
-                if not content and finish_reason == "length":
-                    error_msg = (
-                        f"Response truncated: max_tokens={max_tokens_val} "
-                        f"exhausted before content could be generated."
-                    )
-                    logger.warning("Cloud API turn %d: %s", turn, error_msg)
-
-                try:
-                    final_result = json.loads(content) if content else {"final_answer": ""}
-                except json.JSONDecodeError:
-                    final_result = {"final_answer": content} if content else {"final_answer": ""}
-
-                return (
-                    final_result,
-                    error_msg,
-                    tool_calls_made,
-                    tool_results,
-                    {
-                        "prompt_tokens": total_prompt_tokens,
-                        "completion_tokens": total_completion_tokens,
-                    },
-                    turn_logprobs if turn_logprobs else None,
-                )
-
-        return (
-            None,
-            f"Max turns ({max_turns}) reached",
-            tool_calls_made,
-            tool_results,
-            {
-                "prompt_tokens": total_prompt_tokens,
-                "completion_tokens": total_completion_tokens,
-            },
-            turn_logprobs if turn_logprobs else None,
-        )
+    def _final_result(self, content, error):
+        return (_parse_final_json(content) if content else {"final_answer": ""}), error
 
 
 class MockClient(LLMClient):
@@ -2889,13 +2030,3 @@ def create_llm_client(config: LLMConfig) -> LLMClient:
         raise ValueError(f"Unknown provider: {config.provider}")
 
     return client_class(config)
-
-
-# ---------------------------------------------------------------------------
-# Default Configurations
-# ---------------------------------------------------------------------------
-
-
-def default_config(provider: str = "mock", model: str = "gpt-4") -> LLMConfig:
-    """Create a default configuration."""
-    return LLMConfig(provider=provider, model=model)
