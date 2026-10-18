@@ -171,7 +171,8 @@ def test_two_turn_tool_call_then_final_answer(monkeypatch, provider):
 
 EXPECTED_PAYLOAD = {
     "openai": {"model": "gpt-4o", "max_completion_tokens": 1000, "temperature": 0.3},
-    "deepseek": {"model": "deepseek-chat", "max_tokens": 1000},
+    # Fix b: DeepSeek (non-v4) and Cloud used to send no temperature/seed.
+    "deepseek": {"model": "deepseek-chat", "max_tokens": 1000, "temperature": 0.3},
     "lmstudio": {"model": "local-model", "max_tokens": 1000, "temperature": 0.3, "seed": 7},
     "vllm": {
         "model": "local-model",
@@ -180,7 +181,7 @@ EXPECTED_PAYLOAD = {
         "temperature": 0.3,
         "seed": 7,
     },
-    "cloud": {"model": "cloud-model", "max_tokens": 1000},
+    "cloud": {"model": "cloud-model", "max_tokens": 1000, "temperature": 0.3, "seed": 7},
 }
 
 
@@ -270,7 +271,7 @@ def test_tool_choice_required_fallback(monkeypatch, provider):
     assert http.payloads[2]["tool_choice"] == "required"
 
 
-@pytest.mark.parametrize("provider", [p for p in PROVIDERS if p != "openai"])
+@pytest.mark.parametrize("provider", list(PROVIDERS))
 def test_network_error_is_retried(monkeypatch, provider):
     (final, error, _, _, _, _), http = run(
         monkeypatch,
@@ -285,11 +286,113 @@ def test_network_error_is_retried(monkeypatch, provider):
 @pytest.mark.parametrize("provider", list(PROVIDERS))
 def test_non_200_after_tool_turn(monkeypatch, provider):
     bad = FakeResponse(status_code=400, text="bad request")
-    (final, error, calls, _, usage, logprobs), _ = run(
-        monkeypatch, provider, [chat(deepcopy(TOOL_MSG))] + [bad] * 4
+    (final, error, calls, _, usage, logprobs), http = run(
+        monkeypatch, provider, [chat(deepcopy(TOOL_MSG)), bad]
     )
     assert final is None
     assert error == "API error: bad request"
     assert len(calls) == 1
-    assert usage == {}
+    # Fix c: the turns already run keep their tokens (was {}).
+    assert usage == {"prompt_tokens": 10, "completion_tokens": 5}
     assert logprobs == [None]
+    # A 4xx is not retried (Cloud used to re-post it up to four times).
+    assert len(http.payloads) == 2
+
+
+# ── Bug fixes in the shared loop ───────────────────────────────────────────
+
+
+@pytest.mark.parametrize("provider", list(PROVIDERS))
+def test_cut_off_answer_is_not_taken_from_reasoning(monkeypatch, provider):
+    """Fix a: an empty, truncated answer is not graded from reasoning_content."""
+    cut = chat(
+        {"role": "assistant", "content": None, "reasoning_content": '{"final_solution": [1]}'},
+        finish_reason="length",
+    )
+    (final, error, _, _, _, _), _ = run(monkeypatch, provider, [cut])
+    assert "final_solution" not in json.dumps(final)
+    if provider != "openai":
+        assert error.startswith("Response truncated")
+
+
+def test_vllm_generate_ignores_reasoning_and_sends_seed(monkeypatch):
+    """Fixes a and b for VLLMClient.generate."""
+    http = FakeHTTP([chat({"role": "assistant", "content": None, "reasoning_content": "monologue"})])
+    monkeypatch.setattr(llm_client.requests, "post", http)
+    resp = make("vllm").generate("hi")
+    assert resp.content == ""
+    assert http.payloads[0]["seed"] == 7
+    assert http.payloads[0]["temperature"] == 0.3
+
+
+@pytest.mark.parametrize("provider", list(PROVIDERS))
+def test_malformed_tool_arguments_become_a_tool_error(monkeypatch, provider):
+    """Fix d: bad JSON arguments are reported to the model, the episode goes on."""
+    bad_call = deepcopy(TOOL_CALL)
+    bad_call["function"]["arguments"] = '{"component_type": "ramp_left", "x": 1,'
+    executor = FakeExecutor()
+    (final, error, calls, results, _, _), http = run(
+        monkeypatch,
+        provider,
+        [chat({"role": "assistant", "content": None, "tool_calls": [bad_call]}), chat(deepcopy(FINAL_MSG))],
+        executor,
+    )
+    assert error == ""
+    assert final is not None
+    assert executor.calls == []
+    assert len(calls) == 1 and calls[0].arguments == bad_call["function"]["arguments"]
+    assert "not a JSON object" in results[0].error
+    tool_msg = http.payloads[1]["messages"][-1]
+    assert tool_msg["role"] == "tool" and "not a JSON object" in tool_msg["content"]
+
+
+def test_cloud_null_final_content_does_not_crash(monkeypatch):
+    """Fix d: ``content: null`` on the final turn crashed Cloud with .strip()."""
+    (final, error, _, _, _, _), _ = run(
+        monkeypatch, "cloud", [chat({"role": "assistant", "content": None})]
+    )
+    assert final == {"final_answer": ""}
+    assert error == ""
+
+
+def test_cloud_rate_limiter_spaces_concurrent_requests():
+    """Fix e: worker threads sharing one client must not fire together."""
+    import threading
+    import time
+
+    c = make("cloud")
+    c._MIN_INTERVAL = 0.05
+    stamps = []
+
+    def worker():
+        c._wait_for_rate_limit()
+        stamps.append(time.monotonic())
+
+    threads = [threading.Thread(target=worker) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    stamps.sort()
+    assert min(b - a for a, b in zip(stamps, stamps[1:])) >= 0.04
+
+
+@pytest.mark.parametrize("provider", list(PROVIDERS))
+def test_5xx_is_retried(monkeypatch, provider):
+    """Fix f: vLLM gave up on the first 5xx; all providers now retry it."""
+    (final, error, _, _, _, _), http = run(
+        monkeypatch,
+        provider,
+        [FakeResponse(status_code=503, text="busy"), chat(deepcopy(FINAL_MSG))],
+    )
+    assert error == ""
+    assert final is not None
+    assert len(http.payloads) == 2
+
+
+def test_5xx_retries_are_bounded(monkeypatch):
+    busy = FakeResponse(status_code=503, text="busy")
+    (final, error, _, _, _, _), http = run(monkeypatch, "vllm", [busy] * 5)
+    assert final is None
+    assert error == "API error: busy"
+    assert len(http.payloads) == 3
