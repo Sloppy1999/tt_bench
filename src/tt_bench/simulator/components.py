@@ -259,8 +259,8 @@ class Gear(Component):
         super().__init__(ComponentType.GEAR, x, y)
 
     def get_exit_direction(self, entry_side: str) -> Direction:
-        """Marbles pass straight through a gear (entry side = exit side)."""
-        return Direction(entry_side)
+        """Marbles pass straight through a gear, keeping their direction like a crossover."""
+        return Direction.RIGHT if entry_side == "left" else Direction.LEFT
 
     def get_symbol(self, state: int = 0) -> str:
         return "O"
@@ -305,7 +305,7 @@ class Trigger(Component):
         """
         # Trigger just passes through - marble continues in same direction
         # The actual ball release is handled by the Board in release_marble
-        return Direction.LEFT if entry_side == "left" else Direction.RIGHT
+        return Direction.RIGHT if entry_side == "left" else Direction.LEFT
 
     def get_paired_side(self) -> Side:
         """Returns the opposite side that this trigger releases."""

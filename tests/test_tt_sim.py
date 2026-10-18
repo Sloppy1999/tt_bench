@@ -155,15 +155,21 @@ class TestGear:
         gear = Gear(x=5, y=5)
         assert gear.get_symbol() == "O"
 
+    def test_gear_keeps_marble_direction(self):
+        # The prompt tells models a gear "does not redirect marbles".
+        gear = Gear(x=5, y=5)
+        assert gear.get_exit_direction("left") == Direction.RIGHT
+        assert gear.get_exit_direction("right") == Direction.LEFT
+
 
 class TestTrigger:
     """Test Trigger component behavior."""
 
     def test_trigger_passes_through(self):
         trigger = Trigger(x=5, y=10, side="blue")
-        # Trigger passes through in same direction
-        assert trigger.get_exit_direction("left") == Direction.LEFT
-        assert trigger.get_exit_direction("right") == Direction.RIGHT
+        # Entry from upper-left keeps moving right, like a crossover
+        assert trigger.get_exit_direction("left") == Direction.RIGHT
+        assert trigger.get_exit_direction("right") == Direction.LEFT
 
 
 # =============================================================================
