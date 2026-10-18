@@ -45,6 +45,6 @@ or overwrite targets merely to make checks pass. The eligibility manifest is a
 mechanical screen, not proof of semantic correctness; negative labels require
 separate certificates. See `DATASET_REMEDIATION_PLAN.md` for follow-up work.
 
-Provider credentials use OPENAI_API_KEY and ANTHROPIC_API_KEY; mock needs no key.
+Provider credentials: mock needs no key.
 Inspect the current CLI help before composing benchmark commands. Ruff and mypy
 settings are declared in pyproject.toml; pytest is the primary regression check.

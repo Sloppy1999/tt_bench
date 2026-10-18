@@ -98,14 +98,6 @@ uv run python -m pytest tests/ -v
 ### Benchmarking an LLM
 
 ```bash
-# OpenAI
-OPENAI_API_KEY=sk-... uv run tt-benchmark \
-  --provider openai --model gpt-4o --save-report
-
-# Anthropic
-ANTHROPIC_API_KEY=sk-ant-... uv run tt-benchmark \
-  --provider anthropic --model claude-sonnet-4-20250514 --save-report
-
 # Ollama (local)
 uv run tt-benchmark --provider ollama --model llama3.1 --save-report
 
@@ -122,7 +114,7 @@ DEEPSEEK_API_KEY=sk-... uv run tt-benchmark \
 
 | Flag | Description |
 |------|-------------|
-| `--provider` | `openai`, `anthropic`, `ollama`, `lmstudio`, `vllm`, `deepseek`, `cloud`, `mock` |
+| `--provider` | `ollama`, `lmstudio`, `vllm`, `deepseek`, `cloud`, `mock` |
 | `--model` | Model name (provider-specific) |
 | `--temperature` | Sampling temperature (default `0.0`, greedy) |
 | `--pattern` | Glob filter for tasks (e.g., `"ch0[1-5]*"`) |
@@ -196,8 +188,6 @@ Each challenge may have practice variants (e.g., `ch01-pA`) and bonus variants (
 
 | Provider | Model Examples | Environment Variable |
 |----------|---------------|---------------------|
-| OpenAI | `gpt-4o`, `gpt-4o-mini` | `OPENAI_API_KEY` |
-| Anthropic | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` |
 | Ollama | `llama3.1`, `qwen3` | (none, local) |
 | vLLM | any OpenAI-compatible server | (none, or `--api-key`) |
 | DeepSeek | `deepseek-chat` | `DEEPSEEK_API_KEY` |

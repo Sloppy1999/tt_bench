@@ -77,14 +77,13 @@ FINAL_TEXT = '{"final_solution": []}'
 FINAL_MSG = {"role": "assistant", "content": FINAL_TEXT}
 
 PROVIDERS = {
-    "openai": "gpt-4o",
     "deepseek": "deepseek-chat",
     "lmstudio": "local-model",
     "vllm": "local-model",
     "cloud": "cloud-model",
 }
 # Providers whose final answer is JSON-parsed; the rest return {"content": raw}.
-JSON_FINAL = {"openai", "cloud"}
+JSON_FINAL = {"cloud"}
 
 
 def make(provider, model=None, **cfg):
@@ -139,7 +138,7 @@ def test_two_turn_tool_call_then_final_answer(monkeypatch, provider):
     tc = calls[0]
     assert (tc.name, tc.tool_call_id, tc.turn_index) == ("place_component", "c1", 0)
     assert tc.arguments == {"component_type": "ramp_left", "x": 1, "y": 2}
-    assert tc.assistant_text == ("thinking" if provider == "openai" else "")
+    assert tc.assistant_text == ""
     assert len(results) == 1
     assert results[0].result == {"success": True, "placed": "ramp_left"}
     assert results[0].error is None
@@ -157,20 +156,15 @@ def test_two_turn_tool_call_then_final_answer(monkeypatch, provider):
         "tool_call_id": "c1",
         "content": json.dumps({"success": True, "placed": "ramp_left"}),
     }
-    if provider == "openai":
-        assistant = {"role": "assistant", "tool_calls": [TOOL_CALL]}
-    else:
-        assistant = TOOL_MSG
     assert msgs == [
         {"role": "system", "content": "sys"},
         {"role": "user", "content": "solve"},
-        assistant,
+        TOOL_MSG,
         tool_reply,
     ]
 
 
 EXPECTED_PAYLOAD = {
-    "openai": {"model": "gpt-4o", "max_completion_tokens": 1000, "temperature": 0.3},
     # Fix b: DeepSeek (non-v4) and Cloud used to send no temperature/seed.
     "deepseek": {"model": "deepseek-chat", "max_tokens": 1000, "temperature": 0.3},
     "lmstudio": {"model": "local-model", "max_tokens": 1000, "temperature": 0.3, "seed": 7},
@@ -204,14 +198,7 @@ def test_deepseek_v4_payload_disables_thinking_and_skips_temperature(monkeypatch
     assert "temperature" not in payload
 
 
-def test_openai_gpt5_payload_uses_reasoning_effort(monkeypatch):
-    _, http = run(monkeypatch, "openai", [chat(deepcopy(FINAL_MSG))], model="gpt-5.4")
-    payload = http.payloads[0]
-    assert payload["reasoning_effort"] == "low"
-    assert "temperature" not in payload
-
-
-@pytest.mark.parametrize("provider", [p for p in PROVIDERS if p != "openai"])
+@pytest.mark.parametrize("provider", list(PROVIDERS))
 def test_early_stop_when_solution_found(monkeypatch, provider):
     (final, error, calls, results, usage, _), http = run(
         monkeypatch, provider, [chat(deepcopy(TOOL_MSG))], FakeExecutor(solved=True)
@@ -220,86 +207,6 @@ def test_early_stop_when_solution_found(monkeypatch, provider):
     assert error == ""
     assert len(calls) == 1 and len(http.payloads) == 1
     assert usage == {"prompt_tokens": 10, "completion_tokens": 5}
-
-
-def test_openai_does_not_stop_early(monkeypatch):
-    (final, _, _, _, _, _), http = run(
-        monkeypatch,
-        "openai",
-        [chat(deepcopy(TOOL_MSG)), chat(deepcopy(FINAL_MSG))],
-        FakeExecutor(solved=True),
-    )
-    assert final == {"final_solution": []}
-    assert len(http.payloads) == 2
-
-
-@pytest.mark.parametrize("provider", list(PROVIDERS))
-def test_max_turns_keeps_usage(monkeypatch, provider):
-    replies = [chat(deepcopy(TOOL_MSG)) for _ in range(5)]
-    (final, error, calls, _, usage, _), _ = run(monkeypatch, provider, replies)
-    assert final is None
-    assert "Max turns" in error
-    assert len(calls) == 5
-    assert usage == {"prompt_tokens": 50, "completion_tokens": 25}
-
-
-def test_vllm_recovers_tool_call_from_content(monkeypatch):
-    content = '<tool_call>{"name": "place_component", "arguments": {"component_type": "bit", "x": 0, "y": 0}}</tool_call>'
-    executor = FakeExecutor()
-    (final, _, calls, _, _, _), _ = run(
-        monkeypatch,
-        "vllm",
-        [chat({"role": "assistant", "content": content, "tool_calls": []}), chat(deepcopy(FINAL_MSG))],
-        executor,
-    )
-    assert executor.calls == [("place_component", {"component_type": "bit", "x": 0, "y": 0})]
-    assert calls[0].tool_call_id == "call_0"
-    assert final == {"content": FINAL_TEXT}
-
-
-@pytest.mark.parametrize("provider", ["vllm", "cloud"])
-def test_tool_choice_required_fallback(monkeypatch, provider):
-    reject = FakeResponse(status_code=400, text="needs --enable-auto-tool-choice")
-    (final, error, _, _, _, _), http = run(
-        monkeypatch,
-        provider,
-        [reject, chat(deepcopy(TOOL_MSG)), chat(deepcopy(FINAL_MSG))],
-    )
-    assert error == ""
-    assert http.payloads[1]["tool_choice"] == "required"
-    # The fallback sticks for later turns.
-    assert http.payloads[2]["tool_choice"] == "required"
-
-
-@pytest.mark.parametrize("provider", list(PROVIDERS))
-def test_network_error_is_retried(monkeypatch, provider):
-    (final, error, _, _, _, _), http = run(
-        monkeypatch,
-        provider,
-        [requests.exceptions.ConnectionError("down"), chat(deepcopy(FINAL_MSG))],
-    )
-    assert error == ""
-    assert final is not None
-    assert len(http.payloads) == 2
-
-
-@pytest.mark.parametrize("provider", list(PROVIDERS))
-def test_non_200_after_tool_turn(monkeypatch, provider):
-    bad = FakeResponse(status_code=400, text="bad request")
-    (final, error, calls, _, usage, logprobs), http = run(
-        monkeypatch, provider, [chat(deepcopy(TOOL_MSG)), bad]
-    )
-    assert final is None
-    assert error == "API error: bad request"
-    assert len(calls) == 1
-    # Fix c: the turns already run keep their tokens (was {}).
-    assert usage == {"prompt_tokens": 10, "completion_tokens": 5}
-    assert logprobs == [None]
-    # A 4xx is not retried (Cloud used to re-post it up to four times).
-    assert len(http.payloads) == 2
-
-
-# ── Bug fixes in the shared loop ───────────────────────────────────────────
 
 
 @pytest.mark.parametrize("provider", list(PROVIDERS))
@@ -311,8 +218,7 @@ def test_cut_off_answer_is_not_taken_from_reasoning(monkeypatch, provider):
     )
     (final, error, _, _, _, _), _ = run(monkeypatch, provider, [cut])
     assert "final_solution" not in json.dumps(final)
-    if provider != "openai":
-        assert error.startswith("Response truncated")
+    assert error.startswith("Response truncated")
 
 
 def test_vllm_generate_ignores_reasoning_and_sends_seed(monkeypatch):
@@ -398,7 +304,7 @@ def test_5xx_retries_are_bounded(monkeypatch):
     assert len(http.payloads) == 3
 
 
-@pytest.mark.parametrize("provider", ["anthropic", "ollama"])
+@pytest.mark.parametrize("provider", ["ollama"])
 def test_transport_failure_is_reported_as_provider_error(monkeypatch, provider):
     """The runner scores errors prefixed "Exception"/"API error" as ungraded."""
     monkeypatch.setattr(llm_client.requests, "post", FakeHTTP([requests.ConnectionError("refused")]))

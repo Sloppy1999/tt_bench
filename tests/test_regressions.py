@@ -15,9 +15,7 @@ from scripts.generate_scl import generate_scl
 from tt_bench.benchmark.runner import TuringTumbleBenchmark
 from tt_bench.cli.simulate import run_cli
 from tt_bench.llm.client import (
-    AnthropicClient,
     LLMConfig,
-    OpenAIClient,
     turing_tumble_tools,
 )
 from tt_bench.simulator import Bit, Board, verify_task
@@ -214,71 +212,6 @@ class _FakeExecutor:
 
     def is_solution_found(self):
         return False
-
-
-def test_anthropic_client_executes_native_tool_calls(monkeypatch):
-    responses = iter(
-        [
-            {
-                "content": [
-                    {
-                        "type": "tool_use",
-                        "id": "tool-1",
-                        "name": "get_board_state",
-                        "input": {},
-                    }
-                ],
-                "usage": {"input_tokens": 3, "output_tokens": 2},
-            },
-            {
-                "content": [{"type": "text", "text": '{"success": true}'}],
-                "usage": {"input_tokens": 4, "output_tokens": 3},
-            },
-        ]
-    )
-    monkeypatch.setattr(
-        "tt_bench.llm.client.requests.post",
-        lambda *args, **kwargs: _FakeResponse(next(responses)),
-    )
-    client = AnthropicClient(
-        LLMConfig(provider="anthropic", model="claude-test", api_key="test")
-    )
-    result, error, calls, tool_results, usage, _ = client.generate_with_tools(
-        "prompt",
-        turing_tumble_tools(11, 11),
-        _FakeExecutor(),
-        max_turns=2,
-    )
-
-    assert error == ""
-    assert result == {"success": True}
-    assert calls[0].name == "get_board_state"
-    assert tool_results[0].result["success"] is True
-    assert usage == {"prompt_tokens": 7, "completion_tokens": 5}
-
-
-def test_openai_agentic_payload_honors_token_limit(monkeypatch):
-    captured = {}
-
-    def fake_post(*args, **kwargs):
-        captured.update(kwargs["json"])
-        return _FakeResponse(
-            {
-                "model": "gpt-test",
-                "choices": [{"message": {"content": '{"done": true}'}}],
-                "usage": {},
-            }
-        )
-
-    monkeypatch.setattr("tt_bench.llm.client.requests.post", fake_post)
-    client = OpenAIClient(
-        LLMConfig(provider="openai", model="gpt-test", api_key="test")
-    )
-    client.generate_with_tools(
-        "prompt", [], _FakeExecutor(), max_turns=1, max_tokens=1234
-    )
-
-    assert captured["max_completion_tokens"] == 1234
 
 
 def test_scaled_pattern_puts_catcher_under_the_actual_exit():

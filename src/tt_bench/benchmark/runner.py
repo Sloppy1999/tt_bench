@@ -1739,7 +1739,7 @@ def main():
 
     # LLM options
     parser.add_argument(
-        "--provider", default="mock", choices=["openai", "anthropic", "ollama", "lmstudio", "vllm", "deepseek", "cloud", "mock"]
+        "--provider", default="mock", choices=["ollama", "lmstudio", "vllm", "deepseek", "cloud", "mock"]
     )
     parser.add_argument("--model", default="gpt-4")
     parser.add_argument("--api-key", type=str, help="API key (or set env var)")
