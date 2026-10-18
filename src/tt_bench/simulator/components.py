@@ -88,6 +88,11 @@ class Component:
         """Deserialize component from dictionary."""
         comp_type = ComponentType(data["type"])
         x, y = data["x"], data["y"]
+        if comp_type in (ComponentType.BIT, ComponentType.GEAR_BIT):
+            for key in ("state", "initial_state"):
+                s = data.get(key, 0)
+                if type(s) is not int or s not in (0, 1):
+                    raise ValueError(f"{comp_type.value} {key} must be integer 0 or 1, got {s!r}")
 
         if comp_type == ComponentType.RAMP_RIGHT:
             return Ramp(x, y, Direction.RIGHT)
