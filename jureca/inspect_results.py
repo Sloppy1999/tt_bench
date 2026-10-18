@@ -39,8 +39,12 @@ from pathlib import Path
 #   scaled_T0.7            temperature 0.7
 #   scaled_2comp_T0.7_s3   temperature 0.7, repetition 3
 #   scaled_1comp_afb-auto  harness arm fb-auto (HARNESS_ABLATION_PLAN.md)
+#   1comp_tier2_t50        tiers "2" (any --tiers other than "1"), budget 50
+#   unsolvable_1comp_probe a --pattern probe: a hand-picked subset of the set
 # Suffixes are stripped right-to-left in the order they are appended, which is
-# _tN, _T<temp>, _a<arm>, _sN.
+# _tN, _T<temp>, _a<arm>, _sN. _tier<N> and _probe sit directly after the set
+# name and are deliberately NOT stripped: they change which tasks ran, so they
+# stay in the base set and keep e.g. 1comp_tier2 apart from 1comp everywhere.
 SET_SAMPLE_RE = re.compile(r"_s(\d+)$")
 SET_ARM_RE = re.compile(r"_a([a-z][a-z0-9-]*)$")
 SET_TEMP_RE = re.compile(r"_T([0-9.]+)$")

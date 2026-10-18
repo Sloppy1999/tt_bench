@@ -182,6 +182,10 @@ def collect(results_dir: Path, wanted: list[str]) -> dict[str, dict[str, dict]]:
             base = SET_BUDGET_RE.sub("", row["set"])
             if base not in wanted or row["set"] != base:
                 continue  # skip sweep variants; they belong in their own figure
+            if row["temperature"] != "0.0":
+                # One unsuffixed directory can hold a greedy and a pre-cutover 0.7
+                # report; keyed by base set alone, the later row would overwrite.
+                continue
             if not is_measurement(row):
                 print(
                     f"  ! dropping {model}/{row['set']}: all tasks recorded 0 turns "

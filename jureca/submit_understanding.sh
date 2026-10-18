@@ -164,9 +164,9 @@ fi
 
 mkdir -p "$PROJECT_DIR/slurm_logs"
 
-N_QUESTIONS=$(ls -1 "$PROJECT_DIR"/data/tasks/official/challenges/json/tt-official-ch*.json 2>/dev/null | wc -l)
+N_QUESTIONS=$(ls -1 "$PROJECT_DIR"/data/tasks/official/challenges/json/tt-official-*.json 2>/dev/null | wc -l)
 if [ "$N_QUESTIONS" -eq 0 ]; then
-    fail "No tt-official-ch*.json files under $PROJECT_DIR/data/tasks/official/challenges/json"
+    fail "No tt-official-*.json files under $PROJECT_DIR/data/tasks/official/challenges/json"
     exit 1
 fi
 ok "Official challenge set: $N_QUESTIONS file(s)"
@@ -247,12 +247,15 @@ for entry in "${MODELS[@]}"; do
         echo "    sbatch --gres=gpu:${gpu_count} --job-name tt-understand-$model_name \\"
         [ -n "$WALLTIME" ] && echo "           --time $WALLTIME \\"
         [ -n "$MAIL_USER" ] && echo "           --mail-type $MAIL_TYPE --mail-user $MAIL_USER \\"
-        echo "           --export=$EXPORTS \\"
+        echo "           --chdir=$PROJECT_DIR --export=$EXPORTS \\"
         echo "           --parsable $SBATCH_SCRIPT"
         continue
     fi
 
+    # --chdir: the #SBATCH --output=slurm_logs/... path is relative to the job's
+    # working directory, which otherwise is wherever this script was run from.
     JOB_ID=$(sbatch \
+        --chdir="$PROJECT_DIR" \
         --gres="gpu:${gpu_count}" \
         "${NAME_ARGS[@]}" \
         ${TIME_ARGS[@]+"${TIME_ARGS[@]}"} \

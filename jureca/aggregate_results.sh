@@ -48,8 +48,12 @@ cd "$PROJECT_DIR"
 
 python3 << 'PYEOF'
 import json
+import sys
 from pathlib import Path
 from collections import defaultdict
+
+sys.path.insert(0, "jureca")
+from inspect_results import parse_set_label
 
 results_dir = Path("benchmark_results/jureca_tier1")
 
@@ -58,6 +62,19 @@ SET_ORDER = ["official", "1comp", "2comp", "scaled"]
 # scaled has ~1000 tasks — counted in summaries/CSV but kept out of the printed
 # per-task matrix (which would otherwise be unreadable).
 MATRIX_SETS = {"official", "1comp", "2comp"}
+
+
+def in_overall(label, source):
+    """Whether a set counts towards OVERALL.
+
+    Only complete default-configuration runs: any suffix (_tN, _T, _a, _sN, and
+    _tierN/_probe, which parse_set_label keeps in the base) is a sweep or a
+    repetition of a set already counted, unsolvable_* scores 0% by design, and
+    a per_task/ reconstruction is a run that has not finished.
+    """
+    base = parse_set_label(label)[0]
+    return (label == base and "_tier" not in base and not base.endswith("_probe")
+            and not base.startswith("unsolvable_") and source == "report")
 
 
 def load_set_results(set_dir):
@@ -118,13 +135,16 @@ for model_dir in sorted(p for p in results_dir.iterdir() if p.is_dir()):
 
         total = len(results)
         successful = sum(1 for t in results if t.get("success") is True)
+        source = "report" if has_report else "per_task"
+        counted = in_overall(challenge_set, source)
         entry["by_set"][challenge_set] = {
             "total": total, "successful": successful, "failed": total - successful,
-            "source": "report" if has_report else "per_task",
+            "source": source, "in_overall": counted,
         }
-        entry["overall"]["total"] += total
-        entry["overall"]["successful"] += successful
-        entry["overall"]["failed"] += total - successful
+        if counted:
+            entry["overall"]["total"] += total
+            entry["overall"]["successful"] += successful
+            entry["overall"]["failed"] += total - successful
 
         for task in results:
             entry["tasks"].append({
@@ -168,13 +188,14 @@ for model_label in sorted(summary["models"]):
         comp = [t["component_score"] for t in mdata["tasks"]
                 if t["challenge_set"] == cset and t["component_score"] is not None]
         avg_comp = f"{sum(comp) / len(comp):.2f}" if comp else ""
-        tag = "" if csdata["source"] == "report" else " *partial"
+        tag = ("" if csdata["source"] == "report" else " *partial") + ("" if csdata["in_overall"] else " †")
         print(f"  {model_label:<28} {cset:<12} {csdata['successful']:>6} / {csdata['total']:>4}  "
               f"{csdata['success_rate']:>6.1f}%  {avg_comp:>10}{tag}")
     o = mdata["overall"]
     print(f"  {'':28} {'OVERALL':<12} {o['successful']:>6} / {o['total']:>4}  {o['success_rate']:>6.1f}%\n")
 
-print("  * partial = reconstructed from per_task/ (set has no aggregate report yet)\n")
+print("  * partial = reconstructed from per_task/ (set has no aggregate report yet)")
+print("  † not in OVERALL: partial, unsolvable_*, or a non-default run (_t/_T/_a/_s/_tier/_probe)\n")
 
 # ── Per-task matrix (small sets only) ────────────────────────────────────────
 print("=" * 90)
@@ -206,14 +227,14 @@ print(f"\nSummary saved: {results_dir / 'summary.json'}")
 
 # ── summary.csv (all sets incl. scaled) ──────────────────────────────────────
 with open(results_dir / "summary.csv", "w") as f:
-    f.write("model,challenge_set,total,successful,failed,success_rate,source\n")
+    f.write("model,challenge_set,total,successful,failed,success_rate,source,in_overall\n")
     for model_label in sorted(summary["models"]):
         mdata = summary["models"][model_label]
         for cset in ordered_sets(mdata["by_set"]):
             c = mdata["by_set"][cset]
-            f.write(f"{model_label},{cset},{c['total']},{c['successful']},{c['failed']},{c['success_rate']}%,{c['source']}\n")
+            f.write(f"{model_label},{cset},{c['total']},{c['successful']},{c['failed']},{c['success_rate']}%,{c['source']},{c['in_overall']}\n")
         o = mdata["overall"]
-        f.write(f"{model_label},OVERALL,{o['total']},{o['successful']},{o['failed']},{o['success_rate']}%,\n")
+        f.write(f"{model_label},OVERALL,{o['total']},{o['successful']},{o['failed']},{o['success_rate']}%,,\n")
 print(f"CSV saved:    {results_dir / 'summary.csv'}")
 
 # ── per_task.csv (long format — scales to the ~1000-task scaled set) ──────────
