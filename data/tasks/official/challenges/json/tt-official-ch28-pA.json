@@ -33,18 +33,21 @@
         "type": "gear_bit",
         "x": 5,
         "y": 2,
-        "state": 0
+        "state": 0,
+        "gear_group": 1
       },
       {
         "type": "gear_bit",
         "x": 4,
         "y": 3,
-        "state": 0
+        "state": 0,
+        "gear_group": 1
       },
       {
         "type": "gear",
         "x": 5,
-        "y": 3
+        "y": 3,
+        "gear_group": 1
       }
     ],
     "ball_hoppers": {
@@ -69,8 +72,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 5,
-    "ramp_left": 6,
+    "ramp": 13,
     "crossover": 1,
     "bit": 0,
     "gear_bit": 0,
@@ -141,29 +143,22 @@
         "y": 9
       }
     ],
-    "explanation": "Two gear bits connected together make a permanent latch. After being flipped once, they can't be flipped back again. The first blue ball flips the latch. The second blue ball and all the rest of the red balls are sent to the red lever by the flipped latch. Ball 1, Ball 2, Ball 3, Ball 4, Ball 5. Actually, there is a way to flip the latch back to the original position. Can you figure out how? Send a ball onto the lower bit only. NOTE - interceptor position is an estimate pending simulator verification",
+    "explanation": "Two gear bits connected together make a permanent latch. After being flipped once, they can\u2019t be flipped back again. The first blue ball flips the latch. The second blue ball and all the rest of the red balls are sent to the red lever by the flipped latch. Ball 1: Ball 2: Ball 3: Ball 4: Ball 5:",
     "verified": true,
-    "position_verified": true,
-    "final_marble_state": [
-      "blue",
-      "red",
-      "red",
-      "red",
-      "red",
-      "red",
-      "red",
-      "red",
-      "red",
-      "red"
-    ]
+    "position_verified": true
   },
   "input_sequence": [
     "blue"
   ],
-  "expected_output": {
-    "left_catcher": 1,
-    "right_catcher": 9,
-    "intercepted": 0
+  "expected_output": {},
+  "source_inventory": {
+    "ramp": 13,
+    "crossover": 1,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   },
   "required_output": [
     "blue",
@@ -180,6 +175,9 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 109,
-    "checked": "simulation reproduces the guide's printed required output"
+    "solution_page": 110,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
   }
 }

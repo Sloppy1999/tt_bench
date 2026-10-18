@@ -38,12 +38,16 @@ from pathlib import Path
 #   1comp_t50              turn budget 50
 #   scaled_T0.7            temperature 0.7
 #   scaled_2comp_T0.7_s3   temperature 0.7, repetition 3
-# Suffixes are stripped right-to-left in the order they are appended.
+#   scaled_1comp_afb-auto  harness arm fb-auto (HARNESS_ABLATION_PLAN.md)
+# Suffixes are stripped right-to-left in the order they are appended, which is
+# _tN, _T<temp>, _a<arm>, _sN.
 SET_SAMPLE_RE = re.compile(r"_s(\d+)$")
+SET_ARM_RE = re.compile(r"_a([a-z][a-z0-9-]*)$")
 SET_TEMP_RE = re.compile(r"_T([0-9.]+)$")
 SET_BUDGET_RE = re.compile(r"_t(\d+)$")
 DEFAULT_BUDGET = 25
 DEFAULT_TEMPERATURE = "0.0"
+DEFAULT_ARM = "baseline"
 
 # The directory name is a WEAK source for the temperature: an unsuffixed
 # directory means greedy only for runs made after the harness could set the
@@ -62,10 +66,10 @@ LEGACY_TEMPERATURE = "0.7"
 
 def resolve_temperature(report: dict, set_label: str) -> tuple[str, str]:
     """(temperature, how it was determined) for one loaded report."""
-    # Strip the repetition suffix before looking for _T: the suffixes are
-    # appended base_T<temp>_s<n>, so an anchored _T$ misses every repeated run
-    # and silently relabels a whole sampled arm as greedy.
-    if m := SET_TEMP_RE.search(SET_SAMPLE_RE.sub("", set_label)):
+    # Strip the repetition and arm suffixes before looking for _T: the suffixes
+    # are appended base_T<temp>_a<arm>_s<n>, so an anchored _T$ misses every
+    # repeated run and silently relabels a whole sampled arm as greedy.
+    if m := SET_TEMP_RE.search(SET_ARM_RE.sub("", SET_SAMPLE_RE.sub("", set_label))):
         return m.group(1), "dirname"
     recorded = (report.get("sampling") or {}).get("temperature")
     if recorded is not None:
@@ -75,13 +79,17 @@ def resolve_temperature(report: dict, set_label: str) -> tuple[str, str]:
     return DEFAULT_TEMPERATURE, "dirname"
 
 
-def parse_set_label(label: str) -> tuple[str, int, str, int | None]:
-    """Split a set directory name into (base, turn budget, temperature, sample)."""
+def parse_set_label(label: str) -> tuple[str, int, str, str, int | None]:
+    """Split a set directory name into (base, budget, temperature, arm, sample)."""
     rest = label
     sample = None
     if m := SET_SAMPLE_RE.search(rest):
         sample = int(m.group(1))
         rest = SET_SAMPLE_RE.sub("", rest)
+    arm = DEFAULT_ARM
+    if m := SET_ARM_RE.search(rest):
+        arm = m.group(1)
+        rest = SET_ARM_RE.sub("", rest)
     temperature = DEFAULT_TEMPERATURE
     if m := SET_TEMP_RE.search(rest):
         temperature = m.group(1)
@@ -90,7 +98,12 @@ def parse_set_label(label: str) -> tuple[str, int, str, int | None]:
     if m := SET_BUDGET_RE.search(rest):
         budget = int(m.group(1))
         rest = SET_BUDGET_RE.sub("", rest)
-    return rest, budget, temperature, sample
+    return rest, budget, temperature, arm, sample
+
+
+def strip_run_suffixes(label: str) -> str:
+    """The base set name, with every run-configuration suffix removed."""
+    return parse_set_label(label)[0]
 
 # Board rows grouped into bands, shared with scripts/analyze_tier1_experiment.py
 # so the per-model and cross-model figures cannot disagree. Two of the three
@@ -128,7 +141,7 @@ def normalise_error(msg: str) -> str:
 
 
 def set_sort_key(label: str) -> tuple[int, int, str]:
-    base, budget, _temp, _sample = parse_set_label(label)
+    base, budget, _temp, _arm, _sample = parse_set_label(label)
     rank = SET_ORDER.index(base) if base in SET_ORDER else len(SET_ORDER)
     return (rank, budget, label)
 
@@ -177,7 +190,7 @@ def summarise(report_path: Path, set_label: str) -> dict:
         report = json.load(fh)
 
     results = report.get("results") or []
-    base_set, budget, temperature, sample = parse_set_label(set_label)
+    base_set, budget, temperature, arm, sample = parse_set_label(set_label)
 
     # Resolve the temperature against the report itself wherever possible: an
     # unsuffixed directory is an absence of evidence, not evidence of greedy.
@@ -271,6 +284,7 @@ def summarise(report_path: Path, set_label: str) -> dict:
         "turn_error_tasks": dict(sorted(turn_error_tasks.items(), key=lambda kv: -kv[1])),
         "zone_ok": zone_ok,
         "zone_total": zone_total,
+        "arm": arm,
         "tool_calls_total": tool_calls_total,
         "tokens_total": sum(tokens),
         "latency_ms_median": int(statistics.median(latencies)) if latencies else None,
@@ -287,7 +301,7 @@ def discover(root: Path, model_filter: str | None, set_filter: str | None) -> di
             continue
         rows = []
         for set_dir in sorted((p for p in model_dir.iterdir() if p.is_dir()), key=lambda p: set_sort_key(p.name)):
-            if set_filter and SET_BUDGET_RE.sub("", set_dir.name) != set_filter:
+            if set_filter and strip_run_suffixes(set_dir.name) != set_filter:
                 continue
             for report in latest_per_regime(set_dir):
                 rows.append(summarise(report, set_dir.name))
@@ -313,7 +327,8 @@ def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors:
     # directory can hold both a greedy and a 0.7 run and the two rows would
     # otherwise read as duplicates of the same measurement.
     head = (
-        f"{'model':<24} {'set':<14} {'temp':>5} {'budget':>6} {'n':>5} {'ok':>4} {'rate':>7} "
+        f"{'model':<24} {'set':<14} {'arm':<15} {'temp':>5} {'budget':>6} {'n':>5} "
+        f"{'ok':>4} {'rate':>7} "
         f"{'turns ok':>12} {'turns fail':>12} {'ceil':>5} {'comp':>10} "
         f"{'tok/task':>9} {'lat_med':>8}"
     )
@@ -331,7 +346,8 @@ def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors:
             lat = r["latency_ms_median"]
             print(
                 f"{model if i == 0 else '':<24} "
-                f"{SET_BUDGET_RE.sub('', r['set']):<14} "
+                f"{strip_run_suffixes(r['set']):<14} "
+                f"{r['arm']:<15} "
                 f"{(r['temperature'] + ('?' if r['temperature_source'] == 'pre-cutover default' else '')):>5} "
                 f"{r['budget']:>6} "
                 f"{r['total']:>5} {r['successful']:>4} "
@@ -351,6 +367,9 @@ def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors:
     print("turns columns are min/median/max. 'ceil' counts failures sitting on the")
     print("turn budget — those ran out of turns rather than converging on a wrong answer.")
     print("'comp' is components placed correctly / required by ground truth.")
+    print("'arm' is the harness-ablation arm; 'baseline' is the configuration behind")
+    print("docs/results_analysis.md. Turn-budget arms appear as a differing 'budget',")
+    print("not as an arm label — see HARNESS_ABLATION_PLAN.md section 5.")
     print("'tok/task' is mean tokens per task and 'lat_med' the median task latency —")
     print("watch these early: a model generating 5x the tokens of another will not")
     print("finish a 1000-task set in the same walltime, and TIMEOUT is a late signal.")
@@ -383,10 +402,10 @@ def render(by_model: dict[str, list[dict]], show_errors: bool, show_turn_errors:
 def render_variability(by_model: dict[str, list[dict]]) -> None:
     """Aggregate repetitions of the same configuration into mean +/- sd.
 
-    Groups on (model, base set, turn budget, temperature) so repetitions of one
-    configuration collapse into one row, while a different temperature or turn
-    budget stays a separate row — those are different experiments, not samples of
-    the same one.
+    Groups on (model, base set, turn budget, temperature, arm) so repetitions of
+    one configuration collapse into one row, while a different temperature, turn
+    budget or harness arm stays a separate row — those are different experiments,
+    not samples of the same one.
 
     The spread reported is the standard deviation ACROSS RUNS. It answers a
     different question from the binomial interval on a single run: that one asks
@@ -399,7 +418,9 @@ def render_variability(by_model: dict[str, list[dict]]) -> None:
         for r in rows:
             if r.get("sample") is None:
                 continue
-            groups.setdefault((model, r["base_set"], r["budget"], r["temperature"]), []).append(r)
+            groups.setdefault(
+                (model, r["base_set"], r["budget"], r["temperature"], r["arm"]), []
+            ).append(r)
 
     if not groups:
         print("No repeated runs found. Submit them with:")
@@ -408,18 +429,18 @@ def render_variability(by_model: dict[str, list[dict]]) -> None:
         return
 
     head = (
-        f"{'model':<24} {'set':<14} {'T':>5} {'runs':>5} {'n':>6} "
+        f"{'model':<24} {'set':<14} {'arm':<15} {'T':>5} {'runs':>5} {'n':>6} "
         f"{'mean':>7} {'sd':>6} {'min':>7} {'max':>7} {'range':>7}"
     )
     print(head)
     print("-" * len(head))
-    for (model, base, budget, temp), rows in sorted(groups.items()):
+    for (model, base, budget, temp, arm), rows in sorted(groups.items()):
         rates = sorted(r["success_rate_pct"] for r in rows)
         ns = {r["total"] for r in rows}
         sd = statistics.stdev(rates) if len(rates) > 1 else 0.0
         n_label = str(ns.pop()) if len(ns) == 1 else "mixed"
         print(
-            f"{model:<24} {base:<14} {temp:>5} {len(rates):>5} {n_label:>6} "
+            f"{model:<24} {base:<14} {arm:<15} {temp:>5} {len(rates):>5} {n_label:>6} "
             f"{statistics.mean(rates):>6.1f}% {sd:>5.1f} "
             f"{rates[0]:>6.1f}% {rates[-1]:>6.1f}% {rates[-1] - rates[0]:>6.1f}"
         )

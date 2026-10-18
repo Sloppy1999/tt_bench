@@ -1,9 +1,9 @@
 {
-  "task_id": "tt-official-13",
+  "task_id": "tt-official-ch13",
   "challenge_number": 13,
   "tier": 2,
-  "title": "Duality-Part 2",
-  "objective": "Intercept a red ball",
+  "title": "Duality - Part 2",
+  "objective": "Intercept a red ball.",
   "board": {
     "width": 11,
     "height": 11,
@@ -72,14 +72,13 @@
         "y": 11
       },
       "right": {
-        "x": 6,
+        "x": 8,
         "y": 11
       }
     }
   },
   "available_parts": {
-    "ramp_right": 6,
-    "ramp_left": 5,
+    "ramp": 12,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -145,7 +144,7 @@
         "y": 10
       }
     ],
-    "explanation": "",
+    "explanation": "Even though you start by releasing a blue ball, you\u2019ve got to get a red ball in the interceptor. How do you do that? Here\u2019s how: Lead the first blue ball to the right lever, releasing a red ball. Then lead the red ball to the interceptor with ramps.",
     "verified": true,
     "position_verified": true,
     "final_marble_state": [
@@ -168,6 +167,18 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 49,
-    "checked": "simulation reproduces the guide's printed required output"
+    "solution_page": 50,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 12,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

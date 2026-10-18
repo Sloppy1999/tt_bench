@@ -33,7 +33,8 @@
         "type": "gear_bit",
         "x": 5,
         "y": 2,
-        "state": 1
+        "state": 1,
+        "gear_group": 1
       },
       {
         "type": "ramp_right",
@@ -118,8 +119,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 0,
-    "ramp_left": 1,
+    "ramp": 1,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 1,
@@ -133,12 +133,14 @@
         "type": "gear_bit",
         "x": 4,
         "y": 3,
-        "state": 0
+        "state": 1,
+        "gear_group": 1
       },
       {
         "type": "gear",
         "x": 5,
-        "y": 3
+        "y": 3,
+        "gear_group": 1
       },
       {
         "type": "ramp_left",
@@ -146,27 +148,22 @@
         "y": 4
       }
     ],
-    "explanation": "",
+    "explanation": "Use a latch to send all balls to the ramps on the left side.",
     "verified": true,
-    "position_verified": true,
-    "final_marble_state": [
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue",
-      "blue"
-    ]
+    "position_verified": true
   },
   "input_sequence": [
     "blue"
   ],
-  "expected_output": {
-    "left_catcher": 8,
-    "right_catcher": 0,
-    "intercepted": 0
+  "expected_output": {},
+  "source_inventory": {
+    "ramp": 1,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 1,
+    "gear": 1,
+    "interceptor": 0,
+    "trigger": 0
   },
   "required_output": [
     "blue",
@@ -181,6 +178,9 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 111,
-    "checked": "simulation reproduces the guide's printed required output"
+    "solution_page": 112,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
   }
 }

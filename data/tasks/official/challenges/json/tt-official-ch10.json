@@ -1,9 +1,9 @@
 {
-  "task_id": "tt-official-10",
+  "task_id": "tt-official-ch10",
   "challenge_number": 10,
   "tier": 2,
   "title": "Double Bond",
-  "objective": "Make the pattern blue, blue, red, red, blue, blue, red, red,...",
+  "objective": "Make the pattern blue, blue, red, red, blue, blue, red, red\u2026",
   "board": {
     "width": 11,
     "height": 11,
@@ -39,18 +39,17 @@
     },
     "trigger_levers": {
       "left": {
-        "x": 3,
+        "x": 2,
         "y": 11
       },
       "right": {
-        "x": 7,
+        "x": 8,
         "y": 11
       }
     }
   },
   "available_parts": {
-    "ramp_right": 10,
-    "ramp_left": 10,
+    "ramp": 22,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -161,7 +160,7 @@
         "y": 9
       }
     ],
-    "explanation": "",
+    "explanation": "This time, there are bits in the path of both the red and blue balls. The bits cause only every other ball to cross to the other side of the board.",
     "verified": true,
     "position_verified": true,
     "final_marble_state": [
@@ -212,6 +211,18 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 41,
-    "checked": "simulation reproduces the guide's printed required output"
+    "solution_page": 42,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 22,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

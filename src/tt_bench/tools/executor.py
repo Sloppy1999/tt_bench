@@ -489,6 +489,9 @@ class TuringTumbleToolExecutor:
         free_fall_errors: List[str],
     ) -> bool:
         """Return whether results satisfy the same explicit targets as scoring."""
+        specified = {(p['x'], p['y']) for p in self.placed_components if 'state' in p}
+        if self.board.editable_bit_states - specified:
+            return False
         if free_fall_errors:
             return False
         if any(
@@ -499,6 +502,7 @@ class TuringTumbleToolExecutor:
             return False
 
         task = {
+            "input_sequence": self._target_sequence,
             "solution": {"final_marble_state": self._target_final_state},
             "required_output": self._required_output,
             "expected_output": self._expected_output,

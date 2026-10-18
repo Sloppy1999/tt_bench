@@ -13,6 +13,9 @@ wheels/
 # Virtual environments
 .venv
 
+# Generated task-set views (symlinks; the id list in review/ is the source)
+data/tasks/scaled_sub500/
+
 # Generated visualizations and reports
 *.mp4
 *.html

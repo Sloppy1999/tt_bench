@@ -1,9 +1,9 @@
 {
-  "task_id": "tt-official-16",
+  "task_id": "tt-official-ch16",
   "challenge_number": 16,
   "tier": 2,
   "title": "Termination",
-  "objective": "Let only 3 balls reach the bottom and catch the 4th ball in the interceptor ",
+  "objective": "Let only 3 blue balls reach the bottom and catch the 4th ball in the interceptor.",
   "board": {
     "width": 11,
     "height": 11,
@@ -44,7 +44,7 @@
     },
     "trigger_levers": {
       "left": {
-        "x": 3,
+        "x": 2,
         "y": 11
       },
       "right": {
@@ -54,8 +54,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 4,
-    "ramp_left": 5,
+    "ramp": 10,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -111,7 +110,7 @@
         "y": 9
       }
     ],
-    "explanation": "",
+    "explanation": "Like the previous puzzle, think about the direction the bits point when each ball is released: 1st ball 2nd ball 3rd ball 4th ball",
     "verified": true,
     "position_verified": true,
     "final_marble_state": [
@@ -138,6 +137,18 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 65,
-    "checked": "simulation reproduces the guide's printed required output"
+    "solution_page": 66,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 10,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

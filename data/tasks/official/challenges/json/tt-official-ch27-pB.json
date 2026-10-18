@@ -12,17 +12,20 @@
       {
         "type": "bit",
         "x": 1,
-        "y": 4
+        "y": 4,
+        "state": 0
       },
       {
         "type": "bit",
         "x": 5,
-        "y": 4
+        "y": 4,
+        "state": 0
       },
       {
         "type": "bit",
         "x": 9,
-        "y": 4
+        "y": 4,
+        "state": 0
       }
     ],
     "ball_hoppers": {
@@ -47,8 +50,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 14,
-    "ramp_left": 10,
+    "ramp": 121,
     "crossover": 0,
     "bit": 1,
     "gear_bit": 0,
@@ -185,7 +187,7 @@
         "y": 9
       }
     ],
-    "explanation": "We have one bit to split the path of the blue balls. That allows us to flip two of the bits, but how can we flip the third bit? Use the second blue ball to trigger the release of a red ball that flips that third bit. NOTE - fixed_components positions are estimates pending simulator verification",
+    "explanation": "We have one bit to split the path of the blue balls. That allows us to flip two of the bits, but how can we flip the third bit? Use the second blue ball to trigger the release of a red ball that flips that third bit.",
     "verified": true,
     "position_verified": true
   },
@@ -193,6 +195,15 @@
     "blue"
   ],
   "expected_output": {},
+  "source_inventory": {
+    "ramp": "unlimited",
+    "crossover": 0,
+    "bit": 1,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
   "trials": [
     {
       "name": "000",
@@ -318,6 +329,9 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 105,
-    "checked": "simulation reverses the 3 starting bits from every one of their 8 starting configurations"
+    "solution_page": 106,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
   }
 }

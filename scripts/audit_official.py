@@ -93,6 +93,8 @@ def target_status(challenge: dict) -> str:
         return "OK"
 
     fms = challenge.get("solution", {}).get("final_marble_state")
+    if fms is None:
+        fms = challenge.get('required_output')
     if not fms:
         expected = challenge.get("expected_output") or {}
         if any(k in expected for k in ("left_catcher", "right_catcher", "intercepted")):
