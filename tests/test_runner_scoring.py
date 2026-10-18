@@ -62,6 +62,9 @@ def test_hedged_answers_are_not_correct():
     b = TuringTumbleBenchmark
     assert b._text_answer_matches("left or right", "left") is False
     assert b._text_answer_matches("left", "left") is True
+    assert b._text_answer_matches("left_catcher or right_catcher", "left_catcher") is False
+    # Mentioning the other side elsewhere is not a hedge.
+    assert b._hedges("goes left; the right bit stays at 0", "left") is False
     bench = b.__new__(b)
     expected = "The blue ball exits on the left side."
     hedged = bench._validate_understanding(

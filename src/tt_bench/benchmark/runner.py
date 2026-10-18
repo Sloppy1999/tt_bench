@@ -1323,9 +1323,11 @@ class TuringTumbleBenchmark:
 
     @classmethod
     def _hedges(cls, predicted: str, expected: str) -> bool:
-        """True if the prediction names the opposite of an expected marker.
+        """True if the prediction offers both an expected marker and its opposite.
 
         "left or right" contains "left"; without this it scores as "left".
+        Only an explicit alternative counts: a trace that mentions the other
+        side elsewhere ("goes left; the right bit stays") is not a hedge.
         """
         pred_norm = cls._normalise_answer_text(predicted)
         exp_norm = cls._normalise_answer_text(expected)
@@ -1333,8 +1335,10 @@ class TuringTumbleBenchmark:
         def has(word: str, text: str) -> bool:
             return re.search(rf"\b{word}\b", text) is not None
 
+        gap = r"(?:\s+\w+){0,2}\s+(?:or|and/or|either)\s+(?:\w+\s+)?"
         return any(
-            has(a, exp_norm) and not has(b, exp_norm) and has(b, pred_norm)
+            has(a, exp_norm) and not has(b, exp_norm)
+            and re.search(rf"\b{a}\w*{gap}{b}\b|\b{b}\w*{gap}{a}\b", pred_norm) is not None
             for a, b in cls._OPPOSING_MARKERS
         )
 

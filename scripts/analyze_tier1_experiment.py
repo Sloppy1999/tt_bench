@@ -59,6 +59,8 @@ def load_all_results(results_path: str | None = None):
         with open(rp) as f:
             data = json.load(f)
         for r in data.get("results", []):
+            if r.get("success") is None:  # ungraded (provider error), not a failure
+                continue
             tid = r.get("task_id", "")
             # Map set_name to category
             cat_map = {
