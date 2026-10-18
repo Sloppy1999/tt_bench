@@ -69,7 +69,7 @@
     },
     "trigger_levers": {
       "left": {
-        "x": 3,
+        "x": 2,
         "y": 11
       },
       "right": {
@@ -79,8 +79,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 2,
-    "ramp_left": 1,
+    "ramp": 3,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -111,7 +110,7 @@
         "y": 3
       }
     ],
-    "explanation": "Think about the direction the bits are pointing when each ball is released: 1st ball, 2nd ball, 3rd ball. Notice that the top bit flips with every ball, but the bottom bit only flips when the top bit points left. NOTE - interceptor position is an estimate pending simulator verification",
+    "explanation": "Think about the direction the bits are pointing when each ball is released: 1st ball 2nd ball 3rd ball",
     "verified": true,
     "position_verified": true,
     "final_marble_state": [
@@ -136,6 +135,18 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 63,
-    "checked": "simulation reproduces the guide's printed required output"
+    "solution_page": 64,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 3,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 1,
+    "trigger": 0
   }
 }

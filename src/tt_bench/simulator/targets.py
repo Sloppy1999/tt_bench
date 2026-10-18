@@ -90,6 +90,20 @@ def _run_trials(trials: list, task: dict, board, registers: dict) -> tuple[bool,
         sequence = _sequence(trial.get("input_sequence", default_sequence))
         results = board.run(sequence)
 
+        # Each trial must be physically legal, including branches not taken
+        # by the task's default state. An output match cannot excuse a gap.
+        for result in results:
+            path = result.path or []
+            for i, (x, y) in enumerate(path):
+                if not (0 <= x < board.cols and 0 <= y < board.rows):
+                    continue
+                if (x, y) in board.components:
+                    continue
+                if (y == board.rows - 1 and i + 1 < len(path)
+                        and path[i + 1][1] >= board.rows and result.caught_by is not None):
+                    continue
+                return False, f'trial {label}: free fall at ({x}, {y})'
+
         lost = [
             r
             for r in results

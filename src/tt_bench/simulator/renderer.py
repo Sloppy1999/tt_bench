@@ -73,7 +73,7 @@ CELL = 1.0
 BOARD_W = 11
 BOARD_H = 11
 MARGIN_TOP = 4.5
-MARGIN_BOTTOM = 3.18  # tuned so 150 DPI MP4 height is even (x264 req)
+MARGIN_BOTTOM = 3.54  # tuned so 150 DPI MP4 height is even (x264 req)
 MARGIN_SIDES = 1.5
 
 FIG_W = BOARD_W + 2 * MARGIN_SIDES
@@ -433,6 +433,66 @@ def draw_catcher(ax, x_grid, side, ball_count=0, active=False, zorder=8):
         ax.add_patch(highlight)
 
 
+def draw_catch_apron(ax, left_x, right_x, left_count=0, right_count=0, zorder=6):
+    """Draw the full-width catcher apron under the board.
+
+    The board drains as one apron split at the central ball return: everything
+    leaving the left half funnels into the left catcher and everything from the
+    right half into the right catcher. The ridge sits at the return — midway
+    between the two catcher columns, which is not the middle of the board once a
+    board is padded wider. This is the thesis figure's catcher design
+    (`results/analysis/plot_board_heatmap_single.py` draws the same geometry,
+    with the counts stripped because an aggregate has no single count).
+    """
+    left = MARGIN_SIDES - 0.5
+    right = MARGIN_SIDES + BOARD_W - 0.5
+    middle = MARGIN_SIDES + (left_x + right_x) / 2
+    top = MARGIN_BOTTOM - 0.55
+    floor = top - 1.35
+    frame = COLOURS["frame"]
+
+    ax.add_patch(plt.Polygon(
+        [(left, top), (right, top), (right - 0.45, floor - 0.45),
+         (left + 0.45, floor - 0.45)],
+        closed=True, facecolor=COLOURS["bg"], edgecolor=frame,
+        linewidth=1.8, joinstyle="round", zorder=zorder))
+
+    for side, outer, direction, colour, count in (
+        ("blue", left, 1, COLOURS["blue_trigger"], left_count),
+        ("red", right, -1, COLOURS["red_trigger"], right_count),
+    ):
+        centre = (outer + middle) / 2
+        half = 0.62
+        # Each slope lands on the near lip of its box: the wall nearest the
+        # outer edge on the outer lip, the one off the ridge on the inner lip.
+        # Mirroring these for the right half makes the arms read as a funnel
+        # rather than as crossed lines.
+        outer_lip = centre - direction * half
+        inner_lip = centre + direction * half
+        ax.plot([outer + direction * 0.30, outer_lip],
+                [top - 0.10, floor], color=colour, linewidth=1.6,
+                solid_capstyle="round", zorder=zorder + 1)
+        ax.plot([middle - direction * 0.30, inner_lip],
+                [top - 0.10, floor], color=colour, linewidth=1.6,
+                solid_capstyle="round", zorder=zorder + 1)
+        ax.add_patch(plt.Rectangle(
+            (centre - half, floor - 0.42), 2 * half, 0.42,
+            facecolor="#D0E8FF" if side == "blue" else "#FFD0D0",
+            edgecolor=colour, linewidth=1.8, zorder=zorder + 2))
+        ax.text(centre, floor - 0.78,
+                "Left catcher" if side == "blue" else "Right catcher",
+                ha="center", va="top", fontsize=8, color=colour,
+                zorder=zorder + 3)
+        # A simulation clip has one run, so the per-catcher tally stays.
+        ax.text(centre, floor + 0.16, f"\u00d7{count}", ha="center",
+                va="bottom", fontsize=9, color=colour, fontweight="bold",
+                zorder=zorder + 3)
+
+    # The ridge that decides the split.
+    ax.plot([middle, middle], [top, floor + 0.34], color=frame,
+            linewidth=1.6, solid_capstyle="round", zorder=zorder + 1)
+
+
 # ---------------------------------------------------------------------------
 # Component dispatcher (using PNG assets)
 # ---------------------------------------------------------------------------
@@ -615,26 +675,17 @@ def render_board(task: dict, state: str = "start", output_path: str = None, show
     if red_h.get("count", 0) > 0:
         draw_hopper(ax, red_h["x"], "R", red_h["count"], "red", red_h.get("y", -1))
 
-    # --- Catcher buckets (bottom) ---
-    # Tally ball counts per catcher from final_marble_state (solution view only)
+    # --- Catcher apron (bottom) ---
+    # Tally ball counts per catcher from final_marble_state (solution view only).
     final_state = sol.get("final_marble_state", []) if state == "solution" else []
-    # Determine which catcher each colour feeds into via trigger lever positions.
-    # Left lever → blue catcher, right lever → red catcher.
-    # final_marble_state lists balls that reached the end; assume they all go
-    # to whichever catcher the path terminates at. Count blues vs reds.
-    left_count  = sum(1 for b in final_state if b == "blue")
+    left_count = sum(1 for b in final_state if b == "blue")
     right_count = sum(1 for b in final_state if b == "red")
 
-    left_t  = tlevs.get("left", {})
+    left_t = tlevs.get("left", {})
     right_t = tlevs.get("right", {})
-    if left_t:
-        draw_catcher(ax, left_t["x"], "blue",
-                     ball_count=left_count,
-                     active=(left_count > 0 and state == "solution"))
-    if right_t:
-        draw_catcher(ax, right_t["x"], "red",
-                     ball_count=right_count,
-                     active=(right_count > 0 and state == "solution"))
+    if left_t and right_t:
+        draw_catch_apron(ax, left_t["x"], right_t["x"],
+                         left_count=left_count, right_count=right_count)
 
     # Fixed components (dark navy)
     for comp in fixed_comps:
@@ -928,8 +979,8 @@ def _draw_animation_frame(
 
     left_x = tlevs.get("left", {}).get("x", 0)
     right_x = tlevs.get("right", {}).get("x", BOARD_W - 1)
-    draw_catcher(ax, left_x, "blue", ball_count=frame["left_hits"], active=False)
-    draw_catcher(ax, right_x, "red", ball_count=frame["right_hits"], active=False)
+    draw_catch_apron(ax, left_x, right_x,
+                     left_count=frame["left_hits"], right_count=frame["right_hits"])
 
     for comp in frame["components"]:
         pos = (comp["x"], comp["y"])
@@ -955,11 +1006,11 @@ def _draw_animation_frame(
     status = frame.get("status", "")
     if status:
         ax.text(
-            0.2,
-            0.35,
+            MARGIN_SIDES,
+            FIG_H - 1.5,
             status,
             ha="left",
-            va="bottom",
+            va="top",
             fontsize=8,
             color="#333333",
             zorder=10,

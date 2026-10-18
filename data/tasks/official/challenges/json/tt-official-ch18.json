@@ -12,12 +12,14 @@
       {
         "type": "bit",
         "x": 5,
-        "y": 2
+        "y": 2,
+        "state": 0
       },
       {
         "type": "bit",
         "x": 5,
-        "y": 4
+        "y": 4,
+        "state": 0
       },
       {
         "type": "interceptor",
@@ -52,8 +54,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 5,
-    "ramp_left": 2,
+    "ramp": 7,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -99,7 +100,7 @@
         "y": 5
       }
     ],
-    "explanation": "",
+    "explanation": "This puzzle is the same as the last puzzle, except that the path the ball must take in each case is a little different.",
     "verified": true,
     "position_verified": true
   },
@@ -107,72 +108,81 @@
     "blue"
   ],
   "expected_output": {},
+  "source_inventory": {
+    "ramp": 7,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
   "trials": [
     {
       "name": "00",
-      "hoppers": {
-        "blue": 1,
-        "red": 1
-      },
       "initial_bit_states": {
         "bit_5_2": 0,
         "bit_5_4": 0
       },
       "expect": {
+        "intercepted": 1,
         "intercepted_at": [
           7,
           6
-        ]
-      }
-    },
-    {
-      "name": "10",
-      "hoppers": {
-        "blue": 1,
-        "red": 1
-      },
-      "initial_bit_states": {
-        "bit_5_2": 1,
-        "bit_5_4": 0
-      },
-      "expect": {
-        "intercepted_at": [
-          7,
-          6
+        ],
+        "intercepted_colours": [
+          "blue"
         ]
       }
     },
     {
       "name": "01",
-      "hoppers": {
-        "blue": 1,
-        "red": 1
-      },
       "initial_bit_states": {
         "bit_5_2": 0,
         "bit_5_4": 1
       },
       "expect": {
+        "intercepted": 1,
         "intercepted_at": [
           7,
           6
+        ],
+        "intercepted_colours": [
+          "blue"
+        ]
+      }
+    },
+    {
+      "name": "10",
+      "initial_bit_states": {
+        "bit_5_2": 1,
+        "bit_5_4": 0
+      },
+      "expect": {
+        "intercepted": 1,
+        "intercepted_at": [
+          7,
+          6
+        ],
+        "intercepted_colours": [
+          "blue"
         ]
       }
     },
     {
       "name": "11",
-      "hoppers": {
-        "blue": 1,
-        "red": 1
-      },
       "initial_bit_states": {
         "bit_5_2": 1,
         "bit_5_4": 1
       },
       "expect": {
+        "intercepted": 1,
         "intercepted_at": [
           3,
           6
+        ],
+        "intercepted_colours": [
+          "blue"
         ]
       }
     }
@@ -180,6 +190,9 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 75,
-    "checked": "simulation reproduces all four rows of the AND truth table, with T=(3, 6)"
+    "solution_page": 76,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
   }
 }

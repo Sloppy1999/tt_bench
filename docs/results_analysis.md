@@ -791,6 +791,54 @@ anyway is narrower than what §7 established for Tier 1's `scaled_1comp`:
   unsolvable-detection gap in particular is not a marginal call: it separates
   ~0 % from ~80 % on sets of 268–344 tasks.
 
+### 11.6 Failure families, the spatial profile, and where episodes end
+
+Three further figures describe the same `results_summary.json` sweep that
+underlies §11.2–11.4. They do not all use the same corpus, and each caption
+states the one it uses: Figure 5 is restricted to the fully-solvable sets of
+§11.2, Figure 6 to solvable tasks on native boards, and Figure 7 to the whole
+six-set sweep. §11.5's single-run caveat applies to every one of them.
+
+![Terminal failure family, as a share of each model's failures](assets/figures/failure_families.png)
+
+**Figure 5.** The failure taxonomy of §5, computed across the four fully-solvable
+sets of §11.2. The unsolvable variants of `scaled_1comp` and `scaled_2comp` are
+**excluded** here: on those, a model that does not recognise the task as
+unsolvable is scored as failing, so a pooled profile would be dominated by that
+refusal trait — `qwen3.8-flash-next-awq4` would read as 95 % "missed infeasible"
+— rather than by how its boards fail. Those two sets are reported split in §11.3.
+
+Read this way, the figure reproduces §5's axis. Six of the seven models fail
+overwhelmingly by an **incomplete path** (39–100 % of their failures). The
+exception is `qwen3.8-flash-next-awq4`, at 49 % incomplete against 47 %
+**complete but wrong output**: the near-inversion §14.4 finds on the four-tier
+corpus, and the only profile in the roster in which most failures are
+computational rather than spatial. Its base here is 51 failures, so the exact
+share is softer than the direction.
+
+![Seven board heatmaps, one per model, each with the success rate and sample size printed in every cell a reference solution fills](assets/figures/board_heatmaps.png)
+
+**Figure 6.** Success rate and sample size on every board cell a task's
+reference solution fills, one board per model in the Figure 1 order. Each
+labelled cell gives the success rate and `n`, the number of tasks whose
+reference solution fills it; the small dots are cells no reference solution
+fills. Restricted to solvable tasks on native 11×11 boards, so the map measures
+whether a board can be completed, not whether an impossible one is declined. It
+is the spatial counterpart of the incomplete-path band in Figure 5, and the
+reason §14.4 reads that band as a constraint on *filling* the board rather than
+on reasoning about it.
+
+![Where episodes end, by outcome](assets/figures/turn_distribution.png)
+
+**Figure 7.** Where episodes end against the 25-turn budget, split by outcome,
+over the whole six-set sweep (all sets, both tiers). Marker area is proportional
+to the number of tasks ending on that turn, scaled within each model row — areas
+compare within a row, not across rows. The two regimes of §4 appear as mass
+rather than as a rate: failures that stop early concentrate in the first ten
+turns for `gpt-oss-120b`, `qwen3.6-35B-A3B`, `Qwen2.5-Coder-7B` and
+`DeepSeek-Coder-V2-Lite`, while the Gemma models carry the bulk of their failure
+mass later, `gemma-4-31B-it` the largest at the ceiling.
+
 ---
 
 ## 12. Context-length and truncation audit

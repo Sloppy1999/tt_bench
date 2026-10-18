@@ -78,7 +78,7 @@ def scan(path: Path) -> dict | None:
     # resolve_temperature needs only these two keys; the log's first timestamp
     # stands in for the report's, which is what the date attribution keys on.
     temp, temp_source = resolve_temperature({"timestamp": run_date}, label)
-    base, budget, _t, sample = parse_set_label(label)
+    base, budget, _t, _arm, sample = parse_set_label(label)
     return {
         "log": path,
         "model": model,

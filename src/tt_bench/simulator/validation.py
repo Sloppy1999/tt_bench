@@ -55,6 +55,11 @@ def _verify_task_board(
 ) -> bool:
     """Verify one task using a single simulator run."""
 
+    specified = {(p['x'], p['y']) for p in task.get('solution', {}).get('placed_components', [])
+                 if 'state' in p}
+    if board.editable_bit_states - specified:
+        return False
+
     # Use challenge's input_sequence if no explicit sequence provided
     if sequence is None:
         raw_seq = task.get("input_sequence", ["blue"])

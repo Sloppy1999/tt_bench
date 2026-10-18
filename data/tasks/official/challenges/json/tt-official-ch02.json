@@ -52,7 +52,7 @@
     },
     "trigger_levers": {
       "left": {
-        "x": 4,
+        "x": 2,
         "y": 11
       },
       "right": {
@@ -62,8 +62,7 @@
     }
   },
   "available_parts": {
-    "ramp_right": 0,
-    "ramp_left": 5,
+    "ramp": 5,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -99,7 +98,7 @@
         "y": 10
       }
     ],
-    "explanation": "The starting setup leads the balls over onto the right side. That's a problem! If the balls hit the right lever, they'd release red balls, but you're only supposed to let the blue balls get to the bottom. To solve this puzzle, you have to use the 5 ramps to lead balls back over to the left lever.",
+    "explanation": "The starting setup leads the balls over onto the right side. That\u2019s a problem! If the balls hit the right lever, they\u2019d release red balls, but you\u2019re only supposed to let the blue balls get to the bottom. To solve this puzzle, you have to use the 5 ramps to lead balls back over to the left lever.",
     "verified": true,
     "position_verified": true,
     "final_marble_state": [
@@ -134,6 +133,18 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 9,
-    "checked": "simulation reproduces the guide's printed required output"
+    "solution_page": 10,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 5,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

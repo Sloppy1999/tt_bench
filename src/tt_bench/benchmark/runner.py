@@ -523,6 +523,11 @@ class TuringTumbleBenchmark:
         """Ensure predicted placements do not exceed the available inventory."""
         available = task_info.get("available_parts", {}) or {}
 
+        editable = {tuple(p) for p in task_info.get('board', {}).get('editable_bit_states', [])}
+        specified = {(p['x'], p['y']) for p in placements if 'state' in p}
+        if editable - specified:
+            return False, f'Choose initial states for fixed bits: {sorted(editable - specified)}'
+
         # Some legacy official encodings have declared inventories that do not
         # cover their own reference solution (for example practice variants
         # where ramp orientation counts were entered incorrectly). In that case,

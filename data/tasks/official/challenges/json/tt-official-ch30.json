@@ -30,7 +30,9 @@
       {
         "type": "gear_bit",
         "x": 2,
-        "y": 5
+        "y": 5,
+        "state": 0,
+        "gear_group": 1
       }
     ],
     "ball_hoppers": {
@@ -55,12 +57,11 @@
     }
   },
   "available_parts": {
-    "ramp_right": 6,
-    "ramp_left": 6,
+    "ramp": 14,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 1,
-    "gear": 0,
+    "gear": 1,
     "interceptor": 0,
     "trigger": 0
   },
@@ -97,6 +98,12 @@
         "y": 4
       },
       {
+        "type": "gear",
+        "x": 1,
+        "y": 5,
+        "gear_group": 1
+      },
+      {
         "type": "ramp_left",
         "x": 4,
         "y": 5
@@ -104,7 +111,9 @@
       {
         "type": "gear_bit",
         "x": 1,
-        "y": 6
+        "y": 6,
+        "state": 0,
+        "gear_group": 1
       },
       {
         "type": "ramp_left",
@@ -132,7 +141,7 @@
         "y": 9
       }
     ],
-    "explanation": "",
+    "explanation": "The latch flips when the count up register increments past 7. Once flipped, it remains flipped no matter how many balls run through the register.",
     "verified": true,
     "position_verified": true
   },
@@ -140,6 +149,15 @@
     "blue"
   ],
   "expected_output": {},
+  "source_inventory": {
+    "ramp": 14,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 1,
+    "gear": 1,
+    "interceptor": 0,
+    "trigger": 0
+  },
   "registers": {
     "A": [
       "bit_3_4",
@@ -149,20 +167,121 @@
   },
   "trials": [
     {
+      "name": "x0",
+      "hoppers": {
+        "blue": 0,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 0
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 0
+        }
+      }
+    },
+    {
+      "name": "x1",
+      "hoppers": {
+        "blue": 1,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 1
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 0
+        }
+      }
+    },
+    {
+      "name": "x2",
+      "hoppers": {
+        "blue": 2,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 2
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 0
+        }
+      }
+    },
+    {
+      "name": "x3",
+      "hoppers": {
+        "blue": 3,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 3
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 0
+        }
+      }
+    },
+    {
+      "name": "x4",
+      "hoppers": {
+        "blue": 4,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 4
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 0
+        }
+      }
+    },
+    {
+      "name": "x5",
+      "hoppers": {
+        "blue": 5,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 5
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 0
+        }
+      }
+    },
+    {
+      "name": "x6",
+      "hoppers": {
+        "blue": 6,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 6
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 0
+        }
+      }
+    },
+    {
       "name": "x7",
       "hoppers": {
         "blue": 7,
         "red": 0
       },
-      "input_sequence": [
-        "blue"
-      ],
       "expect": {
         "registers": {
           "A": 7
         },
         "final_bit_states": {
-          "gear_bit_1_6": 0,
           "gear_bit_2_5": 0
         }
       }
@@ -173,15 +292,101 @@
         "blue": 8,
         "red": 0
       },
-      "input_sequence": [
-        "blue"
-      ],
       "expect": {
         "registers": {
           "A": 0
         },
         "final_bit_states": {
-          "gear_bit_1_6": 1,
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x9",
+      "hoppers": {
+        "blue": 9,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 1
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x10",
+      "hoppers": {
+        "blue": 10,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 2
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x11",
+      "hoppers": {
+        "blue": 11,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 3
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x12",
+      "hoppers": {
+        "blue": 12,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 4
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x13",
+      "hoppers": {
+        "blue": 13,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 5
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x14",
+      "hoppers": {
+        "blue": 14,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 6
+        },
+        "final_bit_states": {
           "gear_bit_2_5": 1
         }
       }
@@ -192,15 +397,266 @@
         "blue": 15,
         "red": 0
       },
-      "input_sequence": [
-        "blue"
-      ],
       "expect": {
         "registers": {
           "A": 7
         },
         "final_bit_states": {
-          "gear_bit_1_6": 1,
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x16",
+      "hoppers": {
+        "blue": 16,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 0
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x17",
+      "hoppers": {
+        "blue": 17,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 1
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x18",
+      "hoppers": {
+        "blue": 18,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 2
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x19",
+      "hoppers": {
+        "blue": 19,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 3
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x20",
+      "hoppers": {
+        "blue": 20,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 4
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x21",
+      "hoppers": {
+        "blue": 21,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 5
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x22",
+      "hoppers": {
+        "blue": 22,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 6
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x23",
+      "hoppers": {
+        "blue": 23,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 7
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x24",
+      "hoppers": {
+        "blue": 24,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 0
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x25",
+      "hoppers": {
+        "blue": 25,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 1
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x26",
+      "hoppers": {
+        "blue": 26,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 2
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x27",
+      "hoppers": {
+        "blue": 27,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 3
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x28",
+      "hoppers": {
+        "blue": 28,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 4
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x29",
+      "hoppers": {
+        "blue": 29,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 5
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x30",
+      "hoppers": {
+        "blue": 30,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 6
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x31",
+      "hoppers": {
+        "blue": 31,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 7
+        },
+        "final_bit_states": {
+          "gear_bit_2_5": 1
+        }
+      }
+    },
+    {
+      "name": "x32",
+      "hoppers": {
+        "blue": 32,
+        "red": 0
+      },
+      "expect": {
+        "registers": {
+          "A": 0
+        },
+        "final_bit_states": {
           "gear_bit_2_5": 1
         }
       }
@@ -209,6 +665,9 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 117,
-    "checked": "simulation counts into the register and raises the flag past 7 for every worked count [7, 8, 15], reading the column with top-is-ones"
+    "solution_page": 118,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
   }
 }

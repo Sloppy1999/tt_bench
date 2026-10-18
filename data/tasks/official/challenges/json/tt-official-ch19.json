@@ -1,9 +1,9 @@
 {
-  "task_id": "tt-official-19",
+  "task_id": "tt-official-ch19",
   "challenge_number": 19,
   "tier": 3,
   "title": "Entanglement",
-  "objective": "If the top bit AND the bottom bit strart pointed to the right, intercept a blue ball. Otherwise, intercept a red ball",
+  "objective": "If the top bit AND the bottom bit start pointed to the right, intercept a blue ball. Otherwise, intercept a red ball.",
   "board": {
     "width": 11,
     "height": 11,
@@ -43,15 +43,14 @@
         "y": 11
       },
       "right": {
-        "x": 9,
+        "x": 8,
         "y": 11
       }
     }
   },
   "available_parts": {
-    "ramp_right": 14,
-    "ramp_left": 9,
-    "crossover": 1,
+    "ramp": 121,
+    "crossover": 2,
     "bit": 0,
     "gear_bit": 0,
     "gear": 0,
@@ -181,33 +180,83 @@
         "y": 9
       }
     ],
-    "explanation": "",
+    "explanation": "This time there is only one interceptor. Instead of send- ing the ball to interceptor F if the bits aren\u2019t both pointed right, you must direct the ball to the right lever. Then direct the red ball that\u2019s released to the interceptor.",
     "verified": true,
-    "position_verified": true,
-    "final_marble_state": [
-      "red",
-      "intercepted"
-    ]
+    "position_verified": true
   },
   "input_sequence": [
     "blue"
   ],
-  "expected_output": {
-    "left_catcher": 0,
-    "right_catcher": 1,
-    "intercepted": 1
-  },
-  "required_output": [
-    "blue",
-    "intercepted"
-  ],
-  "final_bit_states": {
-    "bit_5_2": 1,
-    "bit_5_4": 0
-  },
+  "expected_output": {},
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 77,
-    "checked": "simulation reproduces the guide's printed required output"
-  }
+    "solution_page": 78,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": "unlimited",
+    "crossover": 2,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
+  },
+  "trials": [
+    {
+      "name": "00",
+      "initial_bit_states": {
+        "bit_5_2": 0,
+        "bit_5_4": 0
+      },
+      "expect": {
+        "intercepted": 1,
+        "intercepted_colours": [
+          "red"
+        ]
+      }
+    },
+    {
+      "name": "01",
+      "initial_bit_states": {
+        "bit_5_2": 0,
+        "bit_5_4": 1
+      },
+      "expect": {
+        "intercepted": 1,
+        "intercepted_colours": [
+          "red"
+        ]
+      }
+    },
+    {
+      "name": "10",
+      "initial_bit_states": {
+        "bit_5_2": 1,
+        "bit_5_4": 0
+      },
+      "expect": {
+        "intercepted": 1,
+        "intercepted_colours": [
+          "red"
+        ]
+      }
+    },
+    {
+      "name": "11",
+      "initial_bit_states": {
+        "bit_5_2": 1,
+        "bit_5_4": 1
+      },
+      "expect": {
+        "intercepted": 1,
+        "intercepted_colours": [
+          "blue"
+        ]
+      }
+    }
+  ]
 }

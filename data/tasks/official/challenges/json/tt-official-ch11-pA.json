@@ -40,18 +40,23 @@
     },
     "trigger_levers": {
       "left": {
-        "x": 5,
+        "x": 2,
         "y": 11
       },
       "right": {
-        "x": 10,
+        "x": 8,
         "y": 11
       }
-    }
+    },
+    "editable_bit_states": [
+      [
+        5,
+        2
+      ]
+    ]
   },
   "available_parts": {
-    "ramp_right": 7,
-    "ramp_left": 7,
+    "ramp": 15,
     "crossover": 0,
     "bit": 0,
     "gear_bit": 0,
@@ -70,6 +75,12 @@
         "type": "ramp_right",
         "x": 4,
         "y": 1
+      },
+      {
+        "type": "bit",
+        "x": 5,
+        "y": 2,
+        "state": 1
       },
       {
         "type": "ramp_left",
@@ -132,12 +143,12 @@
         "y": 9
       }
     ],
-    "explanation": "The top bit is used to distribute the blue balls between two paths - one leads to the left bit and the other leads to the right bit. NOTE - fixed_components positions are estimates; placed_components is incomplete (2/15) pending simulator verification",
+    "explanation": "The top bit is used to distribute the blue balls between two paths - one leads to the left bit and the other leads to the right bit.",
     "verified": true,
     "position_verified": true,
     "final_marble_state": [
       "blue",
-      "blue"
+      "red"
     ],
     "final_bit_state": {
       "bit_5_2": 0,
@@ -149,11 +160,9 @@
     "blue"
   ],
   "expected_output": {
-    "left_catcher": 2,
-    "right_catcher": 0,
-    "intercepted": 0,
+    "left_catcher": 1,
+    "right_catcher": 1,
     "final_bit_states": {
-      "bit_5_2": 0,
       "bit_3_6": 1,
       "bit_7_6": 1
     }
@@ -165,6 +174,18 @@
   "provenance": {
     "board": "transcribed from practice-guide-2021.pdf",
     "page": 43,
-    "checked": "simulation leaves the bits the objective names pointing right"
+    "solution_page": 44,
+    "source_sha256": "e628f46715abfdc8178bbae6129cae9a44ea306e2f1d0d8d5a947d8972221c10",
+    "checked": "source layout, inventory and objective reviewed; see verification flag",
+    "review": "review/official_pdf_review/repair"
+  },
+  "source_inventory": {
+    "ramp": 15,
+    "crossover": 0,
+    "bit": 0,
+    "gear_bit": 0,
+    "gear": 0,
+    "interceptor": 0,
+    "trigger": 0
   }
 }

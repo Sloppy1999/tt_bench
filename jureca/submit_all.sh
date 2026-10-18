@@ -156,6 +156,10 @@ Options:
                        score. Read <out>/per_task/*.json.
                      insight_1comp, insight_2comp — solvable, but the inventory
                        carries a distractor part type.
+                     scaled_sub500 — the frozen 500-task draw from scaled used
+                       by the harness ablation's Phase 2. Generate it first:
+                       python scripts/build_sub500.py --materialise \\
+                         data/tasks/scaled_sub500
       --arm A      Harness-ablation arm (default: baseline). One of
                      baseline, fb-optional, fb-auto, rev-retry, rev-structured.
                    See HARNESS_ABLATION_PLAN.md section 5 for what each changes.

@@ -307,7 +307,9 @@ def test_register_board_reproduces_the_guides_table(stem, table):
     """The board must agree with every row the guide prints, not just one."""
     task = _load(stem)
     assert task["registers"]["A"], "register must be declared"
-    assert {t["hoppers"]["blue"]: t["expect"]["registers"]["A"] for t in task["trials"]} == table
+    actual = {t["hoppers"]["blue"]: t["expect"]["registers"]["A"] for t in task["trials"]}
+    assert table.items() <= actual.items()
+    assert set(actual) == set(range(16)), 'cover the full allowed count range'
 
     board = Board.from_task_dict(task)
     ok, why = validate_targets(task, board, [])
@@ -411,7 +413,8 @@ def test_overflow_board_counts_and_latches_its_flag():
     """
     task = _load("tt-official-ch30")
     rows = {t["hoppers"]["blue"]: t["expect"] for t in task["trials"]}
-    assert set(rows) == {7, 8, 15}
+    assert {7, 8, 15} <= set(rows)
+    assert set(rows) == set(range(33)), 'include repeated overflow and boundary counts'
 
     width = 2 ** len(task["registers"]["A"])
     for count, expect in rows.items():
