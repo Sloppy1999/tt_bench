@@ -98,23 +98,16 @@ uv run python -m pytest tests/ -v
 ### Benchmarking an LLM
 
 ```bash
-# Ollama (local)
-uv run tt-benchmark --provider ollama --model llama3.1 --save-report
-
 # vLLM (local or cluster-hosted OpenAI-compatible server)
 uv run tt-benchmark --provider vllm --model Qwen/Qwen3.6-35B-A3B \
   --base-url http://localhost:8000/v1 --save-report
-
-# DeepSeek
-DEEPSEEK_API_KEY=sk-... uv run tt-benchmark \
-  --provider deepseek --model deepseek-chat --save-report
 ```
 
 **Key options:**
 
 | Flag | Description |
 |------|-------------|
-| `--provider` | `ollama`, `lmstudio`, `vllm`, `deepseek`, `cloud`, `mock` |
+| `--provider` | `vllm`, `mock` |
 | `--model` | Model name (provider-specific) |
 | `--temperature` | Sampling temperature (default `0.0`, greedy) |
 | `--pattern` | Glob filter for tasks (e.g., `"ch0[1-5]*"`) |
@@ -188,9 +181,7 @@ Each challenge may have practice variants (e.g., `ch01-pA`) and bonus variants (
 
 | Provider | Model Examples | Environment Variable |
 |----------|---------------|---------------------|
-| Ollama | `llama3.1`, `qwen3` | (none, local) |
 | vLLM | any OpenAI-compatible server | (none, or `--api-key`) |
-| DeepSeek | `deepseek-chat` | `DEEPSEEK_API_KEY` |
 | Mock | (testing only) | (none) |
 
 All providers implement a unified interface in `src/tt_bench/llm/client.py`.
